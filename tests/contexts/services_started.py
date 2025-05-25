@@ -1,30 +1,19 @@
-from d42 import fake
-
-from interfaces.maxwelld_api import MaxwelldApi
-from maxwelld import Environment
-from maxwelld.helpers.bytes_pickle import base64_pickled
-from maxwelld.server.handlers.dc_up import DcUpRequestParams
-from schemas.env_name import EnvNameSchema
+from uber_compose import Environment
+from uber_compose import UberCompose
 
 
-async def services_started(compose_files: str, environment: Environment, env_name: str = None, headers: dict = None):
-    raise NotImplementedError(
-        'This function is not implemented in this context.'
+async def services_started(config_template: Environment,
+                           compose_files: str,
+                           force_restart: bool = False,
+                           release_id: str | None = None,
+                           parallelism_limit: int = 1,
+                           ):
+    response = await UberCompose().up(
+        config_template=config_template,
+        compose_files=compose_files,
+        force_restart=force_restart,
+        release_id=release_id,
+        parallelism_limit=parallelism_limit
     )
-    if env_name is None:
-        env_name = fake(EnvNameSchema)
 
-    params: DcUpRequestParams = {
-        'name': env_name,
-        'compose_files': compose_files,
-        'config_template': base64_pickled(environment),
-        'parallelism_limit': 1,
-        'isolation': False,
-        'force_restart': False,
-    }
-
-    response = await MaxwelldApi().up(params, headers=headers)
-
-    assert response.status_code == 200, response.text
-
-    return response.json()
+    return response

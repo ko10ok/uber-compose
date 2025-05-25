@@ -16,6 +16,7 @@ from uber_compose.core.utils.process_command_output import process_output_till_d
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.jobs_result import OperationError
 from uber_compose.output.console import CONSOLE
+from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
 DC_BIN = '/usr/local/bin/docker'
@@ -27,7 +28,8 @@ class NoDockerCompose(BaseException):
 
 
 class ComposeShellInterface:
-    def __init__(self, compose_files: str, in_docker_project_root: Path, execution_envs: dict = None):
+    def __init__(self, compose_files: str, in_docker_project_root: Path, logger: Logger, execution_envs: dict = None):
+        self.logger = logger
         self.compose_files = compose_files
         self.in_docker_project_root = str(in_docker_project_root)
         self.execution_envs = os.environ | {
@@ -65,17 +67,18 @@ class ComposeShellInterface:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        CONSOLE.print(Text(
+        self.logger.system_commands(Text(
             f'{cmd}',
             style=Style.context
         ))
-        stdout, stderr = await process_output_till_done(process, self.verbose_docker_compose_ps_commands)
+        stdout, stderr = await process_output_till_done(process, self.logger.system_commands_debug)
 
         if process.returncode != 0:
             print(f"Can't get container's status {stdout} {stderr}")
             return OperationError(f'Stdout:\n{stdout}\n\nStderr:\n{stderr}')
 
         state_result = ServicesComposeState(stdout.decode('utf-8'))
+        self.logger.system_commands_output(state_result.as_rich_text())
         return state_result
 
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
@@ -97,15 +100,15 @@ class ComposeShellInterface:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        debug = f'; in {root}; with {pprint.pformat(env)}' if self.debug_docker_compose_commands else ''
-        CONSOLE.print(Text(
+        self.logger.commands(Text(
             f'{cmd}',
             style=Style.context
-        ) + ' ' + Text(
-            f'{debug}',
+        ))
+        self.logger.system_commands_environment_debug(Text(
+            f'running in {root}; with {pprint.pformat(env)}',
             style=Style.regular
         ))
-        stdout, stderr = await process_output_till_done(process, self.verbose_docker_compose_commands)
+        stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
             print("Can't up environment")
@@ -141,11 +144,11 @@ class ComposeShellInterface:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        CONSOLE.print(Text(
+        self.logger.commands(Text(
             f'{cmd}',
             style=Style.context
         ))
-        stdout, stderr = await process_output_till_done(process, False)
+        stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
             print(f"Can't get {services} logs")
@@ -178,15 +181,15 @@ class ComposeShellInterface:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        debug = f'; in {root}; with {env}' if self.debug_docker_compose_commands else ''
-        CONSOLE.print(Text(
+        self.logger.commands(Text(
             f'{cmd}',
             style=Style.context
-        ) + ' ' + Text(
-            f'{debug}',
+        ))
+        self.logger.system_commands_environment_debug(Text(
+            f'running in {root}; with {pprint.pformat(env)}',
             style=Style.regular
         ))
-        stdout, stderr = await process_output_till_done(process, self.verbose_docker_compose_commands)
+        stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
             print(f"Can't execute {cmd} in {container} successfully:\n{stdout=}, {stderr=}")
@@ -235,15 +238,15 @@ class ComposeShellInterface:
         if check_output != '':
             try:
                 pids = [int(pid) for pid in check_output.split(' ')]
-                CONSOLE.print(f'Process still running: {cmd} in {container} with:\n  {pids}')
+                self.logger.system_commands_debug(f'Process still running: {cmd} in {container} with:\n  {pids}')
                 await self._dc_exec_print_processes(container, env, root)
                 return pids
             except ValueError:
                 ...
-            CONSOLE.print(f'Somthing wrong:\n  {check_output}')
+            self.logger.error(f'Somthing wrong:\n  {check_output}')
             return [-1]
         else:
-            CONSOLE.print(f'Process done: {cmd} in {container}')
+            self.logger.stage_info(f'Process done: {cmd} in {container}')
             return []
 
     async def _dc_exec_print_processes(self, container: str,
@@ -290,7 +293,7 @@ class ComposeShellInterface:
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_down(self, services: list[str], env: dict = None,
                       root: Path | str = None) -> JobResult | OperationError:
-        print(f'Downing {services} containers')
+        self.logger.stage_info(f'Downing {services} containers')
         sys.stdout.flush()
 
         if env is None:
@@ -307,15 +310,15 @@ class ComposeShellInterface:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        debug = f'; in {root}; with {env}' if self.debug_docker_compose_commands else ''
-        CONSOLE.print(Text(
+        self.logger.commands(Text(
             f'{cmd}',
             style=Style.context
-        ) + ' ' + Text(
-            f'{debug}',
+        ))
+        self.logger.system_commands_environment_debug(Text(
+            f'running in {root}; with {pprint.pformat(env)}',
             style=Style.regular
         ))
-        stdout, stderr = await process_output_till_done(process, self.verbose_docker_compose_commands)
+        stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
             # TODO swap print to CONSOLE

@@ -4,8 +4,8 @@ from pathlib import Path
 
 from rich.text import Text
 
-from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.config import Config
+from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
 from uber_compose.core.utils.compose_files import get_compose_services_dependency_tree
@@ -16,6 +16,7 @@ from uber_compose.env_description.env_types import EventStage
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.output.console import CONSOLE
+from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 from uber_compose.vedro_plugin.logger import WaitVerbosity
 from uber_compose.vedro_plugin.state_waiting import wait_all_services_up
@@ -36,7 +37,10 @@ class ComposeInstance:
                  except_containers: list[str],
                  tmp_envs_path: Path,
                  execution_envs: dict = None,
-                 release_id: str = None):
+                 release_id: str = None,
+                 logger: Logger = None,
+                 ):
+        self.logger = logger
         self.compose_files = compose_files
         self.in_docker_project_root = in_docker_project_root
         self.host_project_root_directory = host_project_root_directory
@@ -83,6 +87,7 @@ class ComposeInstance:
         self.compose_executor = self.compose_interface(
             compose_files=compose_instance_files.compose_files,
             in_docker_project_root=self.in_docker_project_root,
+            logger=self.logger,
         )
         return compose_instance_files
 
@@ -117,7 +122,7 @@ class ComposeInstance:
         for container in self.except_containers:
             if container in services:
                 services.remove(container)
-        print(f'Starting services pack: {services}; except: {self.except_containers}')
+        self.logger.stage_details(f'Starting services pack: {services}; except: {self.except_containers}')
 
         status_result = await self.compose_executor.dc_state()
         assert status_result != JobResult.BAD, f"Can't get first status for services {services}"
@@ -176,7 +181,7 @@ class ComposeInstance:
         self.compose_instance_files = await self.generate_config_files()
 
         services_tiers = get_compose_services_dependency_tree(self.compose_instance_files.compose_files)
-        CONSOLE.print(
+        self.logger.stage_info(
             Text('Starting services: ', style=Style.info)
             .append(Text(str(services_tiers), style=Style.good))
         )

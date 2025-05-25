@@ -9,14 +9,19 @@ from uber_compose.core.sequence_run_types import EMPTY_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
-from uber_compose.output.console import CONSOLE
+from uber_compose.output.console import DEFAULT_LOG_POLICY
+from uber_compose.output.console import LogPolicy
+from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
 
 class UberCompose:
-    def __init__(self):
-        self.inner_project_root = Config().in_docker_project_root_path
-        self.system_docker_compose = SystemDockerCompose(self.inner_project_root)
+    def __init__(self, log_policy: LogPolicy = DEFAULT_LOG_POLICY) -> None:
+        self.logger = Logger(log_policy)
+        self.system_docker_compose = SystemDockerCompose(
+            Config().in_docker_project_root_path,
+            logger=self.logger
+        )
 
     async def up(self,
                  config_template: Environment | None = None,
@@ -34,19 +39,24 @@ class UberCompose:
 
         existing_env_id = await self.system_docker_compose.get_env_id_for(config_template, compose_files)
         if existing_env_id and not force_restart:
-            CONSOLE.print(Text(
+            self.logger.stage_details(Text(
                 'Found suitable ready env: ', style=Style.info
             ).append(Text(existing_env_id, style=Style.mark)))
             return existing_env_id
 
-        CONSOLE.print(Text('Starting new environment', style=Style.info))
+        if force_restart:
+            self.logger.stage_details(Text(
+                'Forced restart env', style=Style.info
+            ).append(Text(existing_env_id, style=Style.mark)))
+
+        self.logger.stage(Text('Starting new environment', style=Style.info))
 
         new_env_id = get_new_env_id()
         if release_id is None:
             release_id = str(uuid4())
 
         if parallelism_limit == 1:
-            CONSOLE.print(f'Using default service names with {parallelism_limit=}')
+            self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
             new_env_id = EMPTY_ID
 
             services = await self.system_docker_compose.get_running_services()
@@ -65,12 +75,13 @@ class UberCompose:
             tmp_envs_path=Config().tmp_envs_path,
             execution_envs=None,
             release_id=release_id,
+            logger=self.logger,
         )
 
         await compose_instance.run()
 
         # TODO check if ready by state checking
 
-        CONSOLE.print(Text(f'New environment started'))
+        self.logger.stage_info(Text(f'New environment started'))
 
         return new_env_id
