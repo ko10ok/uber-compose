@@ -1,0 +1,33 @@
+services:
+  test-docker-daemon:
+    image: docker:dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    command: ["--registry-mirror", "http://docker-registry-proxy.2gis.io"]
+    ports:
+      - 2375
+    healthcheck:
+      test: "wget -q -O - http://localhost:2375/v1.40/version || exit 1"
+      interval: 5s
+      timeout: 10s
+      retries: 100
+
+  e2e:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+#      - PWD=${PWD}/mnt/project
+      - DOCKER_HOST=tcp://test-docker-daemon:2375
+      - NON_STOP_CONTAINERS="e2e"
+      - HOST_PROJECT_ROOT_DIRECTORY=${PWD}/mnt/project
+      - COMPOSE_PROJECT_NAME=uber-compose-tests
+    command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
+    volumes:
+      - ./mnt/project:/project
+      - .:/tests
+      - ..:/uber-compose
+    depends_on:
+      test-docker-daemon:
+        condition: service_healthy
