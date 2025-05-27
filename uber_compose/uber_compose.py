@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from uuid import uuid4
 
 from rich.text import Text
@@ -9,19 +10,27 @@ from uber_compose.core.sequence_run_types import EMPTY_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
+from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import DEFAULT_LOG_POLICY
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
 
+@dataclass
+class ReadyEnv:
+    env_id: str
+    env: Environment
+
+
 class UberCompose:
-    def __init__(self, log_policy: LogPolicy = DEFAULT_LOG_POLICY) -> None:
+    def __init__(self, log_policy: LogPolicy = DEFAULT_LOG_POLICY, health_policy=UpHealthPolicy()) -> None:
         self.logger = Logger(log_policy)
         self.system_docker_compose = SystemDockerCompose(
             Config().in_docker_project_root_path,
             logger=self.logger
         )
+        self.health_policy = health_policy
 
     async def up(self,
                  config_template: Environment | None = None,
@@ -29,7 +38,7 @@ class UberCompose:
                  force_restart: bool = False,
                  release_id: str | None = None,
                  parallelism_limit: int = 1,
-                 ) -> str:
+                 ) -> ReadyEnv:
 
         if not compose_files:
             compose_files = self.system_docker_compose.get_default_compose_files()
@@ -42,7 +51,8 @@ class UberCompose:
             self.logger.stage_details(Text(
                 'Found suitable ready env: ', style=Style.info
             ).append(Text(existing_env_id, style=Style.mark)))
-            return existing_env_id
+            env_config = await self.system_docker_compose.get_env_for(config_template, compose_files)
+            return ReadyEnv(existing_env_id, env_config)
 
         if force_restart:
             self.logger.stage_details(Text(
@@ -76,6 +86,7 @@ class UberCompose:
             execution_envs=None,
             release_id=release_id,
             logger=self.logger,
+            health_policy=self.health_policy,
         )
 
         await compose_instance.run()
@@ -84,4 +95,7 @@ class UberCompose:
 
         self.logger.stage_info(Text(f'New environment started'))
 
-        return new_env_id
+        return ReadyEnv(
+            new_env_id,
+            compose_instance.compose_instance_files.env_config_instance.env,
+        )

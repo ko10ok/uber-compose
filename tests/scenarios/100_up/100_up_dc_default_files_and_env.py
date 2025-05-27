@@ -45,14 +45,11 @@ services:
 """
         )
 
-    async def given_client(self):
-        self.uber_compose_client = UberCompose()
-
     async def when_user_up_env_without_params(self):
-        self.response = await self.uber_compose_client.up()
+        self.response = await UberCompose().up()
 
     async def then_it_should_return_successful_code(self):
-        assert self.response == schema.str
+        assert self.response.env_id == schema.str
 
     async def then_it_should_up_s1(self):
         self.containers = retrieve_all_docker_containers()
@@ -75,7 +72,9 @@ services:
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
                         f'/tmp-envs/no_id/{self.compose_filename_1}',
                         f'/tmp-envs/no_id/{self.compose_filename_2}',
-                    ]))
+                    ])),
+                    Label.SERVICE_NAME: 's1',
+
                 },
             },
             ...
@@ -102,7 +101,8 @@ services:
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
                         f'/tmp-envs/no_id/{self.compose_filename_1}',
                         f'/tmp-envs/no_id/{self.compose_filename_2}',
-                    ]))
+                    ])),
+                    Label.SERVICE_NAME: 's2',
                 },
             },
             ...

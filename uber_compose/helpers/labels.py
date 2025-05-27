@@ -9,5 +9,6 @@ class Label:
     ENV_CONFIG_TEMPLATE = 'com.maxwelld.env_config_template'
     ENV_CONFIG = 'com.maxwelld.env_config'
 
-    SERVICE_TEMPLATE_NAME = 'com.maxwelld.service_template_name'
+    TEMPLATE_SERVICE_NAME = 'com.maxwelld.template_service_name'
+    SERVICE_NAME = 'com.maxwelld.service_name'
     # 'com.maxwelld.env_service_map'

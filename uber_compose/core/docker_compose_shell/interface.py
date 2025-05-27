@@ -111,12 +111,7 @@ class ComposeShellInterface:
         stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
-            print("Can't up environment")
             state_result = await self.dc_state()
-            if state_result == JobResult.GOOD:
-                return OperationError(
-                    f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
-                )
             return OperationError(f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
 
         return JobResult.GOOD

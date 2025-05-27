@@ -11,7 +11,6 @@ from uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
-from uber_compose.output.console import DEBUG_LOG_POLICY
 
 
 class Scenario(vedro.Scenario):
@@ -61,7 +60,7 @@ services:
         )
 
     async def then_it_should_return_successful_code(self):
-        assert self.response == schema.str
+        assert self.response.env_id == schema.str
 
     async def then_it_should_up_s2_only(self):
         self.containers = retrieve_all_docker_containers()
@@ -73,7 +72,7 @@ services:
                         '/tmp-envs/no_id/docker-compose.yaml,/tmp-envs/no_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'no_id',
-                    Label.ENV_DESCRIPTION: self.desc,
+                    Label.ENV_DESCRIPTION: str(Environment(Service('s2'), description=self.desc)),
                     Label.COMPOSE_FILES: ':'.join([
                         f'{self.compose_filename_1}',
                         f'{self.compose_filename_2}',

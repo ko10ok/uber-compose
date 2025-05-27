@@ -9,7 +9,7 @@ EMPTY_ID = 'no_id'
 
 class ComposeConfig(NamedTuple):
     compose_files: str
-    parallel_env_limit: Union[int, None] = None
+    parallel_env_limit: Union[int] = 1
 
 
 class EnvInstanceConfig(NamedTuple):

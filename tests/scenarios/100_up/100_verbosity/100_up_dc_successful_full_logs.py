@@ -61,7 +61,7 @@ services:
         )
 
     async def then_it_should_return_successful_code(self):
-        assert self.response == schema.str
+        assert self.response.env_id == schema.str
 
     async def then_it_should_up_s2_only(self):
         self.containers = retrieve_all_docker_containers()

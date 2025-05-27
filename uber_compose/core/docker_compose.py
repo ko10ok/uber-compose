@@ -1,5 +1,6 @@
 import os
 import sys
+from asyncio import sleep
 from pathlib import Path
 
 from rich.text import Text
@@ -11,15 +12,14 @@ from uber_compose.core.sequence_run_types import EnvInstanceConfig
 from uber_compose.core.utils.compose_files import get_compose_services_dependency_tree
 from uber_compose.core.utils.compose_files import make_env_compose_instance_files
 from uber_compose.core.utils.compose_instance_cfg import make_env_instance_config
+from uber_compose.core.utils.state_waiting import wait_all_services_up
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import EventStage
 from uber_compose.errors.up import ServicesUpError
+from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
-from uber_compose.output.console import CONSOLE
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
-from uber_compose.vedro_plugin.logger import WaitVerbosity
-from uber_compose.vedro_plugin.state_waiting import wait_all_services_up
 
 INFLIGHT = 'inflight'
 
@@ -39,8 +39,10 @@ class ComposeInstance:
                  execution_envs: dict = None,
                  release_id: str = None,
                  logger: Logger = None,
+                 health_policy: UpHealthPolicy = UpHealthPolicy(),
                  ):
         self.logger = logger
+        self.health_policy = health_policy
         self.compose_files = compose_files
         self.in_docker_project_root = in_docker_project_root
         self.host_project_root_directory = host_project_root_directory
@@ -135,12 +137,8 @@ class ComposeInstance:
         )
 
         up_result = await self.compose_executor.dc_up(services)
-        assert up_result == JobResult.GOOD, (f"Can't up services {services}\nServices logs:\n "
-                                             f"{await self.logs()}")
-        services_status = await self.compose_executor.dc_state()
-
-        # !!!!!! up process asynchronous
-        # !!!!!! check services started before migrations
+        assert up_result == JobResult.GOOD, (f"Can't run up services {services}\nIssues on up attempt:\n "
+                                             f"{up_result}")
 
         await self.run_migration(
             [EventStage.AFTER_SERVICE_START],
@@ -149,23 +147,27 @@ class ComposeInstance:
             migrations
         )
 
-        checker = wait_all_services_up(
-            attempts=Config().service_up_check_attempts,
-            delay_s=Config().service_up_check_delay
-        ).make_checker()
-        check_up_result = await checker(
-            get_services_state=self.compose_executor.dc_state,
-            services=services,
-            verbose=WaitVerbosity.COMPACT
-        )
-        if check_up_result != JobResult.GOOD:
-            services_status = await self.compose_executor.dc_state()
-            raise ServicesUpError(f"Can't up services {services} for "
-                                  f"{Config().service_up_check_attempts * Config().service_up_check_delay}s"
-                                  # TODO fix too verbose to file output?
-                                  # f"\nUp logs:\n {await self.logs(self.except_containers)}"
-                                  f"\nServices logs:\n {await self.logs(services)}"
-                                  f"\nServices status:\n {services_status.as_rich_text()}") from None
+        # up process asynchronous
+        # check services started before migrations if health policy told to do that:
+
+        await sleep(self.health_policy.pre_check_delay_s)
+        if self.health_policy.wait_for_healthy_in_between:
+            check_up_result = await wait_all_services_up(
+                attempts=self.health_policy.service_up_check_attempts,
+                delay_s=self.health_policy.service_up_check_delay_s,
+                logger_func=self.logger.stage_details,
+                get_compose_state=self.compose_executor.dc_state,
+            )
+            if check_up_result != JobResult.GOOD:
+                services_status = await self.compose_executor.dc_state()
+                raise ServicesUpError(
+                    f"Can't up services {services} for "
+                    f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
+                    # TODO fix too verbose to file output?
+                    # f"\nUp logs:\n {await self.logs(self.except_containers)}"
+                    # f"\nServices logs:\n {await self.logs(services)}"
+                    f"\nServices status:\n {services_status.as_rich_text()}"
+                ) from None
 
         await self.run_migration(
             [EventStage.AFTER_SERVICE_HEALTHY],
@@ -173,9 +175,6 @@ class ComposeInstance:
             self.compose_instance_files.env_config_instance,
             migrations
         )
-
-    async def cleanup(self):
-        ...
 
     async def run(self):
         self.compose_instance_files = await self.generate_config_files()
@@ -215,6 +214,25 @@ class ComposeInstance:
             self.compose_instance_files.env_config_instance,
             migrations
         )
+
+        if self.health_policy.wait_for_healthy_after_all:
+            check_up_result = await wait_all_services_up(
+                attempts=self.health_policy.service_up_check_attempts,
+                delay_s=self.health_policy.service_up_check_delay_s,
+                logger_func=self.logger.stage,
+                get_compose_state=self.compose_executor.dc_state,
+            )
+            if check_up_result != JobResult.GOOD:
+                services_status = await self.compose_executor.dc_state()
+                raise ServicesUpError(
+                    f"Can't up services {all_services} all together for "
+                    f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
+                    # TODO fix too verbose to file output?
+                    # f"\nUp logs:\n {await self.logs(self.except_containers)}"
+                    # f"\nServices logs:\n {await self.logs(services)}"
+                    f"\nServices status:\n {services_status.as_rich_text()}"
+                ) from None
+
 
     async def logs(self, services=None) -> str:
         job_result, log = await self.compose_executor.dc_logs(services, logs_param='')

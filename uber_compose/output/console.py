@@ -36,6 +36,12 @@ DEFAULT_LOG_POLICY = LogPolicy(LogEvents.STAGE, LogEvents.ERROR)
 VERBOSE_LOG_POLICY = LogPolicy(LogEvents.STAGE, LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT)
 DEBUG_LOG_POLICY = LogPolicy(LogEvents.GLOBAL_DEBUG)
 
+LOG_VERBOSITY_SETS = {
+    'DEFAULT_LOG_POLICY': DEFAULT_LOG_POLICY,
+    'VERBOSE_LOG_POLICY': VERBOSE_LOG_POLICY,
+    'DEBUG_LOG_POLICY': DEBUG_LOG_POLICY,
+}
+
 
 # TODO collect all into file and on level in stdout
 class Logger:

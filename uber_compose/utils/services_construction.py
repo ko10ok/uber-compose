@@ -10,6 +10,6 @@ def make_services_for(compose_files: str) -> list[Service]:
 
 def make_default_environment(compose_files: str) -> Environment:
     return Environment(
-        'AUTO_SCANNED_FULL',
-        *make_services_for(compose_files)
+        *make_services_for(compose_files),
+        description='AUTO_SCANNED_FULL',
     )

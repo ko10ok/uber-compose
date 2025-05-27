@@ -34,6 +34,20 @@ class SystemDockerCompose:
     def get_default_environment(self) -> Environment:
         return self.default_environment
 
+    async def get_env_for(self, config_template: Environment, compose_files: str) -> Environment | None:
+        services_state = await self.dc_shell.dc_state()
+        services_states = services_state.get_all_for(
+            lambda service_state: (
+                service_state.check(Label.ENV_CONFIG_TEMPLATE, base64_pickled(config_template))
+                and service_state.check(Label.COMPOSE_FILES, compose_files)
+            )
+        )
+
+        if not services_states.as_json():
+            return None
+
+        return services_states.get_any().labels.get(Label.ENV_CONFIG, None)
+
     async def get_env_id_for(self, config_template: Environment, compose_files: str) -> str | None:
         services_state = await self.dc_shell.dc_state()
         services_states = services_state.get_all_for(

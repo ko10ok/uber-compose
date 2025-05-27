@@ -146,6 +146,8 @@ def patch_services_names(dc_cfg: dict, services_map: dict[str, str]) -> dict:
         srv_cfg = deepcopy(dc_cfg['services'][service])
 
         result_service_name = services_map[service]
+
+        srv_cfg['labels'][Label.SERVICE_NAME] = result_service_name
         new_service_dc_cfg['services'][result_service_name] = srv_cfg
 
         if 'depends_on' in srv_cfg:
@@ -181,7 +183,7 @@ def patch_labels(dc_cfg: dict, labels: dict[str, str]):
             new_service_dc_cfg['services'][service]['labels'] = {}
 
         new_service_dc_cfg['services'][service]['labels'] |= escape(labels | {
-            Label.SERVICE_TEMPLATE_NAME: service,
+            Label.TEMPLATE_SERVICE_NAME: service,
         })
 
     return new_service_dc_cfg

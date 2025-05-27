@@ -117,7 +117,7 @@ class Environment:  # TODO rename Environment
     @classmethod
     def from_environment(cls, env: 'Environment', name='not_set', *services: Service):
         # TODO duplicated services merging
-        return Environment(name, *env._services, *services)
+        return Environment(*env._services, *services, description=name)
 
     def __init__(self, *services: Service | str, description=''):
         # TODO duplicated services merging
@@ -132,13 +132,12 @@ class Environment:  # TODO rename Environment
         }
 
     def __str__(self) -> str:
-        return self._description
+        return self._description or f'Environment(<services: {",".join(service.name for service in self._services)})>'
 
     def __repr__(self):
-        services_names = [service.name for service in self._services]
         if self._description:
-            return f'Environment({self._description}, <services: {services_names}>)'
-        return f'Environment(<services: {services_names}>)'
+            return f'Environment({self._description}, <services: {",".join(service.name for service in self._services)}>)'
+        return f'Environment(<services: {",".join(service.name for service in self._services)}>)'
 
     def get_services(self) -> dict:
         return self._services_dict
