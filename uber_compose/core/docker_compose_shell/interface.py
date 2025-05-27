@@ -159,7 +159,7 @@ class ComposeShellInterface:
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_exec(self, container: str, cmd: str, env: dict = None, root: Path | str = None
                       ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
-        print(f'Executing {cmd} in {container} container')
+        self.logger.stage_details(f'Executing {cmd} in {container} container')
         sys.stdout.flush()
 
         if env is None:
