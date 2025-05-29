@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 
-class Config:
+class Constants:
     def __init__(self):
         self.project: str = os.environ.get('COMPOSE_PROJECT_NAME')
         self.compose_project_name = os.environ.get('COMPOSE_PROJECT_NAME')
@@ -20,14 +20,6 @@ class Config:
             os.environ.get('HOST_PROJECT_ROOT_DIRECTORY', '__host_project_root__')
         )
 
-        # TODO remake debug verbosity levels:
-        self.debug_docker_compose_commands = bool(os.environ.get('DEBUG_DOCKER_COMPOSE_OUTPUT_TO_STDOUT', False))
-        self.verbose_docker_compose_commands = bool(os.environ.get('VERBOSE_DOCKER_COMPOSE_OUTPUT_TO_STDOUT', True))
-        self.verbose_docker_compose_ps_commands = bool(
-            os.environ.get('VERBOSE_DOCKER_COMPOSE_PS_OUTPUT_TO_STDOUT', False)
-        )
         # TODO remake timeouts and retries:
         # TODO call it pre migration checks
-        self.service_up_check_attempts = int(os.environ.get('PRE_MIGRATIONS_CHECK_SERVICE_UP_ATTEMPTS', 100))
-        self.service_up_check_delay = int(os.environ.get('PRE_MIGRATIONS_CHECK_SERVICE_UP_CHECK_DELAY', 3))
         self.docker_compose_extra_exec_params = os.environ.get('DOCKER_COMPOSE_EXTRA_EXEC_PARAMS', '-T')

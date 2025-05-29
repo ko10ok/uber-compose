@@ -13,7 +13,6 @@ from uber_compose import Service
 from uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.labels import Label
-from uber_compose.output.console import DEBUG_LOG_POLICY
 
 
 class Scenario(vedro.Scenario):

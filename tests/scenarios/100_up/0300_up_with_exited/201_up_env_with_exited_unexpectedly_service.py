@@ -14,7 +14,6 @@ from schemas.docker import ContainerSchema
 from uber_compose import UberCompose
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy
-from uber_compose.output.console import DEBUG_LOG_POLICY
 
 
 class Scenario(vedro.Scenario):

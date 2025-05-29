@@ -11,7 +11,7 @@ from uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
-from uber_compose.output.console import DEBUG_LOG_POLICY
+from uber_compose.output.console import LogPolicy
 
 
 class Scenario(vedro.Scenario):
@@ -49,7 +49,7 @@ services:
         )
 
     async def given_client(self):
-        self.uber_compose_client = UberCompose(log_policy=DEBUG_LOG_POLICY)
+        self.uber_compose_client = UberCompose(log_policy=LogPolicy.DEBUG)
 
     async def given_env_description(self):
         self.desc = fake(schema.str('') | schema.str('a a'))

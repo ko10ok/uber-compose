@@ -12,7 +12,7 @@ from schemas.http_codes import HTTPStatusCodeOk
 from uber_compose import Service
 from uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
-from uber_compose.output.console import DEBUG_LOG_POLICY
+from uber_compose.output.console import LogPolicy
 
 
 class Scenario(vedro.Scenario):
@@ -39,7 +39,7 @@ services:
 
     async def when_user_up_env_with_expected_to_exit_service(self):
         self.response = await UberCompose(
-            log_policy=DEBUG_LOG_POLICY
+            log_policy=LogPolicy.DEBUG
         ).up(
             config_template=Environment(
                 'DEFAULT',

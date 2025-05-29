@@ -1,17 +1,22 @@
+import shlex
 from dataclasses import dataclass
+from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
 
-from uber_compose.core.config import Config
+from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
+from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.sequence_run_types import EMPTY_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.health_policy import UpHealthPolicy
-from uber_compose.output.console import DEFAULT_LOG_POLICY
+from uber_compose.helpers.jobs_result import JobResult
+from uber_compose.helpers.labels import Label
+from uber_compose.output.console import LogPolicySet
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
@@ -24,10 +29,10 @@ class ReadyEnv:
 
 
 class UberCompose:
-    def __init__(self, log_policy: LogPolicy = DEFAULT_LOG_POLICY, health_policy=UpHealthPolicy()) -> None:
+    def __init__(self, log_policy: LogPolicySet = LogPolicy.DEFAULT, health_policy=UpHealthPolicy()) -> None:
         self.logger = Logger(log_policy)
         self.system_docker_compose = SystemDockerCompose(
-            Config().in_docker_project_root_path,
+            Constants().in_docker_project_root_path,
             logger=self.logger
         )
         self.health_policy = health_policy
@@ -73,16 +78,16 @@ class UberCompose:
             await self.system_docker_compose.down_services(services)
 
         compose_instance = ComposeInstance(
-            project=Config().project,
+            project=Constants().project,
             name=str(config_template),
             new_env_id=new_env_id,
             compose_interface=ComposeShellInterface,  # ???
             compose_files=compose_files,
             config_template=config_template,
-            in_docker_project_root=Config().in_docker_project_root_path,
-            host_project_root_directory=Config().host_project_root_directory,
-            except_containers=Config().non_stop_containers,
-            tmp_envs_path=Config().tmp_envs_path,
+            in_docker_project_root=Constants().in_docker_project_root_path,
+            host_project_root_directory=Constants().host_project_root_directory,
+            except_containers=Constants().non_stop_containers,
+            tmp_envs_path=Constants().tmp_envs_path,
             execution_envs=None,
             release_id=release_id,
             logger=self.logger,
@@ -99,3 +104,30 @@ class UberCompose:
             new_env_id,
             compose_instance.compose_instance_files.env_config_instance.env,
         )
+
+    async def exec(self, env_id: str, container: str, command, extra_env: dict[str, str] = None,
+                   until: Callable | ProcessExit | None = ProcessExit(),
+                   ):
+        uid = str(uuid4())
+        log_file = f'{uid}.log'
+
+        dc_shell = self.system_docker_compose.get_dc_shell()
+
+        dc_state = await dc_shell.dc_state()
+        service_state = dc_state.get_all_for(
+            lambda service_state: service_state.check(Label.ENV_ID, env_id)
+                                  and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
+        )
+        if len(service_state.as_json()) != 1:
+            raise ValueError(f'Container {container} not found in environment {env_id}')
+
+        container = service_state.get_any().labels[Label.SERVICE_NAME]
+
+        cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
+        await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, until=until)
+
+        job_result, stdout, stderr = await dc_shell.dc_exec(container, f'cat /tmp/{log_file}')
+        if job_result != JobResult.GOOD:
+            self.logger.error(Text(f'Error executing command in container {container}: {stderr}'))
+
+        return stdout

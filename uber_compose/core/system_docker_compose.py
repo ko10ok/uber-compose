@@ -2,7 +2,7 @@ import pprint
 from itertools import groupby
 from pathlib import Path
 
-from uber_compose.core.config import Config
+from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.utils.compose_instance_cfg import get_service_map
 from uber_compose.env_description.env_types import Environment
@@ -24,7 +24,7 @@ class SystemDockerCompose:
         )
         self.dc_shell = ComposeShellInterface(
             self.default_compose_files,
-            Config().in_docker_project_root_path,
+            Constants().in_docker_project_root_path,
             logger=logger,
         )
 
@@ -33,6 +33,9 @@ class SystemDockerCompose:
 
     def get_default_environment(self) -> Environment:
         return self.default_environment
+
+    def get_dc_shell(self) -> ComposeShellInterface:
+        return self.dc_shell
 
     async def get_env_for(self, config_template: Environment, compose_files: str) -> Environment | None:
         services_state = await self.dc_shell.dc_state()
@@ -69,7 +72,7 @@ class SystemDockerCompose:
         # check all up or ok-exited
         map_service = get_service_map(config_template, env_id)
         services_names = dict(groupby(services_states.as_json(), lambda x: x['name']))
-        for service_name in set(config_template.get_services()) - set(Config().non_stop_containers):
+        for service_name in set(config_template.get_services()) - set(Constants().non_stop_containers):
             mapped_name = map_service.get(service_name, None)
             # TODO check services is ok or ok-exited
             if mapped_name not in services_names:

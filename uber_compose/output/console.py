@@ -21,7 +21,7 @@ class LogEvents(Enum):
     GLOBAL_DEBUG = 'global_debug'
 
 
-class LogPolicy:
+class LogPolicySet:
     def __init__(self, *levels: LogEvents):
         self.levels = levels
 
@@ -32,20 +32,23 @@ class LogPolicy:
         return f'LogPolicy([{", ".join(level.value for level in self.levels)}])'
 
 
-DEFAULT_LOG_POLICY = LogPolicy(LogEvents.STAGE, LogEvents.ERROR)
-VERBOSE_LOG_POLICY = LogPolicy(LogEvents.STAGE, LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT)
-DEBUG_LOG_POLICY = LogPolicy(LogEvents.GLOBAL_DEBUG)
+class LogPolicy:
+    DEFAULT = LogPolicySet(LogEvents.STAGE, LogEvents.ERROR)
+    VERBOSE = LogPolicySet(LogEvents.STAGE, LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT)
+    DEBUG = LogPolicySet(LogEvents.GLOBAL_DEBUG)
 
-LOG_VERBOSITY_SETS = {
-    'DEFAULT_LOG_POLICY': DEFAULT_LOG_POLICY,
-    'VERBOSE_LOG_POLICY': VERBOSE_LOG_POLICY,
-    'DEBUG_LOG_POLICY': DEBUG_LOG_POLICY,
-}
+    @staticmethod
+    def presets() -> dict[str, LogPolicySet]:
+        return {
+            'DEFAULT': LogPolicy.DEFAULT,
+            'VERBOSE': LogPolicy.VERBOSE,
+            'DEBUG': LogPolicy.DEBUG,
+        }
 
 
 # TODO collect all into file and on level in stdout
 class Logger:
-    def __init__(self, log_policy: LogPolicy = DEFAULT_LOG_POLICY):
+    def __init__(self, log_policy: LogPolicySet = LogPolicy.DEFAULT):
         self.log_policy = log_policy
         self.stream = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
         self.debug = True

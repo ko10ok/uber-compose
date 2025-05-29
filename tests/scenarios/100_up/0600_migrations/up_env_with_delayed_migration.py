@@ -14,9 +14,6 @@ from uber_compose import Service
 
 
 from schemas.docker import ContainerSchema
-from schemas.env_name import EnvNameSchema
-from schemas.http_codes import HTTPStatusCodeOk
-from uber_compose.output.console import DEBUG_LOG_POLICY
 
 
 class Scenario(vedro.Scenario):

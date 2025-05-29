@@ -16,7 +16,7 @@ from uber_compose import Service
 from uber_compose import UberCompose
 from uber_compose.env_description.env_types import Env
 from uber_compose.helpers.labels import Label
-from uber_compose.output.console import DEBUG_LOG_POLICY
+from uber_compose.output.console import LogPolicy
 
 
 class Scenario(vedro.Scenario):
@@ -63,7 +63,7 @@ services:
         self.next_release = str(uuid4())
 
     async def when_user_up_env_without_params(self):
-        self.response = await UberCompose(log_policy=DEBUG_LOG_POLICY).up(
+        self.response = await UberCompose(log_policy=LogPolicy.DEBUG).up(
             compose_files='docker-compose.yaml',
             config_template=Environment(
                 Service('s1', Env({'A': '1'})),

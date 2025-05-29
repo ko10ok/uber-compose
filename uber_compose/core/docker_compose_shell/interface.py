@@ -5,14 +5,16 @@ import shlex
 import sys
 from asyncio import subprocess
 from pathlib import Path
-from pathlib import Path
+from typing import Callable
+from typing import Coroutine
 
 from rich.text import Text
 from rtry import retry
 
-from uber_compose.core.config import Config
+from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.utils.process_command_output import process_output_till_done
+from uber_compose.core.utils.shell_process import parse_process_command_name
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.jobs_result import OperationError
 from uber_compose.output.console import CONSOLE
@@ -27,6 +29,15 @@ class NoDockerCompose(BaseException):
     ...
 
 
+class ExecWasntSuccesfullyDone(BaseException):
+    ...
+
+
+class ProcessExit:
+    def __eq__(self, other):
+        return isinstance(other, ProcessExit)
+
+
 class ComposeShellInterface:
     def __init__(self, compose_files: str, in_docker_project_root: Path, logger: Logger, execution_envs: dict = None):
         self.logger = logger
@@ -34,15 +45,12 @@ class ComposeShellInterface:
         self.in_docker_project_root = str(in_docker_project_root)
         self.execution_envs = os.environ | {
             'COMPOSE_FILE': self.compose_files,
-            'DOCKER_HOST': Config().docker_host,
-            'COMPOSE_PROJECT_NAME': Config().compose_project_name,
+            'DOCKER_HOST': Constants().docker_host,
+            'COMPOSE_PROJECT_NAME': Constants().compose_project_name,
         }
         if execution_envs is not None:
             self.execution_envs |= execution_envs
-        self.verbose_docker_compose_commands = Config().verbose_docker_compose_commands
-        self.debug_docker_compose_commands = Config().debug_docker_compose_commands
-        self.verbose_docker_compose_ps_commands = Config().verbose_docker_compose_ps_commands
-        self.extra_exec_params = Config().docker_compose_extra_exec_params
+        self.extra_exec_params = Constants().docker_compose_extra_exec_params
 
         # check if DC_BIN exists
         # if not Path(DC_BIN).exists():
@@ -157,10 +165,17 @@ class ComposeShellInterface:
         return JobResult.GOOD, stdout
 
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
-    async def dc_exec(self, container: str, cmd: str, env: dict = None, root: Path | str = None
+    async def dc_exec(self, container: str, cmd: str, extra_env: dict = None, env: dict = None, root: Path | str = None,
+                      detached=False,
                       ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
         self.logger.stage_details(f'Executing {cmd} in {container} container')
         sys.stdout.flush()
+
+        if extra_env is None:
+            extra_env = {}
+        extra_env_str = ' '.join(
+            f'-e {key}={shlex.quote(value)}' for key, value in extra_env.items()
+        )
 
         if env is None:
             env = {}
@@ -169,15 +184,19 @@ class ComposeShellInterface:
         if root is None:
             root = self.in_docker_project_root
 
+        detached_param_str = '-d' if detached else ''
+        detached_end_str = ' &' if detached else ''
+        detached_end_str = ''
+
         process = await asyncio.create_subprocess_shell(
-            cmd := f'{COMPOSE} --project-directory {root} exec {self.extra_exec_params} {container} {cmd}',
+            cmd := f'{COMPOSE} --project-directory {root} exec {extra_env_str} {detached_param_str} {self.extra_exec_params} {container} {cmd} {detached_end_str}',
             env=env,
             cwd=root,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         self.logger.commands(Text(
-            f'{cmd}',
+            f'{cmd}' + (f'\n  with params: {extra_env_str}' if extra_env else ''),
             style=Style.context
         ))
         self.logger.system_commands_environment_debug(Text(
@@ -187,7 +206,6 @@ class ComposeShellInterface:
         stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
-            print(f"Can't execute {cmd} in {container} successfully:\n{stdout=}, {stderr=}")
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
@@ -199,12 +217,11 @@ class ComposeShellInterface:
 
         return JobResult.GOOD, stdout, stderr
 
-    async def dc_exec_process_pids(self, container: str,
-                                   cmd: str,
-                                   env: dict = None,
-                                   root: Path | str = None,
-                                   ) -> tuple[JobResult, bytes, bytes] | list[int] | tuple[
-        OperationError, bytes, bytes]:
+    async def _dc_exec_process_pids(self, container: str,
+                                    cmd: str,
+                                    env: dict = None,
+                                    root: Path | str = None,
+                                    ) -> tuple[JobResult, bytes, bytes] | list[int] | tuple[OperationError, bytes, bytes]:
         if env is None:
             env = {}
         env = self.execution_envs | env
@@ -212,14 +229,7 @@ class ComposeShellInterface:
         if root is None:
             root = self.in_docker_project_root
 
-        def process_command(command: str) -> str:
-            parts = shlex.split(command)
-            if parts[0] == 'sh':
-                return process_command(parts[2])
-
-            return parts[0]
-
-        cmd = process_command(cmd)
+        cmd = parse_process_command_name(cmd)
         process_state = await asyncio.create_subprocess_shell(
             check_cmd := f'{COMPOSE} --project-directory {root} exec {self.extra_exec_params} {container} pidof {cmd}',
             env=env,
@@ -227,8 +237,14 @@ class ComposeShellInterface:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        self.logger.system_commands(
+            Text(f'{check_cmd}', style=Style.context)
+        )
         stdout, stderr = await process_state.communicate()
         check_output = stdout.decode('utf-8')
+        sys_error = stderr.decode("utf-8")
+
+        self.logger.system_commands_debug(f'Pids of command {cmd} in {container}:\n {check_output} \nErr: {sys_error}')
 
         if check_output != '':
             try:
@@ -267,21 +283,48 @@ class ComposeShellInterface:
         CONSOLE.print(stdout.decode('utf-8'))
         CONSOLE.print(stderr.decode('utf-8'))
 
-    async def dc_exec_till_complete(self, container: str,
-                                    cmd: str,
-                                    env: dict = None,
-                                    root: Path | str = None
-                                    ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
-        result = await self.dc_exec(container, cmd, env, root)
+    async def dc_exec_until_state(self, container: str,
+                                  cmd: str,
+                                  extra_env: dict[str, str] = None,
+                                  until: Callable | ProcessExit | None = ProcessExit(),
+                                  break_on_timeout: bool = True,
+                                  kill_before: bool = True,
+                                  kill_after: bool = True,
+                                  env: dict = None,
+                                  root: Path | str = None,
+                                  ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
+        cmd_name = parse_process_command_name(cmd)
 
-        processes = await retry(attempts=30, delay=1, until=lambda pids: pids != [] and pids != [-1])(
-            self.dc_exec_process_pids
-        )(container, cmd)
-        if processes:
-            if processes == [-1]:
-                CONSOLE.print('  Process was not checked for completion')
+        if kill_before:
+            await self.dc_exec(container, f'killall {cmd_name}')
+
+        result = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
+                                    detached=(until != ProcessExit()))
+
+        if isinstance(result, OperationError):
+            raise ExecWasntSuccesfullyDone(OperationError)
+
+        if until == ProcessExit():
+            self.logger.stage_info('Retrieving process IDs until completion')
+            process_ids = await retry(attempts=30, delay=1, until=lambda pids: pids != [] and pids != [-1])(
+                self._dc_exec_process_pids
+            )(container, cmd)
+            self.logger.stage_details(f'pids retrieved {process_ids}')
+            if process_ids:
+                if process_ids == [-1]:
+                    self.logger.stage_details(f'Process:\n{cmd}\nwas not checked for completion')
+                else:
+                    self.logger.error('Process was not completed')
+                    if break_on_timeout:
+                        raise ExecWasntSuccesfullyDone(f'Proces\n{cmd}\nwas not completed successfully')
+        elif isinstance(until, Callable):
+            if asyncio.iscoroutinefunction(until):
+                result = await until(container, cmd, env, extra_env, break_on_timeout)
             else:
-                CONSOLE.print('  !!! WARN !!! - Process was not completed')
+                until(container, cmd, env, extra_env, break_on_timeout)
+
+        if kill_after:
+            await self.dc_exec(container, f'killall {cmd_name}')
 
         return result
 

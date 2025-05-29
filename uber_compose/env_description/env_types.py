@@ -5,6 +5,8 @@ from typing import Iterator
 from typing import List
 from typing import NamedTuple
 
+from uber_compose.helpers.bytes_pickle import base64_pickled
+
 DEFAULT_ENV = 'DEFAULT'
 
 

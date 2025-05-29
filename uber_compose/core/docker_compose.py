@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rich.text import Text
 
-from uber_compose.core.config import Config
+from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
@@ -107,7 +107,7 @@ class ComposeInstance:
                 target_service = env_config_instance.env_services_map[handler.executor or service]
 
                 substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
-                migrate_result, stdout, stderr = await self.compose_executor.dc_exec_till_complete(
+                migrate_result, stdout, stderr = await self.compose_executor.dc_exec_until_state(
                     target_service, substituted_cmd
                 )
                 if migrate_result != JobResult.GOOD:
