@@ -12,16 +12,13 @@ class Constants:
 
         self.docker_host = os.environ.get('DOCKER_HOST', 'unix:///var/run/docker.sock')
 
-        # inner dirrectories
+        # inner directories
         self.non_stop_containers: list[str] = os.environ.get('NON_STOP_CONTAINERS', 'e2e,dockersock').split(',')
         self.tmp_envs_path: Path = Path(os.environ.get('TMP_ENVS_DIRECTORY', '/tmp-envs'))
         self.in_docker_project_root_path: Path = Path(os.environ.get('PROJECT_ROOT_DIRECTORY', '/project'))
 
-        # outer directories for output???
         self.host_project_root_directory: Path = Path(
             os.environ.get('HOST_PROJECT_ROOT_DIRECTORY', '__host_project_root__')
         )
 
-        # TODO remake timeouts and retries:
-        # TODO call it pre migration checks
         self.docker_compose_extra_exec_params = os.environ.get('DOCKER_COMPOSE_EXTRA_EXEC_PARAMS', '-T')
