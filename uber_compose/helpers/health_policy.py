@@ -8,4 +8,4 @@ class UpHealthPolicy:
     service_up_check_attempts: int = 100
     service_up_check_delay_s: int = 3
 
-    pre_check_delay_s: int = 1
+    pre_check_delay_s: float = 0

@@ -38,9 +38,7 @@ services:
         )
 
     async def when_user_up_env_with_expected_to_exit_service(self):
-        self.response = await UberCompose(
-            log_policy=LogPolicy.DEBUG
-        ).up(
+        self.response = await UberCompose().up(
             config_template=Environment(
                 'DEFAULT',
                 Service('s1')

@@ -3,6 +3,8 @@ from enum import Enum
 from rich.console import Console
 from rich.text import Text
 
+from uber_compose.core.constants import Constants
+
 CONSOLE = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
 
 
@@ -48,7 +50,9 @@ class LogPolicy:
 
 # TODO collect all into file and on level in stdout
 class Logger:
-    def __init__(self, log_policy: LogPolicySet = LogPolicy.DEFAULT):
+    def __init__(self, log_policy: LogPolicySet = None):
+        if log_policy is None:
+            log_policy = LogPolicy.presets().get(Constants().default_log_policy)
         self.log_policy = log_policy
         self.stream = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
         self.debug = True

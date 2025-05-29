@@ -29,7 +29,7 @@ class ReadyEnv:
 
 
 class UberCompose:
-    def __init__(self, log_policy: LogPolicySet = LogPolicy.DEFAULT, health_policy=UpHealthPolicy()) -> None:
+    def __init__(self, log_policy: LogPolicySet = None, health_policy=UpHealthPolicy()) -> None:
         self.logger = Logger(log_policy)
         self.system_docker_compose = SystemDockerCompose(
             Constants().in_docker_project_root_path,

@@ -4,6 +4,8 @@ from pathlib import Path
 
 class Constants:
     def __init__(self):
+        self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
+
         self.project: str = os.environ.get('COMPOSE_PROJECT_NAME')
         self.compose_project_name = os.environ.get('COMPOSE_PROJECT_NAME')
         assert self.compose_project_name, 'COMPOSE_PROJECT_NAME environment variable is not set: - COMPOSE_PROJECT_NAME=${PWD##*/}'

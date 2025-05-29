@@ -49,9 +49,7 @@ services:
         self.fn = fn
 
     async def when_user_exec_service_cmd(self):
-        self.response = await UberCompose(
-            log_policy=LogPolicy.DEBUG
-        ).exec(
+        self.response = await UberCompose().exec(
             self.started_services.env_id,
             container='s1',
             command='sh -c "sleep 1 && echo \\"Hello, World!\\""',
