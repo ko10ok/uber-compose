@@ -8,8 +8,8 @@ def make_services_for(compose_files: str) -> list[Service]:
     return [Service(name) for name in parse_docker_compose_services_deps(compose_files)]
 
 
-def make_default_environment(compose_files: str) -> Environment:
+def make_default_environment(compose_files: str, desc='AUTO_SCANNED') -> Environment:
     return Environment(
         *make_services_for(compose_files),
-        description='AUTO_SCANNED_FULL',
+        description=desc,
     )

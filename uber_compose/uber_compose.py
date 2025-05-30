@@ -12,6 +12,8 @@ from uber_compose.core.sequence_run_types import EMPTY_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
+from uber_compose.helpers.broken_services import calc_broken_services
+from uber_compose.helpers.bytes_pickle import debase64_pickled
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
@@ -50,25 +52,31 @@ class _UberCompose:
 
         if not config_template:
             config_template = make_default_environment(
-            compose_files=get_absolute_compose_files(compose_files, Constants().in_docker_project_root_path)
-        )
+                compose_files=get_absolute_compose_files(compose_files, Constants().in_docker_project_root_path),
+            )
 
-        self.logger.stage_info(f'Trying to search config: {config_template}')
-        existing_env_id = await self.system_docker_compose.get_env_id_for(config_template, compose_files)
+        services_state = await self.system_docker_compose.get_state_for(config_template, compose_files)
+        broken_services = calc_broken_services(services_state, config_template)
 
-        # TODO check if env is ready
-
-        if existing_env_id and not force_restart:
+        if len(services_state) != 0 and len(broken_services) == 0 and not force_restart:
+            existing_env_id = services_state.get_any().labels.get(Label.ENV_ID, None)
+            env_config = debase64_pickled(services_state.get_any().labels.get(Label.ENV_CONFIG))
             self.logger.stage_details(Text(
                 'Found suitable ready env: ', style=Style.info
             ).append(Text(existing_env_id, style=Style.mark)))
-            env_config = await self.system_docker_compose.get_env_for(config_template, compose_files)
+
             return ReadyEnv(existing_env_id, env_config)
 
+        self.logger.stage_debug(Text(
+            f'Environment state:\n{services_state.as_rich_text()}', style=Style.info
+        ))
         if force_restart:
             self.logger.stage_details(Text(
                 'Forced restart env', style=Style.info
-            ).append(Text(existing_env_id, style=Style.mark)))
+            ))
+            self.logger.stage_debug(Text(
+                f'Previous state {services_state.as_json()}', style=Style.info
+            ))
 
         self.logger.stage(Text('Starting new environment', style=Style.info))
 

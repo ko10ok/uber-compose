@@ -6,7 +6,7 @@ from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
-from libs.env_const import AUTO_SCANNED_FULL
+from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
 from uber_compose.uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment

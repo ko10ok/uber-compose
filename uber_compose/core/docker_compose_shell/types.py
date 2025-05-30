@@ -169,3 +169,6 @@ class ServicesComposeState:
 
     def __len__(self):
         return len(self._services)
+
+    def get_services_names(self):
+        return [service.name for service in self._services]

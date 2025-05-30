@@ -5,7 +5,7 @@ from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
-from libs.env_const import AUTO_SCANNED_FULL
+from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
 from uber_compose import Environment
 from uber_compose import Service
@@ -69,7 +69,7 @@ services:
                     ])),
 
                     Label.ENV_ID: 'no_id',
-                    Label.ENV_DESCRIPTION: AUTO_SCANNED_FULL,
+                    Label.ENV_DESCRIPTION: AUTO_SCANNED,
                     Label.COMPOSE_FILES: ':'.join(sorted([
                         f'{self.compose_filename_1}',
                         f'{self.compose_filename_2}',
@@ -80,7 +80,7 @@ services:
                     ])),
                     Label.SERVICE_NAME: 's1',
                     Label.ENV_CONFIG_TEMPLATE: base64_pickled(Environment(Service('s1'), Service('s2'))),
-                    # Label.ENV_CONFIG: base64_pickled(Environment(Service('s1'), Service('s2'), description=AUTO_SCANNED_FULL)),
+                    # Label.ENV_CONFIG: base64_pickled(Environment(Service('s1'), Service('s2'), description=AUTO_SCANNED)),
                 },
             },
             ...
@@ -99,7 +99,7 @@ services:
                     ])),
 
                     Label.ENV_ID: 'no_id',
-                    Label.ENV_DESCRIPTION: AUTO_SCANNED_FULL,
+                    Label.ENV_DESCRIPTION: AUTO_SCANNED,
                     Label.COMPOSE_FILES: ':'.join(sorted([
                         f'{self.compose_filename_1}',
                         f'{self.compose_filename_2}',
@@ -125,5 +125,5 @@ services:
         assert debase64_pickled(self.env_config_template) == Environment(
             Service('s1'),
             Service('s2'),
-            description=AUTO_SCANNED_FULL
+            description=AUTO_SCANNED
         )

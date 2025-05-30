@@ -5,7 +5,7 @@ from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
-from libs.env_const import AUTO_SCANNED_FULL
+from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
 from schemas.http_codes import HTTPStatusCodeOk
 from uber_compose.uber_compose import UberCompose
@@ -72,7 +72,7 @@ services:
                     'com.docker.compose.service': 's1',
 
                     Label.ENV_ID: 'no_id',
-                    Label.ENV_DESCRIPTION: AUTO_SCANNED_FULL,
+                    Label.ENV_DESCRIPTION: AUTO_SCANNED,
                     Label.COMPOSE_FILES: ':'.join(sorted([
                         f'{self.compose_filename_1}',
                         f'{self.compose_filename_2}',
@@ -95,7 +95,7 @@ services:
                     'com.docker.compose.service': 's2',
 
                     Label.ENV_ID: 'no_id',
-                    Label.ENV_DESCRIPTION: AUTO_SCANNED_FULL,
+                    Label.ENV_DESCRIPTION: AUTO_SCANNED,
 
                     Label.COMPOSE_FILES: ':'.join(sorted([
                         f'{self.compose_filename_1}',

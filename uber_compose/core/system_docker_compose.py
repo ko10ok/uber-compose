@@ -24,7 +24,7 @@ class SystemDockerCompose:
         self.logger = logger
         self.default_compose_files = ':'.join(scan_for_compose_files(inner_project_root))
         self.default_environment = make_default_environment(
-            compose_files=get_absolute_compose_files(self.default_compose_files, inner_project_root)
+            compose_files=get_absolute_compose_files(self.default_compose_files, inner_project_root),
         )
         self.dc_shell = ComposeShellInterface(
             self.default_compose_files,
@@ -63,7 +63,6 @@ class SystemDockerCompose:
         assert env_hash, f'Env config hash not found for {service_state.as_json()}'
 
         return debase64_pickled(env_hash)
-
 
     async def get_env_id_for(self, config_template: Environment, compose_files: str) -> str | None:
         services_states = await self.get_state_for(config_template, compose_files)
