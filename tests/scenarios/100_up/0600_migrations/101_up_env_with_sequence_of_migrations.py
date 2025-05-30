@@ -8,7 +8,7 @@ from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from helpers.docker_migration_result import get_file_from_container
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose import Environment
 from uber_compose import Service
 
@@ -39,6 +39,8 @@ services:
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
     x-migration:
       - after_start: sh -c 'sleep 3 && echo 1 >> /tmp/migration.log'
+      - after_start: sh -c 'sleep 10 && echo 13 >> /tmp/migration.log &'
+      - after_start: sh -c 'sleep 10 && echo 66 >> /tmp/migration.log & '
       - after_start: sh -c 'echo 2 >> /tmp/migration.log'
 """
         )

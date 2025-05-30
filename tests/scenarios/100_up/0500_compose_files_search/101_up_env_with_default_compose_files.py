@@ -8,7 +8,7 @@ from contexts.no_docker_containers import retrieve_all_docker_containers
 from libs.env_const import AUTO_SCANNED_FULL
 from schemas.docker import ContainerSchema
 from schemas.http_codes import HTTPStatusCodeOk
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.helpers.labels import Label
 
 

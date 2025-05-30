@@ -1,5 +1,5 @@
 from uber_compose import Environment
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 
 
 async def services_started(config_template: Environment,

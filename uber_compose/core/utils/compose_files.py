@@ -342,8 +342,9 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
         Label.RELEASE_ID: release_id,
         Label.COMPOSE_FILES: compose_files,
         Label.COMPOSE_FILES_INSTANCE: new_compose_files_list,
-        Label.ENV_CONFIG_TEMPLATE: base64_pickled(env_config_instance.env_source),
-        Label.ENV_CONFIG: base64_pickled(env_config_instance.env),
+        Label.ENV_CONFIG_TEMPLATE: base64_pickled(Environment.from_environment(env_config_instance.env_source)),
+        Label.ENV_CONFIG_DESCRIPTION: env_config_instance.env_source.description,
+        Label.ENV_CONFIG: base64_pickled(Environment.from_environment(env_config_instance.env)),
     }
 
     for file in compose_files.split(':'):

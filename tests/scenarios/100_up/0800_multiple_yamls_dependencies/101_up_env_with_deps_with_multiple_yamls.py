@@ -9,7 +9,7 @@ from contexts.no_docker_containers import retrieve_all_docker_containers
 from schemas.docker import ContainerSchema
 from uber_compose import Environment
 from uber_compose import Service
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy
 

@@ -7,7 +7,11 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from libs.env_const import AUTO_SCANNED_FULL
 from schemas.docker import ContainerSchema
-from uber_compose import UberCompose
+from uber_compose import Environment
+from uber_compose import Service
+from uber_compose.helpers.bytes_pickle import base64_pickled
+from uber_compose.helpers.bytes_pickle import debase64_pickled
+from uber_compose.uber_compose import UberCompose
 from uber_compose.helpers.labels import Label
 
 
@@ -51,6 +55,7 @@ services:
     async def then_it_should_return_successful_code(self):
         assert self.response.env_id == schema.str
 
+
     async def then_it_should_up_s1(self):
         self.containers = retrieve_all_docker_containers()
         assert self.containers == schema.list([
@@ -74,7 +79,8 @@ services:
                         f'/tmp-envs/no_id/{self.compose_filename_2}',
                     ])),
                     Label.SERVICE_NAME: 's1',
-
+                    Label.ENV_CONFIG_TEMPLATE: base64_pickled(Environment(Service('s1'), Service('s2'))),
+                    # Label.ENV_CONFIG: base64_pickled(Environment(Service('s1'), Service('s2'), description=AUTO_SCANNED_FULL)),
                 },
             },
             ...
@@ -107,3 +113,17 @@ services:
             },
             ...
         ])
+
+    async def then_it_should_env_config_template(self):
+        self.env_config_template = self.containers[0]['Labels'][Label.ENV_CONFIG_TEMPLATE]
+        assert debase64_pickled(self.env_config_template) == Environment(
+            Service('s1'),
+            Service('s2'),
+        )
+
+        self.env_config_template = self.containers[0]['Labels'][Label.ENV_CONFIG]
+        assert debase64_pickled(self.env_config_template) == Environment(
+            Service('s1'),
+            Service('s2'),
+            description=AUTO_SCANNED_FULL
+        )

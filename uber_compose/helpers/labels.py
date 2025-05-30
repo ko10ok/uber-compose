@@ -7,6 +7,7 @@ class Label:
     # REQUEST_ENV_NAME = 'com.maxwelld.request_env_name' # deprecated!!!
     ENV_DESCRIPTION = 'com.maxwelld.env_description'
     ENV_CONFIG_TEMPLATE = 'com.maxwelld.env_config_template'
+    ENV_CONFIG_DESCRIPTION = 'com.maxwelld.env_config_desc'
     ENV_CONFIG = 'com.maxwelld.env_config'
 
     TEMPLATE_SERVICE_NAME = 'com.maxwelld.template_service_name'

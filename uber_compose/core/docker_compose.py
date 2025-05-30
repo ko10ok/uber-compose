@@ -75,7 +75,7 @@ class ComposeInstance:
         return self._env_instance_config
 
     async def generate_config_files(self) -> ComposeInstanceFiles:
-        assert self.new_env_id != INFLIGHT, 'somehow u try to regenerate files for inflight env'
+        assert self.new_env_id != INFLIGHT, 'somehow regenerated files for inflight env'
         compose_instance_files = make_env_compose_instance_files(
             await self.config(),
             self.compose_files,
@@ -108,7 +108,9 @@ class ComposeInstance:
 
                 substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
                 migrate_result, stdout, stderr = await self.compose_executor.dc_exec_until_state(
-                    target_service, substituted_cmd
+                    target_service, substituted_cmd,
+                    kill_before=False,
+                    kill_after=False
                 )
                 if migrate_result != JobResult.GOOD:
                     services_status = await self.compose_executor.dc_state()

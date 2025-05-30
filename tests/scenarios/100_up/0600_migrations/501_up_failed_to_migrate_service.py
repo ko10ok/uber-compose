@@ -8,7 +8,7 @@ from contexts.no_docker_containers import no_docker_containers
 from schemas.http_codes import HTTPStatusUnprocessableEntity
 from uber_compose import Environment
 from uber_compose import Service
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.errors.migrations import ServicesMigrationsError
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy

@@ -4,7 +4,6 @@ from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
-
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
@@ -16,11 +15,12 @@ from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
+from uber_compose.helpers.singleton import SingletonMeta
 from uber_compose.output.console import LogPolicySet
-from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
-
+from uber_compose.utils.services_construction import make_default_environment
+from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
 
 @dataclass
 class ReadyEnv:
@@ -28,7 +28,7 @@ class ReadyEnv:
     env: Environment
 
 
-class UberCompose:
+class _UberCompose:
     def __init__(self, log_policy: LogPolicySet = None, health_policy=UpHealthPolicy()) -> None:
         self.logger = Logger(log_policy)
         self.system_docker_compose = SystemDockerCompose(
@@ -49,9 +49,15 @@ class UberCompose:
             compose_files = self.system_docker_compose.get_default_compose_files()
 
         if not config_template:
-            config_template = self.system_docker_compose.get_default_environment()
+            config_template = make_default_environment(
+            compose_files=get_absolute_compose_files(compose_files, Constants().in_docker_project_root_path)
+        )
 
+        self.logger.stage_info(f'Trying to search config: {config_template}')
         existing_env_id = await self.system_docker_compose.get_env_id_for(config_template, compose_files)
+
+        # TODO check if env is ready
+
         if existing_env_id and not force_restart:
             self.logger.stage_details(Text(
                 'Found suitable ready env: ', style=Style.info
@@ -75,7 +81,9 @@ class UberCompose:
             new_env_id = EMPTY_ID
 
             services = await self.system_docker_compose.get_running_services()
-            await self.system_docker_compose.down_services(services)
+            services_to_down = list(set(services) - set(Constants().non_stop_containers))
+            if services_to_down:
+                await self.system_docker_compose.down_services(services_to_down)
 
         compose_instance = ComposeInstance(
             project=Constants().project,
@@ -131,3 +139,17 @@ class UberCompose:
             self.logger.error(Text(f'Error executing command in container {container}: {stderr}'))
 
         return stdout
+
+
+class UberCompose(_UberCompose):
+    """
+    UberCompose is client class for managing Docker Compose environments.
+    """
+    ...
+
+
+class TheUberCompose(_UberCompose, metaclass=SingletonMeta):
+    """
+    TheUberCompose is unified instance of env manager for all scenarios.
+    """
+    ...

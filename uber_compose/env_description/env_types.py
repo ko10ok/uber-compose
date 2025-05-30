@@ -117,9 +117,9 @@ def remove_dups(*services: Service) -> List[Service]:
 
 class Environment:  # TODO rename Environment
     @classmethod
-    def from_environment(cls, env: 'Environment', name='not_set', *services: Service):
+    def from_environment(cls, env: 'Environment', *services: Service, description=''):
         # TODO duplicated services merging
-        return Environment(*env._services, *services, description=name)
+        return Environment(*env._services, *services, description=description)
 
     def __init__(self, *services: Service | str, description=''):
         # TODO duplicated services merging
@@ -128,7 +128,7 @@ class Environment:  # TODO rename Environment
             Service(service) if isinstance(service, str) else service
             for service in services
         ]
-        self._services = remove_dups(*services)
+        self._services = sorted(remove_dups(*services), key=lambda x: x.name)
         self._services_dict: dict[str, Service] = {
             item.name: item for item in self._services
         }
@@ -140,6 +140,10 @@ class Environment:  # TODO rename Environment
         if self._description:
             return f'Environment({self._description}, <services: {",".join(service.name for service in self._services)}>)'
         return f'Environment(<services: {",".join(service.name for service in self._services)}>)'
+
+    @property
+    def description(self) -> str:
+        return self._description
 
     def get_services(self) -> dict:
         return self._services_dict
@@ -154,10 +158,10 @@ class Environment:  # TODO rename Environment
         return True
 
     def __eq__(self, other):
-        return self._description == other
+        return isinstance(other, Environment) and self._services == other._services
 
     def __hash__(self):
-        return hash(self._description)
+        return hash(str(self._services))
 
     def as_json(self) -> list[dict]:
         return [

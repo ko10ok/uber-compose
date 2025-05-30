@@ -1,9 +1,16 @@
-from enum import Enum
-from enum import auto
 from typing import Type
 from typing import Union
 
 import vedro.events
+from uber_compose import Environment
+from uber_compose.core.sequence_run_types import ComposeConfig
+from uber_compose.helpers.health_policy import UpHealthPolicy
+from uber_compose.output.console import LogPolicy
+from uber_compose.uber_compose import TheUberCompose as TheUberCompose
+from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
+from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config
+from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenarios_configs_set
+from uber_compose.vedro_plugin.helpers.test_env_vars_setter import setup_env_for_tests
 from vedro.core import ConfigType
 from vedro.core import Dispatcher
 from vedro.core import Plugin
@@ -14,31 +21,13 @@ from vedro.events import ConfigLoadedEvent
 from vedro.events import ScenarioRunEvent
 from vedro.events import StartupEvent
 
-from uber_compose import Environment
-from uber_compose.core.sequence_run_types import ComposeConfig
-from uber_compose.helpers.health_policy import UpHealthPolicy
-from uber_compose.output.console import DEFAULT_LOG_POLICY
-from uber_compose.output.console import LOG_VERBOSITY_SETS
-from uber_compose.uber_compose import UberCompose as UberComposeClient
-from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
-from uber_compose.vedro_plugin.helpers.test_env_vars_setter import setup_env_for_tests
-from uber_compose.vedro_plugin.scenario_tag_processing import extract_scenario_config
-from uber_compose.vedro_plugin.scenario_tag_processing import extract_scenarios_configs_set
-
 DEFAULT_COMPOSE = 'default'
 
-
-class Stage(Enum):
-    INIT = auto()
-    PRE_TEST = auto()
-
-
-class UberComposePlugin(Plugin):
-    def __init__(self, config: Type["UberCompose"]) -> None:
+class VedroUberComposePlugin(Plugin):
+    def __init__(self, config: Type["VedroUberCompose"]) -> None:
         super().__init__(config)
         self._enabled = config.enabled
         self._default_env: Environment = config.default_env
-        self.uber_compose_client = UberComposeClient(health_policy=config.health_policy)
 
         # cli args
         self._compose_configs: dict[str, ComposeConfig] = config.compose_cfgs
@@ -47,8 +36,8 @@ class UberComposePlugin(Plugin):
         self._compose_choice: Union[ComposeConfig, None] = self._compose_configs[DEFAULT_COMPOSE]
 
         self._force_restart = False
-
-        self._logging_level = DEFAULT_LOG_POLICY
+        self._logging_policy = None
+        self._health_policy = config.health_policy
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
@@ -64,6 +53,11 @@ class UberComposePlugin(Plugin):
         self._global_config: ConfigType = event.config
 
     async def handle_scenarios(self, event: StartupEvent) -> None:
+        self.uber_compose_client = TheUberCompose(
+            log_policy=self._logging_policy,
+            health_policy=self._health_policy,
+        )
+
         needed_configs = extract_scenarios_configs_set(event.scheduler.scheduled)
         if not needed_configs:
             return
@@ -74,19 +68,24 @@ class UberComposePlugin(Plugin):
 
         # Up all needed env simultaneously if parallelism allowed
         if self._compose_choice.parallel_env_limit >= len(needed_configs):
-            for cfg_name in list(needed_configs):
+            for env_config in list(needed_configs):
+                if env_config == None:
+                    env_config = self._default_env
                 await self.uber_compose_client.up(
-                    config_template=cfg_name,
+                    config_template=env_config,
                     compose_files=self._compose_choice.compose_files,
                     parallelism_limit=self._compose_choice.parallel_env_limit,
-                    force_restart=self._force_restart
+                    force_restart=self._force_restart,
                 )
 
     async def handle_setup_test_config(self, event: ScenarioRunEvent):
-        config_env = extract_scenario_config(event.scenario_result.scenario)
+        env_config = extract_scenario_config(event.scenario_result.scenario)
+
+        if env_config == None:
+            env_config = self._default_env
 
         ready_env = await self.uber_compose_client.up(
-            config_template=config_env,
+            config_template=env_config,
             compose_files=self._compose_choice.compose_files,
             parallelism_limit=self._compose_choice.parallel_env_limit,
             force_restart=self._force_restart
@@ -109,7 +108,8 @@ class UberComposePlugin(Plugin):
 
         group.add_argument("--uc-v",
                            type=str,
-                           choices=list(LOG_VERBOSITY_SETS.keys()),
+                           choices=list(LogPolicy.presets().keys()),
+                           default='VERBOSE',
                            help="Increase logging verbosity")
 
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
@@ -121,13 +121,13 @@ class UberComposePlugin(Plugin):
             self._force_restart = event.args.md_fr
 
         if event.args.uc_v:
-            self._logging_level = LOG_VERBOSITY_SETS.get(event.args.uc_v, DEFAULT_LOG_POLICY)
+            self._logging_policy = LogPolicy.presets().get(str(event.args.uc_v).upper(), LogPolicy.VERBOSE)
 
         # TODO override parallelism
 
 
-class UberCompose(PluginConfig):
-    plugin = UberComposePlugin
+class VedroUberCompose(PluginConfig):
+    plugin = VedroUberComposePlugin
 
     # Enables plugin
     enabled = False

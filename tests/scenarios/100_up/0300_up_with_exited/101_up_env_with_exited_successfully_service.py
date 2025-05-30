@@ -10,7 +10,7 @@ from schemas.docker import ContainerSchema
 from schemas.env_name import EnvNameSchema
 from schemas.http_codes import HTTPStatusCodeOk
 from uber_compose import Service
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
 from uber_compose.output.console import LogPolicy
 

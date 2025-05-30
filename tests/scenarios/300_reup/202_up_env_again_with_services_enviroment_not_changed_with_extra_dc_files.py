@@ -37,6 +37,21 @@ services:
   s2:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
+  
+  s3:
+    image: busybox:stable
+    command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
+"""
+        )
+        compose_file(
+            'docker-compose.dev.yaml',
+            content="""
+version: "3"
+
+services:
+  s4:
+    image: busybox:stable
+    command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
 """
         )
 
@@ -44,7 +59,6 @@ services:
         self.environment = Environment(
                 Service('s1'),
                 Service('s2'),
-                description='blahblah',
             )
         self.compose_files = 'docker-compose.yaml'
 

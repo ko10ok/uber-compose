@@ -7,7 +7,7 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
 from uber_compose import Environment
 from uber_compose import Service
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):

@@ -41,7 +41,7 @@ def prepare_services_env(env: Environment, services_map: dict) -> Environment:
                 mode=env[service_name].mode,
             )
         ]
-    new_env = Environment(*updated_services, description=str(env))
+    new_env = Environment(*updated_services, description=env.description)
     return new_env
 
 

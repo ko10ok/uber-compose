@@ -16,7 +16,7 @@ def get_version(filename='uber_compose/version'):
 HERE = pathlib.Path(__file__).parent
 README = open("README.md").read()
 setup(
-    name="maxwelld",
+    name="uber-compose",
     version=get_version(),
     description="docker compose testing env orchestrator",
     long_description=README,

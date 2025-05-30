@@ -36,7 +36,7 @@ class LogPolicySet:
 
 class LogPolicy:
     DEFAULT = LogPolicySet(LogEvents.STAGE, LogEvents.ERROR)
-    VERBOSE = LogPolicySet(LogEvents.STAGE, LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT)
+    VERBOSE = LogPolicySet(LogEvents.STAGE, LogEvents.STAGE_INFO, LogEvents.STAGE_DETAILS, LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT)
     DEBUG = LogPolicySet(LogEvents.GLOBAL_DEBUG)
 
     @staticmethod

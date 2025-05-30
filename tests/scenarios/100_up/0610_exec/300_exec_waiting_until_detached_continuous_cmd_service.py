@@ -9,7 +9,7 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
 from uber_compose import Environment
 from uber_compose import Service
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.helpers.bytes_pickle import debase64_pickled
 from schemas.http_codes import HTTPStatusCodeOk
 from uber_compose.output.console import LogPolicy

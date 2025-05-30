@@ -7,7 +7,7 @@ from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from schemas.docker import ContainerSchema
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label

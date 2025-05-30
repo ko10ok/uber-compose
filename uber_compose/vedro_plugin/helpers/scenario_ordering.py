@@ -3,7 +3,8 @@ from typing import List
 from vedro.core import ScenarioOrderer
 from vedro.core import VirtualScenario
 
-from uber_compose.vedro_plugin.scenario_tag_processing import extract_scenario_config
+from uber_compose.helpers.bytes_pickle import base64_pickled
+from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config
 
 
 class EnvTagsOrderer(ScenarioOrderer):
@@ -12,5 +13,5 @@ class EnvTagsOrderer(ScenarioOrderer):
 
         return sorted(
             copied,
-            key=lambda x: str(extract_scenario_config(x))
+            key=lambda x: base64_pickled(extract_scenario_config(x))
         )

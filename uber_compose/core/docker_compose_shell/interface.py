@@ -249,7 +249,7 @@ class ComposeShellInterface:
         if check_output != '':
             try:
                 pids = [int(pid) for pid in check_output.split(' ')]
-                self.logger.system_commands_debug(f'Process still running: {cmd} in {container} with:\n  {pids}')
+                self.logger.stage_details(f'Process still running: {cmd} in {container} with:\n  {pids}')
                 await self._dc_exec_print_processes(container, env, root)
                 return pids
             except ValueError:
@@ -272,16 +272,16 @@ class ComposeShellInterface:
             root = self.in_docker_project_root
 
         processes_state = await asyncio.create_subprocess_shell(
-            get_cmd := f'{COMPOSE} --project-directory {root} exec {self.extra_exec_params} {container} ps -a',
+            get_cmd := f'{COMPOSE} --project-directory {root} exec {self.extra_exec_params} {container} top -n 1',
             env=env,
             cwd=root,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await processes_state.communicate()
-        CONSOLE.print('Processes state:')
-        CONSOLE.print(stdout.decode('utf-8'))
-        CONSOLE.print(stderr.decode('utf-8'))
+        self.logger.stage_debug(f'Processes state in {container}')
+        self.logger.stage_debug(stdout.decode('utf-8'))
+        self.logger.stage_debug(stderr.decode('utf-8'))
 
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
@@ -293,11 +293,16 @@ class ComposeShellInterface:
                                   env: dict = None,
                                   root: Path | str = None,
                                   ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
+        cmd = cmd.strip()
         cmd_name = parse_process_command_name(cmd)
 
         if kill_before:
             await self.dc_exec(container, f'killall {cmd_name}')
 
+        if cmd.endswith('&'):
+            self.logger.stage_details(f'Command {cmd} is detached-mode running, skipping any finish checks')
+            cmd = cmd[:-1]
+            until = None
         result = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
                                     detached=(until != ProcessExit()))
 
@@ -305,18 +310,18 @@ class ComposeShellInterface:
             raise ExecWasntSuccesfullyDone(OperationError)
 
         if until == ProcessExit():
-            self.logger.stage_info('Retrieving process IDs until completion')
+            self.logger.stage_info(Text('Retrieving process IDs until completion', style=Style.info))
             process_ids = await retry(attempts=30, delay=1, until=lambda pids: pids != [] and pids != [-1])(
                 self._dc_exec_process_pids
             )(container, cmd)
-            self.logger.stage_details(f'pids retrieved {process_ids}')
+            self.logger.stage_debug(f'pids retrieved {process_ids}')
             if process_ids:
                 if process_ids == [-1]:
                     self.logger.stage_details(f'Process:\n{cmd}\nwas not checked for completion')
                 else:
-                    self.logger.error('Process was not completed')
+                    self.logger.error(Text('Process was not completed', style=Style.suspicious))
                     if break_on_timeout:
-                        raise ExecWasntSuccesfullyDone(f'Proces\n{cmd}\nwas not completed successfully')
+                        raise ExecWasntSuccesfullyDone(f'\nProcess\n{cmd}\nwas not completed successfully')
         elif isinstance(until, Callable):
             if asyncio.iscoroutinefunction(until):
                 result = await until(container, cmd, env, extra_env, break_on_timeout)

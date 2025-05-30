@@ -13,7 +13,7 @@ from schemas.docker import ContainerSchema
 from schemas.env_name import EnvNameSchema
 from uber_compose import Environment
 from uber_compose import Service
-from uber_compose import UberCompose
+from uber_compose.uber_compose import UberCompose
 from uber_compose.errors.up import ServicesUpError
 
 
