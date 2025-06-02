@@ -4,9 +4,11 @@ import pprint
 import shlex
 import sys
 from asyncio import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 from typing import Coroutine
+from typing import NamedTuple
 
 from rich.text import Text
 from rtry import retry
@@ -283,6 +285,9 @@ class ComposeShellInterface:
         self.logger.stage_debug(stdout.decode('utf-8'))
         self.logger.stage_debug(stderr.decode('utf-8'))
 
+    class ExecResult(NamedTuple):
+        check_result: bool
+
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
                                   extra_env: dict[str, str] = None,
@@ -292,17 +297,19 @@ class ComposeShellInterface:
                                   kill_after: bool = True,
                                   env: dict = None,
                                   root: Path | str = None,
-                                  ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
+                                  ) -> ExecResult:
         cmd = cmd.strip()
         cmd_name = parse_process_command_name(cmd)
 
         if kill_before:
             await self.dc_exec(container, f'killall {cmd_name}')
 
+        check_done_result = True
         if cmd.endswith('&'):
             self.logger.stage_details(f'Command {cmd} is detached-mode running, skipping any finish checks')
             cmd = cmd[:-1]
             until = None
+
         result = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
                                     detached=(until != ProcessExit()))
 
@@ -317,21 +324,24 @@ class ComposeShellInterface:
             self.logger.stage_debug(f'pids retrieved {process_ids}')
             if process_ids:
                 if process_ids == [-1]:
-                    self.logger.stage_details(f'Process:\n{cmd}\nwas not checked for completion')
+                    self.logger.stage_details(
+                        f'Process:\n{cmd}\nwas not checked for completion due to no "pidof" tool in container'
+                    )
                 else:
                     self.logger.error(Text('Process was not completed', style=Style.suspicious))
+                    check_done_result = False
                     if break_on_timeout:
                         raise ExecWasntSuccesfullyDone(f'\nProcess\n{cmd}\nwas not completed successfully')
         elif isinstance(until, Callable):
             if asyncio.iscoroutinefunction(until):
-                result = await until(container, cmd, env, extra_env, break_on_timeout)
+                check_done_result = await until(container, cmd, env, extra_env, break_on_timeout)
             else:
-                until(container, cmd, env, extra_env, break_on_timeout)
+                check_done_result = until(container, cmd, env, extra_env, break_on_timeout)
 
         if kill_after:
             await self.dc_exec(container, f'killall {cmd_name}')
 
-        return result
+        return ComposeShellInterface.ExecResult(check_done_result)
 
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_down(self, services: list[str], env: dict = None,

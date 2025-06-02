@@ -1,3 +1,5 @@
+from time import sleep
+
 import vedro
 from d42 import schema
 
@@ -7,7 +9,13 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
 from uber_compose import Environment
 from uber_compose import Service
+from uber_compose.helpers.exec_result import ExecResult
+from uber_compose.helpers.exec_result import ExecTimeout
+from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.uber_compose import UberCompose
+from uber_compose.helpers.bytes_pickle import debase64_pickled
+from schemas.http_codes import HTTPStatusCodeOk
+from uber_compose.output.console import LogPolicy
 
 
 class Scenario(vedro.Scenario):
@@ -38,18 +46,16 @@ services:
             )
         )
 
-    def given_extra_env(self):
-        self.value = 'extra_value'
-
     async def when_user_exec_service_cmd(self):
-        self.response = await UberCompose().exec(
+        self.response = await UberCompose(
+            health_policy=UpHealthPolicy(service_up_check_attempts=1, service_up_check_delay_s=1)
+        ).exec(
             self.started_services.env_id,
             container='s1',
-            command='echo $EXTRA_ENV_VAR',
-            extra_env={
-                'EXTRA_ENV_VAR': self.value
-            }
+            command='sh -c "sleep 1 && echo \\"Hello, World!\\""',
+            until=lambda *_: sleep(3),
         )
 
     async def then_it_should_exec_command_with_output(self):
-        assert self.response == schema.bytes(self.value.encode('utf-8') + b'\n')
+        assert isinstance(self.response, ExecTimeout)
+        assert self.response.stdout == schema.bytes(b'Hello, World!\n')

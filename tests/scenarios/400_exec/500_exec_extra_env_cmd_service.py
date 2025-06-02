@@ -7,10 +7,8 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
 from uber_compose import Environment
 from uber_compose import Service
+from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.uber_compose import UberCompose
-from uber_compose.helpers.bytes_pickle import debase64_pickled
-from schemas.http_codes import HTTPStatusCodeOk
-from uber_compose.output.console import LogPolicy
 
 
 class Scenario(vedro.Scenario):
@@ -41,12 +39,19 @@ services:
             )
         )
 
+    def given_extra_env(self):
+        self.value = 'extra_value'
+
     async def when_user_exec_service_cmd(self):
         self.response = await UberCompose().exec(
             self.started_services.env_id,
             container='s1',
-            command='sh -c "sleep 3 && echo \\"Hello, World!\\""',
+            command='echo $EXTRA_ENV_VAR',
+            extra_env={
+                'EXTRA_ENV_VAR': self.value
+            }
         )
 
     async def then_it_should_exec_command_with_output(self):
-        assert self.response == schema.bytes(b'Hello, World!\n')
+        assert isinstance(self.response, ExecResult)
+        assert self.response.stdout == schema.bytes(self.value.encode('utf-8') + b'\n')

@@ -14,6 +14,8 @@ from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import debase64_pickled
+from uber_compose.helpers.exec_result import ExecResult
+from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
@@ -123,7 +125,7 @@ class _UberCompose:
 
     async def exec(self, env_id: str, container: str, command, extra_env: dict[str, str] = None,
                    until: Callable | ProcessExit | None = ProcessExit(),
-                   ):
+                   ) -> ExecResult | ExecTimeout:
         uid = str(uuid4())
         log_file = f'{uid}.log'
 
@@ -140,13 +142,16 @@ class _UberCompose:
         container = service_state.get_any().labels[Label.SERVICE_NAME]
 
         cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
-        await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, until=until)
+        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, until=until)
 
         job_result, stdout, stderr = await dc_shell.dc_exec(container, f'cat /tmp/{log_file}')
         if job_result != JobResult.GOOD:
             self.logger.error(Text(f'Error executing command in container {container}: {stderr}'))
 
-        return stdout
+        if not res.check_result:
+            return ExecTimeout(stdout=stdout, cmd=command)
+
+        return ExecResult(stdout=stdout, cmd=command)
 
 
 class UberCompose(_UberCompose):
