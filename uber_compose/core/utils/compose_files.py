@@ -6,6 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import yaml
+from uber_compose import OverridenService
 
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
@@ -106,43 +107,62 @@ def patch_service_set(dc_cfg: dict, services_map: dict[str, str] | None):
     return new_dc_cfg
 
 
-def patch_envs(dc_cfg: dict, services_environment_vars: Environment):
+def patch_envs(dc_cfg: dict, services_environment_vars: Environment, overridden_services: list[OverridenService] | None = None) -> dict:
     # TODO envs order and override question!!
     #  if we overrides env, should we save order? or insert before, for allow to override codegen
     new_dc_cfg = deepcopy(dc_cfg)
+
+    if overridden_services is None:
+        overridden_services = []
+
     for service in dc_cfg['services']:
         if 'environment' not in dc_cfg['services'][service]:
             new_dc_cfg['services'][service]['environment'] = []
 
         if service not in services_environment_vars:
             continue
-
+        # breakpoint()
         if isinstance(new_dc_cfg['services'][service]['environment'], list) and service in services_environment_vars:
             for k, v in services_environment_vars[service].env.items():
                 if existing := list_key_exist(f'{k}={v}',
                                               new_dc_cfg['services'][service]['environment']):
-                    if existing != f'{k}={v}':
-                        warn(
-                            f'⚠️ env {k} for service {service} already set to "{existing}" '
-                            f'instead of "{v}"')
+                    ...
                 else:
                     new_dc_cfg['services'][service]['environment'] += [f'{k}={v}']
+
+            for ovr_service in overridden_services:
+                if ovr_service.services_envs_fix:
+                    for ovr_env in ovr_service.services_envs_fix:
+                        if ovr_env.name == service or ovr_env.name == '*':
+                            for k, v in ovr_env.env.items():
+                                new_dc_cfg['services'][service]['environment'] += [f'{k}={v}']
+
         elif isinstance(new_dc_cfg['services'][service]['environment'], dict) and service in services_environment_vars:
             for k, v in services_environment_vars[service].env.items():
                 if k in new_dc_cfg['services'][service]['environment']:
-                    if new_dc_cfg['services'][service]['environment'][k] != v:
-                        warn(f'⚠️ env {k} for service {service} already set to '
-                             f"\"{new_dc_cfg['services'][service]['environment'][k]}\" instead "
-                             f"of \"{v}\"")
+                    ...
                 else:
                     new_dc_cfg['services'][service]['environment'].update({k: v})
+
+            for ovr_service in overridden_services:
+                if ovr_service.services_envs_fix:
+                    for ovr_env in ovr_service.services_envs_fix:
+                        if ovr_env.name == service or ovr_env.name == '*':
+                            new_dc_cfg['services'][service]['environment'].update(ovr_env.env)
     return new_dc_cfg
 
 
-def patch_services_names(dc_cfg: dict, services_map: dict[str, str]) -> dict:
+def patch_services_names(dc_cfg: dict, services_map: dict[str, str], overridden_services: list[OverridenService] | None = None) -> dict:
     new_service_dc_cfg = deepcopy(dc_cfg)
     new_service_dc_cfg['services'] = {}
+
+    if overridden_services is None:
+        overridden_services = []
+
     for service in dc_cfg['services']:
+        if service in overridden_services:
+            # skip overriden services
+            continue
         srv_cfg = deepcopy(dc_cfg['services'][service])
 
         result_service_name = services_map[service]
@@ -154,6 +174,7 @@ def patch_services_names(dc_cfg: dict, services_map: dict[str, str]) -> dict:
             if isinstance(srv_cfg['depends_on'], list):
                 new_deps = [
                     services_map[item] for item in srv_cfg['depends_on']
+                    if item not in overridden_services
                 ]
                 new_service_dc_cfg['services'][result_service_name] = srv_cfg | {
                     'depends_on': new_deps
@@ -162,6 +183,7 @@ def patch_services_names(dc_cfg: dict, services_map: dict[str, str]) -> dict:
                 new_deps = {
                     services_map[service_name]: condition
                     for service_name, condition in srv_cfg['depends_on'].items()
+                    if service_name not in overridden_services
                 }
                 new_service_dc_cfg['services'][result_service_name] = srv_cfg | {
                     'depends_on': new_deps
@@ -172,7 +194,8 @@ def patch_services_names(dc_cfg: dict, services_map: dict[str, str]) -> dict:
 def patch_labels(dc_cfg: dict, labels: dict[str, str]):
     def escape(labels):
         return {
-            k: v.replace(',', ';') if isinstance(v, str) else v
+            # TODO check if , is ok for usage or replace(, , ;) was used before
+            k: v if isinstance(v, str) else v
             for k, v in labels.items()
         }
 
@@ -195,6 +218,7 @@ def patch_docker_compose_file_services(filename: Path,
                                        network_name: str,
                                        # TODO network_name = [projectname]_default
                                        services_map: dict[str, str] | None,
+                                       overridden_services: list[OverridenService] | None = None,
                                        labels: dict[str, str] = None,
                                        relative_path: Path = None
                                        ) -> None:
@@ -209,10 +233,10 @@ def patch_docker_compose_file_services(filename: Path,
         dc_cfg = patch_service_set(dc_cfg, services_map)  # todo use servcie_map
 
     if services_environment_vars:
-        dc_cfg = patch_envs(dc_cfg, services_environment_vars)  # todo use servcie_map
+        dc_cfg = patch_envs(dc_cfg, services_environment_vars, overridden_services)  # todo use servcie_map
 
     if services_map:
-        dc_cfg = patch_services_names(dc_cfg, services_map)  # todo use servcie_map istead postfix
+        dc_cfg = patch_services_names(dc_cfg, services_map, overridden_services)  # todo use servcie_map istead postfix
 
     dc_cfg = patch_services_volumes(dc_cfg, host_project_root_directory, relative_path)
 
@@ -361,6 +385,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
             services_environment_vars=env_config_instance.env,
             network_name=f'{project_network_name}_default',
             services_map=env_config_instance.env_services_map,
+            overridden_services=env_config_instance.env_source.get_overridden_services(),
             labels=labels,
             relative_path=relative_path,
         )

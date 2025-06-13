@@ -107,15 +107,16 @@ class ComposeInstance:
                 target_service = env_config_instance.env_services_map[handler.executor or service]
 
                 substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
-                migrate_result, stdout, stderr = await self.compose_executor.dc_exec_until_state(
+                migrate_result = await self.compose_executor.dc_exec_until_state(
                     target_service, substituted_cmd,
                     kill_before=False,
-                    kill_after=False
+                    kill_after=False,
+                    break_on_timeout=True,
                 )
-                if migrate_result != JobResult.GOOD:
+                if not migrate_result.check_result:
                     services_status = await self.compose_executor.dc_state()
                     raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}"
-                                          f"\n{stdout=}\n{stderr=}"
+                                          f"\n{migrate_result.stdout=}\n{migrate_result.stderr=}"
                                           # TODO fix too verbose to file output?
                                           # f"\nUp logs:\n {await self.logs(self.except_containers)}"
                                           f"\nServices logs:\n {await self.logs(services)}"

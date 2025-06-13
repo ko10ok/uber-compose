@@ -1,5 +1,6 @@
 import vedro
 from d42 import schema
+from uber_compose.output.console import LogPolicy
 from vedro import catched
 
 from contexts.compose_file import compose_file

@@ -33,6 +33,10 @@ def sub_env_id(env: Env, services_for_env) -> Env:
 def prepare_services_env(env: Environment, services_map: dict) -> Environment:
     updated_services = []
     for service_name in env:
+        if service_name in env.get_overridden_services_names():
+            # skip overridden services
+            continue
+
         updated_services += [
             Service(
                 name=env[service_name].name,

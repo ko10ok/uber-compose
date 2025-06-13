@@ -287,6 +287,9 @@ class ComposeShellInterface:
 
     class ExecResult(NamedTuple):
         check_result: bool
+        err: OperationError | None = None
+        stdout: str = ''
+        stderr: str = ''
 
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
@@ -310,11 +313,11 @@ class ComposeShellInterface:
             cmd = cmd[:-1]
             until = None
 
-        result = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
+        result, stdout, stderr = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
                                     detached=(until != ProcessExit()))
 
         if isinstance(result, OperationError):
-            raise ExecWasntSuccesfullyDone(OperationError)
+            check_done_result = False
 
         if until == ProcessExit():
             self.logger.stage_info(Text('Retrieving process IDs until completion', style=Style.info))
@@ -341,7 +344,7 @@ class ComposeShellInterface:
         if kill_after:
             await self.dc_exec(container, f'killall {cmd_name}')
 
-        return ComposeShellInterface.ExecResult(check_done_result)
+        return ComposeShellInterface.ExecResult(check_done_result, err=result, stdout=stdout, stderr=stderr)
 
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_down(self, services: list[str], env: dict = None,

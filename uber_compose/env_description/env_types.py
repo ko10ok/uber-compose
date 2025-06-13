@@ -5,8 +5,6 @@ from typing import Iterator
 from typing import List
 from typing import NamedTuple
 
-from uber_compose.helpers.bytes_pickle import base64_pickled
-
 DEFAULT_ENV = 'DEFAULT'
 
 
@@ -106,6 +104,21 @@ class Service(NamedTuple):
         }
 
 
+class OverridenService(NamedTuple):
+    service: Service
+    # service_name: str | None = None
+    services_envs_fix: list[Service] | None = None
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.service.name == other
+        if isinstance(other, OverridenService):
+            return self.service.name == other.service.name
+        if isinstance(other, Service):
+            return self.service.name == other.name
+        return False
+
+
 def remove_dups(*services: Service) -> List[Service]:
     result_services = []
     for service in reversed(services):
@@ -117,11 +130,11 @@ def remove_dups(*services: Service) -> List[Service]:
 
 class Environment:  # TODO rename Environment
     @classmethod
-    def from_environment(cls, env: 'Environment', *services: Service, description=''):
+    def from_environment(cls, env: 'Environment', *services: Service, description='', services_override = None) -> 'Environment':
         # TODO duplicated services merging
-        return Environment(*env._services, *services, description=description)
+        return Environment(*env._services, *services, description=description, services_override=services_override)
 
-    def __init__(self, *services: Service | str, description=''):
+    def __init__(self, *services: Service | str, description='', services_override: List[OverridenService] | None = None):
         # TODO duplicated services merging
         self._description = description
         services = [
@@ -132,13 +145,15 @@ class Environment:  # TODO rename Environment
         self._services_dict: dict[str, Service] = {
             item.name: item for item in self._services
         }
+        self._services_override: List[OverridenService] = services_override or []
 
     def __str__(self) -> str:
         return self._description or f'Environment(<services: {",".join(service.name for service in self._services)})>'
 
     def __repr__(self):
         if self._description:
-            return f'Environment({self._description}, <services: {",".join(service.name for service in self._services)}>)'
+            return (f'Environment({self._description},',
+                    f' <services: {",".join(service.name for service in self._services)}>)')
         return f'Environment(<services: {",".join(service.name for service in self._services)}>)'
 
     @property
@@ -147,6 +162,15 @@ class Environment:  # TODO rename Environment
 
     def get_services(self) -> dict:
         return self._services_dict
+
+    def get_overridden_services(self) -> List[OverridenService]:
+        return self._services_override
+
+    def get_overridden_services_names(self) -> List[OverridenService]:
+        return [
+            ovr_service.service.name
+            for ovr_service in self._services_override
+        ]
 
     def __getitem__(self, item) -> Service:
         return self._services_dict[item]
@@ -170,6 +194,3 @@ class Environment:  # TODO rename Environment
 
     def get_services_names(self):
         return [service.name for service in self._services]
-
-class SingletonService(Service):
-    singleton: bool = False

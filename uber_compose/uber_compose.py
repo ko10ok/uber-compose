@@ -4,6 +4,7 @@ from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
+from uber_compose import OverridenService
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
