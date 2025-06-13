@@ -68,7 +68,7 @@ services:
     async def given_external_definition(self):
         self.env_vars = {'ENV_VAR': 'external_s2'}
         self.service_1_external_envs_redefine = self.service_1.with_env(self.env_vars)
-        self.service_2_external_envs_redefine = self.service_2.with_env(self.env_vars)
+        self.service_3_external_envs_redefine = self.service_3.with_env(self.env_vars)
 
     async def when_user_up_env_without_params(self):
         self.response = await UberCompose().up(
@@ -78,7 +78,7 @@ services:
                     OverridenService(
                         Service('s2'), services_envs_fix=[
                             self.service_1_external_envs_redefine,
-                            self.service_2_external_envs_redefine,
+                            self.service_3_external_envs_redefine,
                         ],
                     )
                 ],
@@ -141,10 +141,10 @@ services:
 
     async def and_it_should_have_env_var_set(self):
         self.docker_containers = retrieve_dockerish_containers()
-        self.container = self.docker_containers[0]
-        self.expected_envs = [f'{k}={v}' for k, v in self.env_vars.items()]
-        assert self.container.attrs['Config']['Env'] == ServiceEnvSchema % [
-            ...,
-            *self.expected_envs,
-            ...,
-        ]
+        self.expected_envs =  [f'{k}={v}' for k, v in self.env_vars.items()]
+        for container in self.docker_containers:
+            assert container.attrs['Config']['Env'] == ServiceEnvSchema % [
+                ...,
+                *self.expected_envs,
+                ...,
+            ]
