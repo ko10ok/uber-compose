@@ -9,6 +9,10 @@ from uber_compose.env_description.env_types import Environment
 
 def extract_scenario_config(scenario: VirtualScenario) -> Environment:
     scenario_env = None
+    if hasattr(scenario._orig_scenario, 'tags'):
+        for tag in scenario._orig_scenario.tags:
+            if isinstance(tag, Environment):
+                scenario_env = tag
     if hasattr(scenario._orig_scenario, 'env'):
         scenario_env = scenario._orig_scenario.env
     return scenario_env
