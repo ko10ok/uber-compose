@@ -85,7 +85,7 @@ class ComposeShellInterface:
 
         if process.returncode != 0:
             print(f"Can't get container's status {stdout} {stderr}")
-            return OperationError(f'Stdout:\n{stdout}\n\nStderr:\n{stderr}')
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}')
 
         state_result = ServicesComposeState(stdout.decode('utf-8'))
         self.logger.system_commands_output(state_result.as_rich_text())
@@ -122,7 +122,7 @@ class ComposeShellInterface:
 
         if process.returncode != 0:
             state_result = await self.dc_state()
-            return OperationError(f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
 
         return JobResult.GOOD
 
@@ -160,9 +160,9 @@ class ComposeShellInterface:
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
-                    f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
+                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
                 ), None
-            return OperationError(f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'), None
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'), None
 
         return JobResult.GOOD, stdout
 
@@ -211,10 +211,10 @@ class ComposeShellInterface:
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
-                    f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
+                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
                 ), stdout, stderr
             return OperationError(
-                f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'
+                f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'
             ), stdout, stderr
 
         return JobResult.GOOD, stdout, stderr
@@ -382,8 +382,8 @@ class ComposeShellInterface:
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
-                    f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
+                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
                 )
-            return OperationError(f'Stdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
 
         return JobResult.GOOD

@@ -106,12 +106,13 @@ class ComposeInstance:
                 # TODO fix service map if default env
                 target_service = env_config_instance.env_services_map[handler.executor or service]
 
-                substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
+                # TODO check if need to template migrations
+                #   substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
+                substituted_cmd = handler.cmd
                 migrate_result = await self.compose_executor.dc_exec_until_state(
                     target_service, substituted_cmd,
                     kill_before=False,
                     kill_after=False,
-                    break_on_timeout=True,
                 )
                 if not migrate_result.check_result:
                     services_status = await self.compose_executor.dc_state()
