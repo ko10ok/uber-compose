@@ -121,8 +121,6 @@ class VedroUberComposePlugin(Plugin):
         if event.args.uc_fr:
             self._force_restart = event.args.md_fr
 
-        # Set logging policy based on --uc-v argument
-        print(event.args)
         if event.args.uc_v is None:
             self._logging_policy = LogPolicy.DEFAULT
         else:
