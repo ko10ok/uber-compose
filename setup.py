@@ -23,7 +23,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Yuriy Sagitov",
     author_email="pro100.ko10ok@gmail.com",
-    python_requires=">=3.10.0",
+    python_requires=">=3.8.0",
     url="https://github.com/ko10ok/uber-compose",
     license="Apache-2.0",
     packages=find_packages(exclude=("tests",)),

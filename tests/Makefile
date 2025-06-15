@@ -1,5 +1,6 @@
 export COMPOSE_FILE ?= docker-compose.yml
 export VERSION := $(shell git describe --tags --exact-match 2>/dev/null || echo beta)
+export PYTHON_VERSION ?= 3.10
 
 .PHONY: down
 down:
@@ -8,7 +9,7 @@ down:
 	docker-compose down || true
 
 build:
-	docker-compose build
+	docker-compose build --build-arg PYTHON_VERSION=${PYTHON_VERSION}
 	echo "" > build
 
 up: build
