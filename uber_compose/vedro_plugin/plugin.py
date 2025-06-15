@@ -108,8 +108,9 @@ class VedroUberComposePlugin(Plugin):
 
         group.add_argument("--uc-v",
                            type=str,
+                           nargs='?',
+                           const='VERBOSE',
                            choices=list(LogPolicy.presets().keys()),
-                           default='VERBOSE',
                            help="Increase logging verbosity")
 
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
@@ -120,8 +121,19 @@ class VedroUberComposePlugin(Plugin):
         if event.args.uc_fr:
             self._force_restart = event.args.md_fr
 
-        if event.args.uc_v:
-            self._logging_policy = LogPolicy.presets().get(str(event.args.uc_v).upper(), LogPolicy.VERBOSE)
+        # Set logging policy based on --uc-v argument
+        print(event.args)
+        if event.args.uc_v is None:
+            self._logging_policy = LogPolicy.DEFAULT
+        else:
+            level = str(event.args.uc_v).upper()
+            if level in LogPolicy.presets().keys():
+                self._logging_policy = LogPolicy.presets().get(level)
+            else:
+                raise ValueError(
+                    f"Unknown logging policy '{event.args.uc_v}'. "
+                    f"Available options: {', '.join(LogPolicy.presets().keys())}"
+                )
 
         # TODO override parallelism
 
