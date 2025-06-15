@@ -13,6 +13,9 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14.0b2']
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4
@@ -26,9 +29,10 @@ jobs:
       env:
         COMPOSE_FILE: "docker-compose.yml"
         CI_DC_DISABLE_TTY: "-T"
+        PYTHON_VERSION: ${{ matrix.python-version }}
       run: |
         cd tests
-        make e2e-run args='-vvv'
+        make e2e-run args='-vvv' -B
 
   publish_pypi:
     runs-on: ubuntu-latest
