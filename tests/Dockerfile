@@ -1,9 +1,5 @@
-# TODO cleanup  no need
-#FROM docker:25.0.3-dind-alpine3.19
-
 ARG PYTHON_VERSION=3.10
-FROM python:${PYTHON_VERSION}-alpine3.19
-#COPY --from=docker:25.0.3-dind-alpine3.19 /usr/local/bin/docker /usr/local/bin/
+FROM python:${PYTHON_VERSION}-alpine3.21
 
 WORKDIR /tests
 
