@@ -20,16 +20,24 @@ from uber_compose.utils.services_construction import make_default_environment
 
 
 class SystemDockerCompose:
-    def __init__(self, inner_project_root: Path, logger: Logger) -> None:
+    def __init__(self, inner_project_root: Path, logger: Logger, cfg_constants: Constants = None) -> None:
+        self.cfg_constants = cfg_constants if cfg_constants else Constants()
         self.logger = logger
-        self.default_compose_files = ':'.join(scan_for_compose_files(inner_project_root))
+
+        # TODO get path from Constants. Could be used in cases dc yaml not in root directory
+        self.default_compose_files = ':'.join(
+            scan_for_compose_files(inner_project_root, self.cfg_constants.docker_compose_files_scan_depth)
+        )
+        self.logger.stage_details(f'Found default compose files: {self.default_compose_files}')
+
         self.default_environment = make_default_environment(
             compose_files=get_absolute_compose_files(self.default_compose_files, inner_project_root),
         )
         self.dc_shell = ComposeShellInterface(
             self.default_compose_files,
-            Constants().in_docker_project_root_path,
+            inner_project_root,
             logger=logger,
+            cfg_constants=self.cfg_constants,
         )
 
     def get_default_compose_files(self) -> str:

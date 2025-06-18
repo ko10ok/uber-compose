@@ -41,18 +41,26 @@ class ProcessExit:
 
 
 class ComposeShellInterface:
-    def __init__(self, compose_files: str, in_docker_project_root: Path, logger: Logger, execution_envs: dict = None):
+    def __init__(self,
+                 compose_files: str,
+                 in_docker_project_root: Path,
+                 logger: Logger,
+                 execution_envs: dict = None,
+                 cfg_constants: Constants = None
+                 ) -> None:
+        self.cfg_constants = cfg_constants if cfg_constants else Constants()
+
         self.logger = logger
         self.compose_files = compose_files
         self.in_docker_project_root = str(in_docker_project_root)
         self.execution_envs = os.environ | {
             'COMPOSE_FILE': self.compose_files,
-            'DOCKER_HOST': Constants().docker_host,
-            'COMPOSE_PROJECT_NAME': Constants().compose_project_name,
+            'DOCKER_HOST': self.cfg_constants.docker_host,
+            'COMPOSE_PROJECT_NAME': self.cfg_constants.compose_project_name,
         }
         if execution_envs is not None:
             self.execution_envs |= execution_envs
-        self.extra_exec_params = Constants().docker_compose_extra_exec_params
+        self.extra_exec_params = self.cfg_constants.docker_compose_extra_exec_params
 
         # check if DC_BIN exists
         # if not Path(DC_BIN).exists():

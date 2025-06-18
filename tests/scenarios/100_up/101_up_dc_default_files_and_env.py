@@ -79,8 +79,6 @@ services:
                         f'/tmp-envs/no_id/{self.compose_filename_2}',
                     ])),
                     Label.SERVICE_NAME: 's1',
-                    Label.ENV_CONFIG_TEMPLATE: base64_pickled(Environment(Service('s1'), Service('s2'))),
-                    # Label.ENV_CONFIG: base64_pickled(Environment(Service('s1'), Service('s2'), description=AUTO_SCANNED)),
                 },
             },
             ...

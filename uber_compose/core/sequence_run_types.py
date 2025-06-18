@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import NamedTuple
 from typing import Union
 
+from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Environment
 
 EMPTY_ID = 'no_id'
@@ -9,6 +10,7 @@ EMPTY_ID = 'no_id'
 
 class ComposeConfig(NamedTuple):
     compose_files: str
+    overridden_services: list[OverridenService] = None
     parallel_env_limit: Union[int] = 1
 
 

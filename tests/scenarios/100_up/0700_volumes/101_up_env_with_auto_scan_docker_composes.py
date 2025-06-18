@@ -8,6 +8,7 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
+from uber_compose.core.constants import Constants
 from uber_compose.uber_compose import UberCompose
 from uber_compose.helpers.labels import Label
 
@@ -62,7 +63,11 @@ services:
         )
 
     async def when_user_up_env_without_params(self):
-        self.response = await UberCompose().up()
+        self.response = await UberCompose(
+            cfg_constants=Constants(
+                docker_compose_files_scan_depth=4
+            )
+        ).up()
 
     async def then_it_should_return_successful_code(self):
         assert self.response.env_id == schema.str

@@ -3,7 +3,9 @@ from pathlib import Path
 
 
 class Constants:
-    def __init__(self):
+    def __init__(self,
+                 docker_compose_files_scan_depth: int = 2,
+                 ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
         self.project: str = os.environ.get('COMPOSE_PROJECT_NAME')
@@ -22,3 +24,7 @@ class Constants:
         )
 
         self.docker_compose_extra_exec_params = os.environ.get('DOCKER_COMPOSE_EXTRA_EXEC_PARAMS', '-T')
+
+        self.docker_compose_files_scan_depth: int = int(
+            os.environ.get('DOCKER_COMPOSE_FILES_SCAN_DEPTH', docker_compose_files_scan_depth)
+        )
