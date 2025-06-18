@@ -264,7 +264,7 @@ class ComposeShellInterface:
                 return pids
             except ValueError:
                 ...
-            self.logger.error(f'Somthing wrong:\n  {check_output}')
+            self.logger.error(f'Somthing wrong for {cmd} in {container}:\n  {check_output}')
             return [-1]
         else:
             self.logger.stage_info(f'Process done: {cmd} in {container}')
