@@ -50,9 +50,11 @@ class LogPolicy:
 
 # TODO collect all into file and on level in stdout
 class Logger:
-    def __init__(self, log_policy: LogPolicySet = None):
+    def __init__(self, log_policy: LogPolicySet = None, cfg_constants = None):
+        if cfg_constants is None:
+            cfg_constants = Constants()
         if log_policy is None:
-            log_policy = LogPolicy.presets().get(Constants().default_log_policy)
+            log_policy = LogPolicy.presets().get(cfg_constants.default_log_policy)
         self.log_policy = log_policy
         self.stream = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
         self.debug = True

@@ -3,7 +3,11 @@ from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.utils.state_waiting import is_service_not_running_or_not_healthy
 
 
-def calc_broken_services(services_state: ServicesComposeState, config_template: Environment):
+def calc_broken_services(
+    services_state: ServicesComposeState, config_template: Environment, excluded_from_check: list[str] = None
+) -> list[str]:
+    if excluded_from_check is None:
+        excluded_from_check = []
     non_ready_services = [
         service
         for service in services_state
@@ -14,4 +18,4 @@ def calc_broken_services(services_state: ServicesComposeState, config_template: 
         for service in config_template.get_services_names()
         if service not in services_state.get_services_names()
     ]
-    return non_ready_services + not_included_services
+    return list(set(non_ready_services) | set(not_included_services) - set(excluded_from_check))

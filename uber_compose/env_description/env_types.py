@@ -106,7 +106,6 @@ class Service(NamedTuple):
 
 class OverridenService(NamedTuple):
     service: Service
-    # service_name: str | None = None
     services_envs_fix: list[Service] | None = None
 
     def __eq__(self, other):
@@ -132,7 +131,13 @@ class Environment:  # TODO rename Environment
     @classmethod
     def from_environment(cls, env: 'Environment', *services: Service, description='', services_override = None) -> 'Environment':
         # TODO duplicated services merging
-        return Environment(*env._services, *services, description=description, services_override=services_override)
+        description = description or env._description
+        services_overrides = []
+        if services_override:
+            services_overrides += services_override
+        if env._services_override:
+            services_overrides += env._services_override
+        return Environment(*env._services, *services, description=description, services_override=services_overrides)
 
     def __init__(self, *services: Service | str, description='', services_override: List[OverridenService] | None = None):
         # TODO duplicated services merging
@@ -152,7 +157,7 @@ class Environment:  # TODO rename Environment
 
     def __repr__(self):
         if self._description:
-            return (f'Environment({self._description},',
+            return (f'Environment({self._description},'
                     f' <services: {",".join(service.name for service in self._services)}>)')
         return f'Environment(<services: {",".join(service.name for service in self._services)}>)'
 

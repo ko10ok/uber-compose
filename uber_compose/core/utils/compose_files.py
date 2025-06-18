@@ -6,7 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import yaml
-from uber_compose import OverridenService
+from uber_compose.env_description.env_types import OverridenService
 
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
@@ -121,7 +121,7 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, overridden_
 
         if service not in services_environment_vars:
             continue
-        # breakpoint()
+
         if isinstance(new_dc_cfg['services'][service]['environment'], list) and service in services_environment_vars:
             for k, v in services_environment_vars[service].env.items():
                 if existing := list_key_exist(f'{k}={v}',

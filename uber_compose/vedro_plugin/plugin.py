@@ -39,6 +39,8 @@ class VedroUberComposePlugin(Plugin):
         self._logging_policy = None
         self._health_policy = config.health_policy
 
+        self._uc_external_services = None
+
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
             return
@@ -76,6 +78,7 @@ class VedroUberComposePlugin(Plugin):
                     compose_files=self._compose_choice.compose_files,
                     parallelism_limit=self._compose_choice.parallel_env_limit,
                     force_restart=self._force_restart,
+                    services_override=self._uc_external_services,
                 )
 
     async def handle_setup_test_config(self, event: ScenarioRunEvent):
@@ -88,7 +91,8 @@ class VedroUberComposePlugin(Plugin):
             config_template=env_config,
             compose_files=self._compose_choice.compose_files,
             parallelism_limit=self._compose_choice.parallel_env_limit,
-            force_restart=self._force_restart
+            force_restart=self._force_restart,
+            services_override=self._uc_external_services,
         )
 
         setup_env_for_tests(ready_env.env)
@@ -112,6 +116,22 @@ class VedroUberComposePlugin(Plugin):
                            const='VERBOSE',
                            choices=list(LogPolicy.presets().keys()),
                            help="Increase logging verbosity")
+        overridden_services_names = [
+            config.service.name for config in [
+                config.overridden_services
+                for choice_name, config in self._compose_configs.items()
+                if config.overridden_services
+            ]
+        ]
+        group.add_argument("--uc-external-services",
+                           type=str,
+                           nargs='?',
+                           const='ALL',
+                           choices=list([
+                               'ALL',
+                               *overridden_services_names,
+                           ]),
+                           help="Run with overriden to external services")
 
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
         for choice_name, config in self._compose_configs.items():
@@ -120,6 +140,17 @@ class VedroUberComposePlugin(Plugin):
 
         if event.args.uc_fr:
             self._force_restart = event.args.md_fr
+
+        if event.args.uc_external_services:
+            if event.args.uc_external_services == 'ALL':
+                self._uc_external_services = [
+                    overriden_service for overriden_service in self._compose_choice.overridden_services
+                ]
+            else:
+                self._uc_external_services = [
+                    overriden_service for overriden_service in self._compose_choice.overridden_services
+                    if overriden_service.service.name in self._uc_external_services
+                ]
 
         if event.args.uc_v is None:
             self._logging_policy = LogPolicy.DEFAULT
