@@ -116,11 +116,17 @@ class ComposeInstance:
                 )
                 if not migrate_result.check_result:
                     services_status = await self.compose_executor.dc_state()
+                    error = Text(f"Can't migrate service {target_service}, with {substituted_cmd}", style=Style.bad).append(
+                        Text(f"\n{migrate_result.stdout=}\n",style=Style.regular)
+                    ).append(
+                        Text(f"{migrate_result.stderr=}", style=Style.bad)
+                    ).append(
+                        services_status.as_rich_text()
+                    )
+                    self.logger.error(error)
+                    self.logger.error_details(f"\nServices logs:\n {await self.logs(services)}")
                     raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}"
                                           f"\n{migrate_result.stdout=}\n{migrate_result.stderr=}"
-                                          # TODO fix too verbose to file output?
-                                          # f"\nUp logs:\n {await self.logs(self.except_containers)}"
-                                          f"\nServices logs:\n {await self.logs(services)}"
                                           f"\nServices status:\n {services_status.as_rich_text()}") from None
 
     async def run_services_pack(self, services: list[str], migrations):

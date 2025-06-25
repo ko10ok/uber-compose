@@ -28,3 +28,5 @@ class Constants:
         self.docker_compose_files_scan_depth: int = int(
             os.environ.get('DOCKER_COMPOSE_FILES_SCAN_DEPTH', docker_compose_files_scan_depth)
         )
+
+        self.ignore_pidof_unexistance: bool = bool(os.environ.get('IGNORE_PIDOF_UNEXISTANCE', 'True') == 'True')
