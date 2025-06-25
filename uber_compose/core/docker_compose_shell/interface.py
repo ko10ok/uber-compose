@@ -264,6 +264,9 @@ class ComposeShellInterface:
                 return pids
             except ValueError:
                 ...
+            if self.cfg_constants.ignore_pidof_unexistance:
+                self.logger.stage_details(f'Error parsing pids from {check_output} for {cmd} in {container}')
+                return [-1]
             self.logger.error(f'Somthing wrong for {cmd} in {container}:\n  {check_output}')
             return [-1]
         else:

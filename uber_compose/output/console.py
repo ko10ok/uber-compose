@@ -11,9 +11,10 @@ CONSOLE = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=
 class LogEvents(Enum):
     STAGE = 'stage'
     STAGE_INFO = 'stage_info'
-    ERROR = 'error'
     STAGE_DETAILS = 'stage_details'
     STAGE_DEBUG = 'stage_debug'
+    ERROR = 'error'
+    ERROR_DETAILS = 'error_details'
     COMMANDS = 'commands'
     COMMAND_OUTPUT = 'command_output'
     SYSTEM_COMMANDS = 'system_commands'
@@ -78,6 +79,9 @@ class Logger:
 
     def error(self, text: str | Text, **kwargs):
         self.log(text, LogEvents.ERROR, **kwargs)
+
+    def error_details(self, text: str | Text, **kwargs):
+        self.log(text, LogEvents.ERROR_DETAILS, **kwargs)
 
     def stage_details(self, text: str | Text, **kwargs):
         self.log(text, LogEvents.STAGE_DETAILS, **kwargs)

@@ -4,6 +4,7 @@ from typing import Union
 import vedro.events
 from uber_compose import Environment
 from uber_compose.core.sequence_run_types import ComposeConfig
+from uber_compose.env_description.env_types import OverridenService
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
@@ -39,7 +40,7 @@ class VedroUberComposePlugin(Plugin):
         self._logging_policy = None
         self._health_policy = config.health_policy
 
-        self._uc_external_services = None
+        self._uc_external_services: list[OverridenService] = None
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
@@ -91,11 +92,10 @@ class VedroUberComposePlugin(Plugin):
             config_template=env_config,
             compose_files=self._compose_choice.compose_files,
             parallelism_limit=self._compose_choice.parallel_env_limit,
-            force_restart=self._force_restart,
             services_override=self._uc_external_services,
         )
 
-        setup_env_for_tests(ready_env.env)
+        setup_env_for_tests(ready_env.env, self._uc_external_services)
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose")
@@ -117,10 +117,12 @@ class VedroUberComposePlugin(Plugin):
                            choices=list(LogPolicy.presets().keys()),
                            help="Increase logging verbosity")
         overridden_services_names = [
-            config.service.name for config in [
-                config.overridden_services
+            overriden_service.service.name
+            for overriden_service in [
+                overriden_service
                 for choice_name, config in self._compose_configs.items()
                 if config.overridden_services
+                for overriden_service in config.overridden_services
             ]
         ]
         group.add_argument("--uc-external-services",
@@ -139,7 +141,7 @@ class VedroUberComposePlugin(Plugin):
                 self._compose_choice = config
 
         if event.args.uc_fr:
-            self._force_restart = event.args.md_fr
+            self._force_restart = event.args.uc_fr
 
         if event.args.uc_external_services:
             if event.args.uc_external_services == 'ALL':
