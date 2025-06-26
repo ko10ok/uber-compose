@@ -1,5 +1,6 @@
 from typing import Type
 from typing import Union
+from uuid import uuid4
 
 import vedro.events
 from uber_compose import Environment
@@ -95,7 +96,7 @@ class VedroUberComposePlugin(Plugin):
             services_override=self._uc_external_services,
         )
 
-        setup_env_for_tests(ready_env.env, self._uc_external_services)
+        setup_env_for_tests(ready_env.env, self._uc_external_services, self.uber_compose_client.run_id)
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose")

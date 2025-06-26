@@ -36,11 +36,13 @@ class ComposeInstance:
                  host_project_root_directory: Path,
                  except_containers: list[str],
                  tmp_envs_path: Path,
+                 run_id: str,
                  execution_envs: dict = None,
                  release_id: str = None,
                  logger: Logger = None,
                  health_policy: UpHealthPolicy = UpHealthPolicy(),
                  ):
+        self.run_id = run_id
         self.logger = logger
         self.health_policy = health_policy
         self.compose_files = compose_files
@@ -84,6 +86,7 @@ class ComposeInstance:
             compose_files_path=self.in_docker_project_root,
             tmp_env_path=self.tmp_envs_path,
             release_id=self.release_id,
+            run_id=self.run_id,
         )
         # TODO uneven compose_executor initialization!! but compose_interface compose_files-dependent
         self.compose_executor = self.compose_interface(

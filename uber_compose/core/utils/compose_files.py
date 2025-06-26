@@ -107,7 +107,7 @@ def patch_service_set(dc_cfg: dict, services_map: dict[str, str] | None):
     return new_dc_cfg
 
 
-def patch_envs(dc_cfg: dict, services_environment_vars: Environment, overridden_services: list[OverridenService] | None = None) -> dict:
+def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, overridden_services: list[OverridenService] | None = None) -> dict:
     # TODO envs order and override question!!
     #  if we overrides env, should we save order? or insert before, for allow to override codegen
     new_dc_cfg = deepcopy(dc_cfg)
@@ -135,6 +135,8 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, overridden_
                     for ovr_env in ovr_service.services_envs_fix:
                         if ovr_env.name == service or ovr_env.name == '*':
                             for k, v in ovr_env.env.items():
+                                if isinstance(v, str):
+                                    v = v % {'test_run_id': run_id}
                                 new_dc_cfg['services'][service]['environment'] += [f'{k}={v}']
 
         elif isinstance(new_dc_cfg['services'][service]['environment'], dict) and service in services_environment_vars:
@@ -148,7 +150,9 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, overridden_
                 if ovr_service.services_envs_fix:
                     for ovr_env in ovr_service.services_envs_fix:
                         if ovr_env.name == service or ovr_env.name == '*':
-                            new_dc_cfg['services'][service]['environment'].update(ovr_env.env)
+                            new_dc_cfg['services'][service]['environment'].update(
+                                {k: v % {'test_run_id': run_id} for k, v in ovr_env.env.items()}
+                            )
     return new_dc_cfg
 
 
@@ -216,6 +220,7 @@ def patch_docker_compose_file_services(filename: Path,
                                        host_project_root_directory: Path,
                                        services_environment_vars: Environment,
                                        network_name: str,
+                                       run_id: str,
                                        # TODO network_name = [projectname]_default
                                        services_map: dict[str, str] | None,
                                        overridden_services: list[OverridenService] | None = None,
@@ -233,7 +238,7 @@ def patch_docker_compose_file_services(filename: Path,
         dc_cfg = patch_service_set(dc_cfg, services_map)  # todo use servcie_map
 
     if services_environment_vars:
-        dc_cfg = patch_envs(dc_cfg, services_environment_vars, overridden_services)  # todo use servcie_map
+        dc_cfg = patch_envs(dc_cfg, services_environment_vars, run_id, overridden_services)  # todo use servcie_map
 
     if services_map:
         dc_cfg = patch_services_names(dc_cfg, services_map, overridden_services)  # todo use servcie_map istead postfix
@@ -349,6 +354,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
                                     host_project_root_directory,
                                     compose_files_path: Path,
                                     tmp_env_path: Path,
+                                    run_id: str,
                                     release_id: str = None,
                                     ) -> ComposeInstanceFiles:
     dst = tmp_env_path / env_config_instance.env_id
@@ -388,6 +394,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
             overridden_services=env_config_instance.env_source.get_overridden_services(),
             labels=labels,
             relative_path=relative_path,
+            run_id=run_id,
         )
     inline_migrations = extract_services_inline_migration(new_compose_files_list.split(':'))
 

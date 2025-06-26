@@ -50,6 +50,7 @@ class _UberCompose:
             cfg_constants=self.cfg_constants,
         )
         self.health_policy = health_policy
+        self.run_id = str(uuid4())[:8]
 
     async def up(self,
                  config_template: Environment | None = None,
@@ -134,6 +135,7 @@ class _UberCompose:
             release_id=release_id,
             logger=self.logger,
             health_policy=self.health_policy,
+            run_id=self.run_id,
         )
 
         await compose_instance.run()
