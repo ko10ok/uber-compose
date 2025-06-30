@@ -71,7 +71,7 @@ services:
 
     async def then_it_should_out_services_logs(self):
         self.exception_str = str(self.exc_info.value)
-        assert "Can't up services" in self.exception_str
+        assert "Can't check up services" in self.exception_str
         assert "s1" in self.exception_str
         assert "starting" in self.exception_str
 

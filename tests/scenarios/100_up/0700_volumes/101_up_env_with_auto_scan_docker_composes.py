@@ -65,7 +65,7 @@ services:
     async def when_user_up_env_without_params(self):
         self.response = await UberCompose(
             cfg_constants=Constants(
-                docker_compose_files_scan_depth=4
+                docker_compose_files_scan_depth=3
             )
         ).up()
 

@@ -29,6 +29,7 @@ class SystemDockerCompose:
             scan_for_compose_files(inner_project_root, self.cfg_constants.docker_compose_files_scan_depth)
         )
         self.logger.stage_details(f'Found default compose files: {self.default_compose_files}')
+        assert self.default_compose_files, f'No docker-compose files found in the project root {inner_project_root} directory.'
 
         self.default_environment = make_default_environment(
             compose_files=get_absolute_compose_files(self.default_compose_files, inner_project_root),

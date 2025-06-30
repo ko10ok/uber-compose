@@ -129,8 +129,7 @@ class ComposeShellInterface:
         stdout, stderr = await process_output_till_done(process, self.logger.command_output)
 
         if process.returncode != 0:
-            state_result = await self.dc_state()
-            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}')
 
         return JobResult.GOOD
 
