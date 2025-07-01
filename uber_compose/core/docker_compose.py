@@ -150,8 +150,15 @@ class ComposeInstance:
         )
 
         up_result = await self.compose_executor.dc_up(services)
-        assert up_result == JobResult.GOOD, (f"Can't run up services {services}\nIssues on up attempt:\n "
-                                             f"{up_result}")
+        if up_result != JobResult.GOOD:
+            services_status = await self.compose_executor.dc_state()
+            raise ServicesUpError(
+                f"Can't up services {services} for "
+                f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
+                f"\nWith error: {up_result}"
+                f"\nServices status:\n {services_status.as_rich_text()}"
+            ) from None
+
 
         await self.run_migration(
             [EventStage.AFTER_SERVICE_START],
@@ -174,11 +181,8 @@ class ComposeInstance:
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
                 raise ServicesUpError(
-                    f"Can't up services {services} for "
+                    f"Can't check up services {services} for "
                     f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
-                    # TODO fix too verbose to file output?
-                    # f"\nUp logs:\n {await self.logs(self.except_containers)}"
-                    # f"\nServices logs:\n {await self.logs(services)}"
                     f"\nServices status:\n {services_status.as_rich_text()}"
                 ) from None
 
