@@ -92,7 +92,7 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's1',
-                    'com.docker.compose.project.config_files': f'/tmp-envs/no_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': f'/tmp-envs/default_env_id/{self.compose_filename}',
                 },
             },
             ...,
@@ -102,7 +102,7 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's2',
-                    'com.docker.compose.project.config_files': f'/tmp-envs/no_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': f'/tmp-envs/default_env_id/{self.compose_filename}',
                 },
             },
             ...,
@@ -112,7 +112,7 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's3',
-                    'com.docker.compose.project.config_files': f'/tmp-envs/no_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': f'/tmp-envs/default_env_id/{self.compose_filename}',
                 },
             },
             ...,
@@ -122,7 +122,7 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's4',
-                    'com.docker.compose.project.config_files': f'/tmp-envs/no_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': f'/tmp-envs/default_env_id/{self.compose_filename}',
                 },
             },
             ...,

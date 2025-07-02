@@ -56,7 +56,7 @@ services:
                 'State': 'exited',
                 'Labels': {
                     'com.docker.compose.service': 's1',
-                    'com.docker.compose.project.config_files': f'/tmp-envs/no_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': f'/tmp-envs/default_env_id/{self.compose_filename}',
                 },
             },
         ])

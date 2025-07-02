@@ -82,7 +82,7 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        '/tmp-envs/no_id/docker-compose.yaml,/tmp-envs/no_id/docker-compose.dev.yaml',
+                        '/tmp-envs/default_env_id/docker-compose.yaml,/tmp-envs/default_env_id/docker-compose.dev.yaml',
                 },
             },
         ])

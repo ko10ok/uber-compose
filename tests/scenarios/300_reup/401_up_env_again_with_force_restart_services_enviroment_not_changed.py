@@ -85,7 +85,7 @@ services:
                     Label.RELEASE_ID: self.next_release,
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        '/tmp-envs/no_id/docker-compose.yaml',
+                        '/tmp-envs/default_env_id/docker-compose.yaml',
                 },
             },
             ...,
@@ -97,7 +97,7 @@ services:
                     Label.RELEASE_ID: self.next_release,
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp-envs/no_id/docker-compose.yaml',
+                        '/tmp-envs/default_env_id/docker-compose.yaml',
                 },
             },
             ...,

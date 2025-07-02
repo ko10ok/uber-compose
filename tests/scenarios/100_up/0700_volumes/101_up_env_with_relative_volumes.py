@@ -77,17 +77,17 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        f'/tmp-envs/no_id/{self.compose_filename_1}'
-                        f',/tmp-envs/no_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'/tmp-envs/default_env_id/{self.compose_filename_1}'
+                        f',/tmp-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
 
-                    Label.ENV_ID: 'no_id',
+                    Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: AUTO_SCANNED,
 
                     Label.COMPOSE_FILES: f'{self.compose_filename_1}'
                                          f':{self.compose_filename_2}',
                     Label.COMPOSE_FILES_INSTANCE:
-                        f'/tmp-envs/no_id/{self.compose_filename_1}'
-                        f':/tmp-envs/no_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'/tmp-envs/default_env_id/{self.compose_filename_1}'
+                        f':/tmp-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                 },
                 'Mounts': [
                     {
@@ -106,17 +106,17 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        f'/tmp-envs/no_id/{self.compose_filename_1}'
-                        f',/tmp-envs/no_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'/tmp-envs/default_env_id/{self.compose_filename_1}'
+                        f',/tmp-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
 
-                    Label.ENV_ID: 'no_id',
+                    Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: AUTO_SCANNED,
 
                     Label.COMPOSE_FILES: f'{self.compose_filename_1}'
                                          f':{self.compose_filename_2}',
                     Label.COMPOSE_FILES_INSTANCE:
-                        f'/tmp-envs/no_id/{self.compose_filename_1}'
-                        f':/tmp-envs/no_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'/tmp-envs/default_env_id/{self.compose_filename_1}'
+                        f':/tmp-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                 },
                 'Mounts': [
                     {

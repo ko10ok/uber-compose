@@ -5,7 +5,7 @@ from typing import Union
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Environment
 
-EMPTY_ID = 'no_id'
+EMPTY_ID = 'default_env_id'
 
 
 class ComposeConfig(NamedTuple):
