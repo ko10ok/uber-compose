@@ -122,13 +122,14 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, ove
         if service not in services_environment_vars:
             continue
 
+        run_id_param = ('[[test_run_id]]', run_id)
+
         if isinstance(new_dc_cfg['services'][service]['environment'], list) and service in services_environment_vars:
             for k, v in services_environment_vars[service].env.items():
-                if existing := list_key_exist(f'{k}={v}',
-                                              new_dc_cfg['services'][service]['environment']):
+                if list_key_exist(f'{k}={v.replace(*run_id_param)}', new_dc_cfg['services'][service]['environment']):
                     ...
                 else:
-                    new_dc_cfg['services'][service]['environment'] += [f'{k}={v}']
+                    new_dc_cfg['services'][service]['environment'] += [f'{k}={v.replace(*run_id_param)}']
 
             for ovr_service in overridden_services:
                 if ovr_service.services_envs_fix:
@@ -136,7 +137,7 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, ove
                         if ovr_env.name == service or ovr_env.name == '*':
                             for k, v in ovr_env.env.items():
                                 if isinstance(v, str):
-                                    v = v % {'test_run_id': run_id}
+                                    v = v.replace(*run_id_param)
                                 new_dc_cfg['services'][service]['environment'] += [f'{k}={v}']
 
         elif isinstance(new_dc_cfg['services'][service]['environment'], dict) and service in services_environment_vars:
@@ -144,14 +145,14 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, ove
                 if k in new_dc_cfg['services'][service]['environment']:
                     ...
                 else:
-                    new_dc_cfg['services'][service]['environment'].update({k: v})
+                    new_dc_cfg['services'][service]['environment'].update({k: v.replace(*run_id_param)})
 
             for ovr_service in overridden_services:
                 if ovr_service.services_envs_fix:
                     for ovr_env in ovr_service.services_envs_fix:
                         if ovr_env.name == service or ovr_env.name == '*':
                             new_dc_cfg['services'][service]['environment'].update(
-                                {k: v % {'test_run_id': run_id} for k, v in ovr_env.env.items()}
+                                {k: v.replace(*run_id_param) for k, v in ovr_env.env.items()}
                             )
     return new_dc_cfg
 

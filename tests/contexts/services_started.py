@@ -7,13 +7,16 @@ async def services_started(config_template: Environment,
                            force_restart: bool = False,
                            release_id: str | None = None,
                            parallelism_limit: int = 1,
+                           run_id: str = ''
                            ):
-    response = await UberCompose().up(
+    response = await UberCompose(
+        run_id=run_id,
+    ).up(
         config_template=config_template,
         compose_files=compose_files,
         force_restart=force_restart,
         release_id=release_id,
-        parallelism_limit=parallelism_limit
+        parallelism_limit=parallelism_limit,
     )
 
     return response

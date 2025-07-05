@@ -15,17 +15,13 @@ def make_env_service_name(service, env_id):
     return f'{service}-{env_id}'
 
 
-def sub_env_id(env: Env, services_for_env) -> Env:
+def sub_env_id(env: Env, services_for_env: dict) -> Env:
     result_env = Env()
     for k, v in env.items():
-        # TODO split environments by services
-        try:
-            res = v.format(**services_for_env)
-            result_env.update({k: res})
-        except KeyError:
-            # temporarily suppressed
-            # warn(f'cant substitute key: {k} for value: {v}, with {services_for_env}')
-            ...
+        for service_replace_from, service_replace_to in services_for_env.items():
+            if f'[[{service_replace_from}]]' in v:
+                v = v.replace(f'[[{service_replace_from}]]', service_replace_to)
+        result_env.update({k: v})
 
     return result_env
 
