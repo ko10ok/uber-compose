@@ -43,6 +43,8 @@ class VedroUberComposePlugin(Plugin):
 
         self._uc_external_services: list[OverridenService] = None
 
+        self.run_id = str(uuid4())[:8]
+
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
             return
@@ -60,6 +62,7 @@ class VedroUberComposePlugin(Plugin):
         self.uber_compose_client = TheUberCompose(
             log_policy=self._logging_policy,
             health_policy=self._health_policy,
+            run_id=self.run_id,
         )
 
         needed_configs = extract_scenarios_configs_set(event.scheduler.scheduled)

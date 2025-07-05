@@ -38,7 +38,8 @@ class _UberCompose:
     def __init__(self,
                  log_policy: LogPolicySet = None,
                  health_policy=UpHealthPolicy(),
-                 cfg_constants: Constants=None
+                 cfg_constants: Constants=None,
+                 run_id: str='',
                  ) -> None:
         self.cfg_constants = cfg_constants if cfg_constants else Constants()
 
@@ -50,7 +51,7 @@ class _UberCompose:
             cfg_constants=self.cfg_constants,
         )
         self.health_policy = health_policy
-        self.run_id = str(uuid4())[:8]
+        self.run_id = run_id
 
     async def up(self,
                  config_template: Environment | None = None,
