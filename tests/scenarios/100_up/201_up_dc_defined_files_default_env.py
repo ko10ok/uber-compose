@@ -64,7 +64,7 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        '/tmp-envs/default_env_id/docker-compose.yaml,/tmp-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: AUTO_SCANNED,
@@ -73,8 +73,8 @@ services:
                         f'{self.compose_filename_2}',
                     ]),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
                     ]),
                 },
             },
@@ -89,7 +89,7 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp-envs/default_env_id/docker-compose.yaml,/tmp-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: AUTO_SCANNED,
@@ -98,8 +98,8 @@ services:
                         f'{self.compose_filename_2}',
                     ]),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
                     ]),
                 },
             },

@@ -16,7 +16,7 @@ class Constants:
 
         # inner directories
         self.non_stop_containers: list[str] = os.environ.get('NON_STOP_CONTAINERS', 'e2e,dockersock').split(',')
-        self.tmp_envs_path: Path = Path(os.environ.get('TMP_ENVS_DIRECTORY', '/tmp-envs'))
+        self.tmp_envs_path: Path = Path(os.environ.get('TMP_ENVS_DIRECTORY', '/tmp/uc-envs'))
         self.in_docker_project_root_path: Path = Path(os.environ.get('PROJECT_ROOT_DIRECTORY', '/project'))
 
         self.host_project_root_directory: Path = Path(

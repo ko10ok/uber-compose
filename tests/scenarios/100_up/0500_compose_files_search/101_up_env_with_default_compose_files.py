@@ -83,8 +83,8 @@ services:
                         f'{self.compose_filename_2}',
                     ])),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                     ]))
                 },
             },
@@ -107,8 +107,8 @@ services:
                         f'{self.compose_filename_2}',
                     ])),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                     ])),
                 },
             },

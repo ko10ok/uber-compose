@@ -64,8 +64,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files': ','.join(sorted([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
                     ])),
 
                     Label.ENV_ID: 'default_env_id',
@@ -75,8 +75,8 @@ services:
                         f'{self.compose_filename_2}',
                     ])),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
                     ])),
                     Label.SERVICE_NAME: 's1',
                 },
@@ -92,8 +92,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files': ','.join(sorted([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
                     ])),
 
                     Label.ENV_ID: 'default_env_id',
@@ -103,8 +103,8 @@ services:
                         f'{self.compose_filename_2}',
                     ])),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
-                        f'/tmp-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp-envs/default_env_id/{self.compose_filename_2}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
+                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
                     ])),
                     Label.SERVICE_NAME: 's2',
                 },
