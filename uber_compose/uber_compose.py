@@ -32,6 +32,7 @@ from uber_compose.utils.docker_compose_files_path import get_absolute_compose_fi
 class ReadyEnv:
     env_id: str
     env: Environment
+    release_id: str
 
 
 class _UberCompose:
@@ -52,6 +53,7 @@ class _UberCompose:
         )
         self.health_policy = health_policy
         self.run_id = run_id
+        self.last_release_id = None
 
     async def up(self,
                  config_template: Environment | None = None,
@@ -92,7 +94,7 @@ class _UberCompose:
                 f'Found suitable{_for} ready env: ', style=Style.info
             ).append(Text(existing_env_id, style=Style.mark)))
 
-            return ReadyEnv(existing_env_id, env_config)
+            return ReadyEnv(existing_env_id, env_config, self.last_release_id)
 
         self.logger.stage_debug(
             f'In-flight containers:\n{[(debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]),service["labels"][Label.ENV_CONFIG_TEMPLATE]) for service in services_state.as_json()]}'
@@ -109,8 +111,9 @@ class _UberCompose:
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
 
         new_env_id = get_new_env_id()
-        if release_id is None:
-            release_id = str(uuid4())
+        self.last_release_id = release_id
+        if self.last_release_id is None:
+            self.last_release_id = str(uuid4())
 
         if parallelism_limit == 1:
             self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
@@ -133,7 +136,7 @@ class _UberCompose:
             except_containers=self.cfg_constants.non_stop_containers,
             tmp_envs_path=self.cfg_constants.tmp_envs_path,
             execution_envs=None,
-            release_id=release_id,
+            release_id=self.last_release_id,
             logger=self.logger,
             health_policy=self.health_policy,
             run_id=self.run_id,
@@ -148,6 +151,7 @@ class _UberCompose:
         return ReadyEnv(
             new_env_id,
             compose_instance.compose_instance_files.env_config_instance.env,
+            self.last_release_id,
         )
 
     async def exec(self, env_id: str, container: str, command, extra_env: dict[str, str] = None,

@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import vedro
-from contexts.no_docker_containers import stopped_docker_container
 from d42 import schema
 
 from contexts.compose_file import compose_file

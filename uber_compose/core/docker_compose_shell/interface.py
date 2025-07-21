@@ -331,9 +331,11 @@ class ComposeShellInterface:
 
         if until == ProcessExit():
             self.logger.stage_info(Text('Retrieving process IDs until completion', style=Style.info))
-            process_ids = await retry(attempts=30, delay=1, until=lambda pids: pids != [] and pids != [-1])(
-                self._dc_exec_process_pids
-            )(container, cmd)
+            process_ids = await retry(
+                attempts=Constants().exec_pids_check_attempts_count,
+                delay=Constants().exec_pids_check_retry_delay,
+                until=lambda pids: pids != [] and pids != [-1]
+            )(self._dc_exec_process_pids)(container, cmd)
             self.logger.stage_debug(f'pids retrieved {process_ids}')
             if process_ids:
                 if process_ids == [-1]:
@@ -344,7 +346,10 @@ class ComposeShellInterface:
                     self.logger.error(Text('Process was not completed', style=Style.suspicious))
                     check_done_result = False
                     if break_on_timeout:
-                        raise ExecWasntSuccesfullyDone(f'\nProcess\n{cmd}\nwas not completed successfully')
+                        raise ExecWasntSuccesfullyDone(
+                            f'\nProcess\n{cmd}\nwas not finished in {Constants().exec_pids_check_attempts_count}x'
+                            f'{Constants().exec_pids_check_retry_delay} seconds'
+                        )
         elif isinstance(until, Callable):
             if asyncio.iscoroutinefunction(until):
                 check_done_result = await until(container, cmd, env, extra_env, break_on_timeout)
