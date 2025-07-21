@@ -30,3 +30,6 @@ class Constants:
         )
 
         self.ignore_pidof_unexistance: bool = bool(os.environ.get('IGNORE_PIDOF_UNEXISTANCE', 'True') == 'True')
+
+        self.exec_pids_check_attempts_count: int = int(os.environ.get('EXEC_PIDS_CHECK_ATTEMPTS_COUNT', '150'))
+        self.exec_pids_check_retry_delay: int = int(os.environ.get('EXEC_PIDS_CHECK_RETRY_DELAY', '1'))
