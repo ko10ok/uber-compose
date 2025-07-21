@@ -1,0 +1,24 @@
+@startuml
+actor "User" as U
+participant "Vedro" as V
+participant "VedroUberComposePlugin" as P
+participant "TheUberCompose" as UC
+participant "SystemDockerCompose" as SDC
+participant "ComposeInstance" as CI
+participant "ComposeShellInterface" as CSI
+database "Docker Compose" as DC
+
+U -> V : Запуск тестов
+V -> P : Инициализация плагина (StartupEvent)
+P -> UC : up(config_template, compose_files, ...)
+UC -> SDC : get_default_compose_files()
+UC -> SDC : get_state_for(config_template, compose_files)
+UC -> CI : Создание ComposeInstance
+CI -> CSI : dc_up()/dc_exec()/dc_state()
+CSI -> DC : docker-compose up/exec/ps/down
+DC --> CSI : Результаты команд
+CSI --> CI : Статус сервисов
+CI --> UC : Окружение готово
+UC --> P : Окружение готово
+P -> V : Запуск тестов в окружении
+@enduml
