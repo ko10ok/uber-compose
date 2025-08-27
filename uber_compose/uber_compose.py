@@ -4,7 +4,7 @@ from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
-from uber_compose.env_description.env_types import OverridenService
+
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
@@ -13,6 +13,7 @@ from uber_compose.core.sequence_run_types import EMPTY_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
+from uber_compose.env_description.env_types import OverridenService
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
@@ -25,8 +26,9 @@ from uber_compose.helpers.singleton import SingletonMeta
 from uber_compose.output.console import LogPolicySet
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
-from uber_compose.utils.services_construction import make_default_environment
 from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
+from uber_compose.utils.services_construction import make_default_environment
+
 
 @dataclass
 class ReadyEnv:
@@ -39,8 +41,8 @@ class _UberCompose:
     def __init__(self,
                  log_policy: LogPolicySet = None,
                  health_policy=UpHealthPolicy(),
-                 cfg_constants: Constants=None,
-                 run_id: str='',
+                 cfg_constants: Constants = None,
+                 run_id: str = '',
                  ) -> None:
         self.cfg_constants = cfg_constants if cfg_constants else Constants()
 
@@ -94,10 +96,13 @@ class _UberCompose:
                 f'Found suitable{_for} ready env: ', style=Style.info
             ).append(Text(existing_env_id, style=Style.mark)))
 
-            return ReadyEnv(existing_env_id, env_config, self.last_release_id)
+            last_release_id = services_state.get_any().labels.get(Label.RELEASE_ID)
+            self.last_release_id = last_release_id
+            return ReadyEnv(existing_env_id, env_config, last_release_id)
 
         self.logger.stage_debug(
-            f'In-flight containers:\n{[(debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]),service["labels"][Label.ENV_CONFIG_TEMPLATE]) for service in services_state.as_json()]}'
+            f'In-flight containers:\n'
+            f'{[(debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]), service["labels"][Label.ENV_CONFIG_TEMPLATE]) for service in services_state.as_json()]}'
         )
         if force_restart:
             self.logger.stage_details(Text(

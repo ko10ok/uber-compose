@@ -52,29 +52,21 @@ services:
         )
         self.started_containers = retrieve_all_docker_containers()
 
-    async def given_changed_env_service_set(self):
-        self.new_environment = Environment(
-            Service('s1'),
-            Service('s2'),
-            description='blahblah',
-        )
-        self.compose_files = 'docker-compose.yaml'
-
-    async def uber_compose_instance(self):
+    async def given_uber_compose_instance(self):
         self.uber_compose = UberCompose()
 
     async def when_user_up_env_without_params(self):
         self.response = await self.uber_compose.up(
             compose_files=self.compose_files,
-            config_template=self.new_environment,
+            config_template=self.environment,
         )
 
     async def then_it_should_return_successful_code(self):
         assert self.response.env_id == schema.str
-        assert self.response.env == self.new_environment
+        assert self.response.env == self.environment
 
-    async def then_it_should_not_change_release_id(self):
-        assert self.response.release_id != self.started_service.release_id
+    async def then_it_should_change_release_id(self):
+        assert self.response.release_id == self.started_service.release_id
 
     async def then_it_should_change_client_last_release_id(self):
         assert self.uber_compose.last_release_id == self.response.release_id
@@ -93,22 +85,10 @@ services:
             },
             ...,
         ])
-        assert self.containers == schema.list([
-            ...,
-            ContainerSchema % {
-                'Labels': {
-                    Label.RELEASE_ID: self.response.release_id,
-                    'com.docker.compose.service': 's2',
-                    'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml',
-                },
-            },
-            ...,
-        ])
 
     async def then_it_should_env_config_template(self):
         self.env_config_template = self.containers[0]['Labels'][Label.ENV_CONFIG_TEMPLATE]
-        assert debase64_pickled(self.env_config_template) == Environment.from_environment(self.new_environment)
+        assert debase64_pickled(self.env_config_template) == Environment.from_environment(self.environment)
 
         self.env_config_template = self.containers[0]['Labels'][Label.ENV_CONFIG]
-        assert debase64_pickled(self.env_config_template) == self.new_environment
+        assert debase64_pickled(self.env_config_template) == self.environment
