@@ -1,36 +1,38 @@
-# Uber-Compose
+🚀 Uber-Compose — Lightweight Docker Compose Extension for Test Environments
 
-Lightweight docker compose extension to control environment for tests
+Overview 🔧
 
----
+Uber-Compose is a lightweight extension for managing test environments with Docker Compose. It is designed to simplify infrastructure management for end-to-end (E2E) and integration testing by automatically provisioning services before tests begin and cleaning them up after.
 
-**Summary for README:**
+It integrates seamlessly with the Vedro testing framework (https://vedro.io) via a dedicated plugin.
 
----
+With Uber-Compose, you can define test environments, manage multiple docker-compose configurations, and focus entirely on your test scenarios — the infrastructure is handled for you.
 
-### 1. Описание
+Key Features
 
-Uber-Compose — это расширение для Docker Compose, предназначенное для управления тестовыми окружениями. Оно позволяет автоматически поднимать, настраивать и контролировать окружения для тестов, интегрируясь с фреймворком Vedro через плагин. Основная цель — упростить и ускорить подготовку инфраструктуры для end-to-end и интеграционных тестов.
+- Automated setup and teardown of Docker Compose services
+- Native plugin integration with Vedro (https://vedro.io)
+- Support for multiple docker-compose profiles
+- Flexible command-line control
+- Works in both local dev and CI/CD environments
 
----
+📦 Installation
 
-### 2. Установка
+Install via pip:
 
 ```bash
 pip install uber-compose
 ```
 
-или добавить в `requirements.txt`:
+Or add to your requirements.txt:
 
 ```
 uber-compose
 ```
 
----
+🛠️ How to Use with Vedro
 
-### 3. Использование с Vedro
-
-1. **Добавьте плагин в ваш `vedro.cfg.py`:**
+1. Enable the plugin in vedro.cfg.py:
 
 ```python
 from uber_compose import VedroUberCompose, ComposeConfig, Environment, Service
@@ -39,13 +41,18 @@ class Config(vedro.Config):
     class Plugins(vedro.Config.Plugins):
         class UberCompose(VedroUberCompose):
             enabled = True
-            # Определите сервисы и окружения
+
+            # Define Docker Compose services
             default_env = Environment(
+                # named from docker-compose.yml-s
                 Service("db"),
-                Service("api"),
+                # or simply
+                "api",
             )
+
+            # Define Compose profiles
             compose_cfgs = {
-                "default": ComposeConfig(
+                DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="docker-compose.yml",
                 ),
                 "dev": ComposeConfig(
@@ -54,17 +61,48 @@ class Config(vedro.Config):
             }
 ```
 
-2. **Запуск тестов с управлением окружением:**
+2. Run your tests:
 
-Плагин автоматически поднимет нужные сервисы перед запуском тестов и выключит их после.
+Uber-Compose will automatically launch the required services, checks everything is up before the tests begin, reup services if services configurations incompatible with test. Everything is managed for you.
 
-3. **CLI параметры:**
+3. Command Line Options
 
-- `--uc-fr` — форсировать перезапуск окружения
-- `--uc-v` — уровень логирования
+You can customize behavior on the fly using these flags:
 
-Продвинутые возможности:
-- `--uc-default | --uc-dev` — выбрать ComposeConfig для окружения
-- `--uc-external-services` — использовать внешние сервисы
+- --uc-fr — Force a restart of services
+- --uc-v — Set logging verbosity level
+- --uc-default / --uc-dev — Select predefined ComposeConfig
 
----
+🧪 Test Examples
+
+Basic test run using the default environment:
+
+```bash
+vedro run
+```
+
+Force restart the environment:
+
+```bash
+vedro run --uc-fr
+```
+
+Use an alternate configuration:
+
+```bash
+vedro run --uc-dev
+```
+
+✔️ Ideal For
+
+- End-to-End (E2E) testing
+- Integration testing
+- Local development and CI/CD pipelines
+- Teams using Vedro (https://vedro.io) for structured testing
+
+🤝 Contribute
+
+We welcome pull requests, issues, and discussions!
+Source Repository: [https://github.com/your-org/uber-compose](https://github.com/ko10ok/uber-compose)
+
+🧰 One Command. Fully Managed Environments.
