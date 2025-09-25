@@ -1,4 +1,3 @@
-
 🚀 Uber-Compose — Lightweight Docker Compose Extension for Test Environments
 
 ## 🔧 Overview
@@ -88,25 +87,63 @@ You can customize behavior dynamically:
 
 ---
 
-## 🧪 Test Examples
+## 🎯 Environment-Specific Test Configurations
 
-Run tests with the default environment:
+You can define custom environments for specific test scenarios and Uber-Compose will automatically provision the required services when running those tests.
 
-```bash
-vedro run
+### Define Custom Environments
+
+Create environment configurations that match your test requirements:
+
+```python
+# envs.py
+from uber_compose import Environment, Service
+
+WEB_S3_MOCKMQ = Environment(
+    Service("s3"),
+    Service("mock_mq"),
+    Service("cli"),
+    Service("api")
+)
+
+MINIMAL_DB_ONLY = Environment(
+    Service("database")
+)
 ```
 
-Forcefully restart environment before start:
+### Use in Your Tests
 
-```bash
-vedro run --uc-fr
+Simply specify the environment in your test scenario:
+
+```python
+# test.py
+import vedro
+from envs import WEB_S3_MOCKMQ
+
+class Scenario(vedro.Scenario):
+    subject = 'consume contest mq message without message'
+    env = WEB_S3_MOCKMQ
+
+    def when_message_consumed(self):
+        # Your test logic here
+        pass
 ```
 
-Use the "dev" configuration profile:
+### Automatic Environment Management
+
+Run your test file and the required environment will be set up automatically:
 
 ```bash
-vedro run --uc-dev
+vedro run test_path.py
 ```
+
+Uber-Compose will:
+- ✅ Detect the custom environment specified in your test
+- 🚀 Start only the required services (s3, mock_mq, cli, api)
+- ⏱️ Wait for all services to be healthy before running the test
+- 🧹 Clean up resources after test completion
+
+This approach ensures each test gets exactly the infrastructure it needs, improving test isolation and reducing resource usage.
 
 ---
 
