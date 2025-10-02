@@ -10,5 +10,5 @@ class Config(vedro.Config):
 
         class RichReporter(RichReporter):
             enabled = True
-
             scope_width = 120
+            show_paths = 'failed'
