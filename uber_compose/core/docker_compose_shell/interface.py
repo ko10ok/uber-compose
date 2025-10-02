@@ -23,8 +23,8 @@ from uber_compose.output.console import CONSOLE
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
-DC_BIN = '/usr/local/bin/docker'
-COMPOSE = f'{DC_BIN}-compose'
+DC_BIN = '/usr/bin/docker'
+COMPOSE = f'{DC_BIN} compose'
 
 
 class NoDockerCompose(BaseException):
@@ -62,10 +62,19 @@ class ComposeShellInterface:
             self.execution_envs |= execution_envs
         self.extra_exec_params = self.cfg_constants.docker_compose_extra_exec_params
 
+        if self.cfg_constants.cli_compose_util_override:
+            # for check binary existance
+            global DC_BIN
+            DC_BIN = self.cfg_constants.cli_compose_util_override
+
+            # for binary usage
+            global COMPOSE
+            COMPOSE = self.cfg_constants.cli_compose_util_override
+
         # check if DC_BIN exists
-        # if not Path(DC_BIN).exists():
-        #     raise NoDockerCompose(
-        #         f'Docker Compose binary not found at {DC_BIN}. Please install Docker Client with compose.')
+        if not Path(DC_BIN).exists():
+            raise NoDockerCompose(
+                f'Docker Compose binary not found at {DC_BIN}. Please install Docker Client with compose: \n   Alpine - apk add docker-cli docker-cli-compose\n   Debian/Ubuntu - apt install docker-ce-cli docker-compose-plugin')
 
     @retry(attempts=10, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_state(self, env: dict = None, root: Path | str = None) -> ServicesComposeState | OperationError:
