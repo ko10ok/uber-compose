@@ -81,13 +81,19 @@ class _UberCompose:
             f'Searching for environment {config_template} with template: {base64_pickled(config_template)}'
         )
         services_state = await self.system_docker_compose.get_state_for(config_template, compose_files)
+        self.logger.stage_details(
+            f'Found environments containers: {services_state.as_rich_text()}'
+        )
         self.logger.stage_debug(
             f'Found environments containers: {services_state}'
         )
         broken_services = calc_broken_services(services_state, config_template, self.cfg_constants.non_stop_containers)
-        self.logger.stage_debug(
-            f'Broken containers in environment: {broken_services}'
-        )
+        if broken_services:
+            self.logger.stage(
+                Text(
+                    f'Not started or broken containers in current environment: ', style=Style.suspicious
+                ).append(Text(f'{broken_services}', style=Style.regular))
+            )
         if len(services_state) != 0 and len(broken_services) == 0 and not force_restart:
             existing_env_id = services_state.get_any().labels.get(Label.ENV_ID, None)
             env_config = debase64_pickled(services_state.get_any().labels.get(Label.ENV_CONFIG))
