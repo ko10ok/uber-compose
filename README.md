@@ -67,6 +67,33 @@ class Config(vedro.Config):
             }
 ```
 
+### 1.5. Setup tests container params and utils
+#### 1. Add compose cli to your tests container
+```
+# Dockerfile
+# Alpine
+RUN apk add docker-cli docker-cli-compose\n   
+
+#Debian/Ubuntu 
+RUN apt install docker-ce-cli docker-compose-plugin
+
+RUN if [[ "$TARGETPLATFORM" = "linux/amd64" ]] ; then curl -SL https://github.com/docker/compose/releases/download/v2.24.4/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose ; fi
+RUN if [[ "$TARGETPLATFORM" = "linux/arm64" ]] ; then curl -SL https://github.com/docker/compose/releases/download/v2.24.4/docker-compose-linux-aarch64 -o /usr/local/bin/docker-compose ; fi
+RUN chmod +x /usr/local/bin/docker-compose
+```
+#### 2. Configure test container params
+```
+  e2e-tests:
+    volume:
+      - .:/project
+    environment:
+      - DOCKER_HOST=tcp://test-docker-daemon:2375   # `dockersock:2375` by default - no need to set explicitly
+      - NON_STOP_CONTAINERS="e2e-tests"             # `e2e` by defaule - no need to set explicitly
+      - HOST_PROJECT_ROOT_DIRECTORY=${PWD}          # or set tests directory where docker-compose.yamls placed
+      - COMPOSE_PROJECT_NAME=my-project
+```
+
+
 ### 2. Run Your Tests
 
 Uber-Compose will:
@@ -75,7 +102,13 @@ Uber-Compose will:
 - Ensure they are fully running before tests begin
 - Restart conflicting services if configurations changed
 
-Everything is handled for you — zero manual setup!
+Everything is handled for you!
+
+Up 'bootstrap' container with vedro and uber-compose inside and run tests:
+```shell
+docker-compose up -d e2e dockersock   # aka `make up`
+docker-compose exec e2e vedro run ..  # aka `make e2e-run`
+```
 
 ### 3. Command Line Options
 
