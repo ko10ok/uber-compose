@@ -20,7 +20,7 @@ services:
     environment:
 #      - PWD=${PWD}/mnt/project
       - DOCKER_HOST=tcp://test-docker-daemon:2375
-      - NON_STOP_CONTAINERS="e2e"
+      - NON_STOP_CONTAINERS=e2e
       - HOST_PROJECT_ROOT_DIRECTORY=${PWD}/mnt/project
       - COMPOSE_PROJECT_NAME=uber-compose-tests
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'

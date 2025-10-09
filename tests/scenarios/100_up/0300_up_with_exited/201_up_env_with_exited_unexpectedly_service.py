@@ -1,5 +1,6 @@
 import vedro
 from d42 import schema
+from uber_compose.output.console import LogPolicy
 
 from vedro import catched
 
@@ -41,7 +42,11 @@ services:
     async def when_user_up_env_with_unexpected_to_exit_service(self):
         with catched(ServicesUpError) as self.exc_info:
             self.response = await UberCompose(
-                health_policy=UpHealthPolicy(service_up_check_attempts=3, service_up_check_delay_s=1)
+                health_policy=UpHealthPolicy(
+                    service_up_check_attempts=3,
+                    service_up_check_delay_s=1,
+                    pre_check_delay_s=1
+                )
             ).up(
                 config_template=Environment(
                     'DEFAULT',
@@ -65,6 +70,6 @@ services:
 
     async def then_it_should_out_services_logs(self):
         self.exception_str = str(self.exc_info.value)
-        assert "Can't up services" in self.exception_str
+        assert "Can't check up services" in self.exception_str
         assert "s1" in self.exception_str
         assert "Exited (10)" in self.exception_str

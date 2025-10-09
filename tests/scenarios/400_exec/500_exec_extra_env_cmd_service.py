@@ -44,12 +44,12 @@ services:
 
     async def when_user_exec_service_cmd(self):
         self.response = await UberCompose().exec(
-            self.started_services.env_id,
             container='s1',
             command='echo $EXTRA_ENV_VAR',
             extra_env={
                 'EXTRA_ENV_VAR': self.value
-            }
+            },
+            env_id=self.started_services.env_id,
         )
 
     async def then_it_should_exec_command_with_output(self):

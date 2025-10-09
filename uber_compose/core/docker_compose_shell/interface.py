@@ -63,6 +63,10 @@ class ComposeShellInterface:
         self.extra_exec_params = self.cfg_constants.docker_compose_extra_exec_params
 
         if self.cfg_constants.cli_compose_util_override:
+            logger.system_commands(
+                f'Using overridden {self.cfg_constants.cli_compose_util_override} CLI compose command'
+            )
+
             # for check binary existance
             global DC_BIN
             DC_BIN = self.cfg_constants.cli_compose_util_override
@@ -313,7 +317,7 @@ class ComposeShellInterface:
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
                                   extra_env: dict[str, str] = None,
-                                  until: Callable | ProcessExit | None = ProcessExit(),
+                                  wait: Callable | ProcessExit | None = ProcessExit(),
                                   break_on_timeout: bool = True,
                                   kill_before: bool = True,
                                   kill_after: bool = True,
@@ -330,16 +334,16 @@ class ComposeShellInterface:
         if cmd.endswith('&'):
             self.logger.stage_details(f'Command {cmd} is detached-mode running, skipping any finish checks')
             cmd = cmd[:-1]
-            until = None
+            wait = None
 
         result, stdout, stderr = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
-                                    detached=(until != ProcessExit()))
+                                                    detached=(wait != ProcessExit()))
 
         if isinstance(result, OperationError):
             check_done_result = False
 
-        if until == ProcessExit():
-            self.logger.stage_info(Text('Retrieving process IDs until completion', style=Style.info))
+        if wait == ProcessExit():
+            self.logger.stage_info(Text('Retrieving process IDs wait completion', style=Style.info))
             process_ids = await retry(
                 attempts=Constants().exec_pids_check_attempts_count,
                 delay=Constants().exec_pids_check_retry_delay,
@@ -359,11 +363,11 @@ class ComposeShellInterface:
                             f'\nProcess\n{cmd}\nwas not finished in {Constants().exec_pids_check_attempts_count}x'
                             f'{Constants().exec_pids_check_retry_delay} seconds'
                         )
-        elif isinstance(until, Callable):
-            if asyncio.iscoroutinefunction(until):
-                check_done_result = await until(container, cmd, env, extra_env, break_on_timeout)
+        elif isinstance(wait, Callable):
+            if asyncio.iscoroutinefunction(wait):
+                check_done_result = await wait(container, cmd, env, extra_env, break_on_timeout)
             else:
-                check_done_result = until(container, cmd, env, extra_env, break_on_timeout)
+                check_done_result = wait(container, cmd, env, extra_env, break_on_timeout)
 
         if kill_after:
             await self.dc_exec(container, f'killall {cmd_name}')

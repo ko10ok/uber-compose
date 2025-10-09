@@ -50,10 +50,10 @@ services:
         self.response = await UberCompose(
             health_policy=UpHealthPolicy(service_up_check_attempts=1,service_up_check_delay_s=1)
         ).exec(
-            self.started_services.env_id,
             container='s1',
             command='sh -c "sleep 5 && echo \\"Hello, World!\\""',
-            until=lambda *_: False,
+            env_id=self.started_services.env_id,
+            wait=lambda *_: False,
         )
 
     async def then_it_should_exec_command_with_output(self):

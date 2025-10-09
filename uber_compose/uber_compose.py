@@ -165,8 +165,12 @@ class _UberCompose:
             self.last_release_id,
         )
 
-    async def exec(self, env_id: str, container: str, command, extra_env: dict[str, str] = None,
-                   until: Callable | ProcessExit | None = ProcessExit(),
+    async def exec(self,
+                   container: str,
+                   command: str,
+                   extra_env: dict[str, str] = None,
+                   wait: Callable | ProcessExit | None = ProcessExit(),
+                   env_id: str = EMPTY_ID,
                    ) -> ExecResult | ExecTimeout:
         uid = str(uuid4())
         log_file = f'{uid}.log'
@@ -184,7 +188,7 @@ class _UberCompose:
         container = service_state.get_any().labels[Label.SERVICE_NAME]
 
         cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
-        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, until=until)
+        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, wait=wait)
 
         job_result, stdout, stderr = await dc_shell.dc_exec(container, f'cat /tmp/{log_file}')
         if job_result != JobResult.GOOD:

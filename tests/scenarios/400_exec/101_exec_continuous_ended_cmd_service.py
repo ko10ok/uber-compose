@@ -44,9 +44,9 @@ services:
 
     async def when_user_exec_service_cmd(self):
         self.response = await UberCompose().exec(
-            self.started_services.env_id,
             container='s1',
             command='sh -c "sleep 3 && echo \\"Hello, World!\\""',
+            env_id=self.started_services.env_id,
         )
 
     async def then_it_should_exec_command_with_output(self):
