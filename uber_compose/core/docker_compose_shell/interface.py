@@ -196,7 +196,7 @@ class ComposeShellInterface:
         if extra_env is None:
             extra_env = {}
         extra_env_str = ' '.join(
-            f'-e {key}={shlex.quote(value)}' for key, value in extra_env.items()
+            f'-e {key}={shlex.quote(str(value))}' for key, value in extra_env.items()
         )
 
         if env is None:

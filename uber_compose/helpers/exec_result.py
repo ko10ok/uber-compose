@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 
 class ExecResult(NamedTuple):
-    stdout: list
+    stdout: bytes
     cmd: str
 
     def __str__(self):
@@ -14,7 +14,7 @@ class ExecResult(NamedTuple):
 
 
 class ExecTimeout(NamedTuple):
-    stdout: list
+    stdout: bytes
     cmd: str
 
     def __str__(self):

@@ -9,7 +9,7 @@ from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
-from uber_compose.core.sequence_run_types import EMPTY_ID
+from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
@@ -37,7 +37,7 @@ class ReadyEnv:
     release_id: str
 
 
-class _UberCompose:
+class SystemUberCompose:
     def __init__(self,
                  log_policy: LogPolicySet = None,
                  health_policy=UpHealthPolicy(),
@@ -128,7 +128,7 @@ class _UberCompose:
 
         if parallelism_limit == 1:
             self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
-            new_env_id = EMPTY_ID
+            new_env_id = DEFAULT_ENV_ID
 
             services = await self.system_docker_compose.get_running_services()
             services_to_down = list(set(services) - set(self.cfg_constants.non_stop_containers))
@@ -170,7 +170,7 @@ class _UberCompose:
                    command: str,
                    extra_env: dict[str, str] = None,
                    wait: Callable | ProcessExit | None = ProcessExit(),
-                   env_id: str = EMPTY_ID,
+                   env_id: str = DEFAULT_ENV_ID,
                    ) -> ExecResult | ExecTimeout:
         uid = str(uuid4())
         log_file = f'{uid}.log'
@@ -200,14 +200,14 @@ class _UberCompose:
         return ExecResult(stdout=stdout, cmd=command)
 
 
-class UberCompose(_UberCompose):
+class UberCompose(SystemUberCompose):
     """
     UberCompose is client class for managing Docker Compose environments.
     """
     ...
 
 
-class TheUberCompose(_UberCompose, metaclass=SingletonMeta):
+class TheUberCompose(SystemUberCompose, metaclass=SingletonMeta):
     """
     TheUberCompose is unified instance of env manager for all scenarios.
     """
