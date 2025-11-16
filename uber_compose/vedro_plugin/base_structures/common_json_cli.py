@@ -17,6 +17,8 @@ class CommandResult:
     cmd: str
     env: dict[str, str]
 
+    def has_no_errors(self) -> bool:
+        return self.stderr == []
 
 class LogLevels:
     TRACE = 'trace'
