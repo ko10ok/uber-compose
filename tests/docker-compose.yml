@@ -1,6 +1,6 @@
 services:
   test-docker-daemon:
-    image: docker:dind
+    image: docker:28.3.2-dind-alpine3.22
     privileged: true
     environment:
       - DOCKER_TLS_CERTDIR=
