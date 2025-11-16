@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 from setuptools import find_packages
@@ -10,7 +11,8 @@ def find_required():
 
 
 def get_version(filename='uber_compose/version'):
-    return open(filename, "r").read().strip()
+    ext_version = os.environ.get('EXT_VERSION', '')
+    return open(filename, "r").read().strip() + ext_version
 
 
 HERE = pathlib.Path(__file__).parent
