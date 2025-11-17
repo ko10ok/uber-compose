@@ -30,7 +30,8 @@ class LogLevels:
     PANIC = 'panic'
 
 
-OutputType = tuple[list[str | dict], list[str | dict]]
+StdOutErrType = list[str | dict]
+OutputType = tuple[StdOutErrType, StdOutErrType]
 
 
 class JsonParser:
@@ -113,22 +114,28 @@ json_parser = JsonParser()
 class CommonJsonCli:
     def __init__(
         self,
-        parse_json_logs: Callable[[bytes], tuple[list[str | dict], list[str | dict]]] = json_parser.parse_output_to_json,
-        cli_client: TheUberCompose = None
+        parse_json_logs: Callable[[bytes], OutputType] = json_parser.parse_output_to_json,
+        result_factory: Callable[[StdOutErrType, StdOutErrType, str, dict, ...], CommandResult] = CommandResult,
+        cli_client: TheUberCompose = None,
     ):
         self._cli_client: TheUberCompose = cli_client or TheUberCompose()
         self._parse_json_logs = parse_json_logs
+        self._result_factory = result_factory
 
-    def _make_result(self, cmd: str, env: dict[str, str], logs: bytes) -> CommandResult:
+    def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> CommandResult:
         stdout, stderr = self._parse_json_logs(logs)
-        return CommandResult(stdout=stdout, stderr=stderr, cmd=cmd, env=env)
+        return self._result_factory(stdout=stdout, stderr=stderr, cmd=cmd, env=env, **kwargs)
 
     async def exec(self,
                    container: str,
                    command: str,
                    extra_env: dict[str, str] = None,
                    wait: Callable | ProcessExit | None = ProcessExit(),
+                   command_result_extra: dict = None,
                    ) -> CommandResult:
+        if command_result_extra is None:
+            command_result_extra = {}
+
         result = await self._cli_client.exec(
             container=container,
             command=command,
@@ -138,5 +145,6 @@ class CommonJsonCli:
         return self._make_result(
             cmd=command,
             env=extra_env or {},
-            logs=result.stdout
+            logs=result.stdout,
+            **command_result_extra,
         )
