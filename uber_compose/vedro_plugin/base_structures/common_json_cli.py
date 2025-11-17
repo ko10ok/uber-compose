@@ -30,14 +30,16 @@ class LogLevels:
     PANIC = 'panic'
 
 
-OutputType = tuple[list[str], list[str]]
+OutputType = tuple[list[str | dict], list[str | dict]]
 
 
 class JsonParser:
-    def __init__(self, log_level_key: str = 'level',
-                 full_stdout: bool = True,
+    def __init__(self, log_level_key: str | list[str] = 'level',
                  stderr_log_levels: Optional[List[str]] = None,
-                 skips: list[str] = None):
+                 full_stdout: bool = True,
+                 dict_output: bool = False,
+                 skips: list[str] = None,
+                 skips_warns: bool = False):
         self.log_level_key = log_level_key
         self.stderr_log_levels = stderr_log_levels or [
             LogLevels.PANIC, LogLevels.FATAL,
@@ -45,6 +47,35 @@ class JsonParser:
         ]
         self.skips = skips or []
         self.full_stdout = full_stdout
+        self.json_output = False
+        self.dict_output = dict_output
+        self.skips_warns = skips_warns
+
+    def should_skips(self, log_line: str) -> bool:
+        for skip in self.skips:
+            if re.search(skip, log_line) or skip in log_line:
+                if self.skips_warns:
+                    warn('Skipping log line: {}'.format(log_line))
+                return True
+        return False
+
+    def format_output(self, log_line: str) -> str | dict:
+        if self.dict_output:
+            return json.loads(log_line)
+        return log_line
+
+    def format_raw_output(self, log_line: str) -> str | dict:
+        if self.dict_output:
+            return {'raw': log_line}
+        return log_line
+
+    def append_records(self, stdout: list, stderr: list, record: str | dict, is_error: bool):
+        if is_error:
+            stderr.append(record)
+            if self.full_stdout:
+                stdout.append(record)
+        else:
+            stdout.append(record)
 
     def parse_output_to_json(self, logs: bytes) -> OutputType:
         stdout = []
@@ -54,25 +85,25 @@ class JsonParser:
         for log_line in log_strs:
             log_line = log_line.strip()
             if log_line:
+                if self.should_skips(log_line):
+                    record = self.format_raw_output(log_line)
+                    stdout.append(record)
+                    continue
+
                 try:
                     json_obj = json.loads(log_line)
                     json_str = json.dumps(json_obj, ensure_ascii=False)
-                    log_level = json_obj.get(self.log_level_key, None)
-                    if log_level is None or log_level in self.stderr_log_levels:
-                        stderr.append(json_str)
-                        if self.full_stdout:
-                            stdout.append(json_str)
-                    else:
-                        stdout.append(json_str)
+                    log_level = json_obj[self.log_level_key]
+
+                    is_error = log_level in self.stderr_log_levels
+
+                    record = self.format_output(json_str)
+                    self.append_records(stdout=stdout, stderr=stderr, record=record, is_error=is_error)
+
                 except json.JSONDecodeError:
-                    for skip in self.skips:
-                        if re.search(skip, log_line) or skip in log_line:
-                            warn('Skipping log line: {}'.format(log_line))
-                            break
-                    else:
-                        if self.full_stdout:
-                            stdout.append(log_line)
-                        stderr.append(log_line)
+                    record = self.format_raw_output(log_line)
+                    self.append_records(stdout=stdout, stderr=stderr, record=record, is_error=True)
+
         return stdout, stderr
 
 
