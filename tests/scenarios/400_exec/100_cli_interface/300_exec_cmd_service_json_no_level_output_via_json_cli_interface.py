@@ -42,7 +42,7 @@ services:
         )
 
     async def given_command(self):
-        self.cmd = 'echo {\\"blahbla\\": \\"stdout\\", \\"A\\":$AAA}'
+        self.cmd = 'echo {\\"level\\": \\"info\\", \\"blahbla\\": \\"stdout\\", \\"A\\":$AAA}'
         self.env = {'AAA': '1'}
 
     async def when_user_exec_service_cmd(self):
@@ -53,7 +53,7 @@ services:
         )
 
     async def then_it_should_exec_command_with_output(self):
-        self.expected_log_line = json.dumps({"blahbla": "stdout", "A": 1})
+        self.expected_log_line = json.dumps({"level": "info", "blahbla": "stdout", "A": 1})
         assert isinstance(self.response, CommandResult)
         assert self.response.stdout == schema.list % [self.expected_log_line]
-        assert self.response.stderr == schema.list % [self.expected_log_line]
+        assert self.response.stderr == schema.list.len(0)
