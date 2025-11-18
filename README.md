@@ -38,7 +38,11 @@ uber-compose
 
 ## 🛠️ How to Use with Vedro
 
-### 1. Enable the Plugin in vedro.cfg.py
+### 1. Setup tests container params and utils
+
+See **[E2E Test Setup](docs/E2E_SETUP.md)** for configure test container for E2E testing
+
+### 2. Enable the Plugin in vedro.cfg.py
 
 ```python
 from uber_compose import VedroUberCompose, ComposeConfig, Environment, Service
@@ -67,7 +71,7 @@ class Config(vedro.Config):
             }
 ```
 
-### 2. Run Your Tests
+### 3. Run Your Tests
 
 Uber-Compose will:
 
@@ -75,9 +79,27 @@ Uber-Compose will:
 - Ensure they are fully running before tests begin
 - Restart conflicting services if configurations changed
 
-Everything is handled for you — zero manual setup!
+Everything is handled for you!
 
-### 3. Command Line Options
+Start the test environment:
+
+```bash
+# Start test container and Docker daemon
+docker-compose up -d e2e-tests dockersock
+
+# Run tests
+docker-compose exec e2e-tests vedro run scenarios/
+```
+
+Or wrap it with Make like:
+
+```bash
+make up                    # Start containers
+make e2e-run args='scenarios/'   # Run tests
+```
+
+
+### Command Line Options
 
 You can customize behavior dynamically:
 
@@ -149,6 +171,7 @@ This approach ensures each test gets exactly the infrastructure it needs, improv
 
 ## 📚 Library Usage
 
+- **[E2E Test Setup](docs/E2E_SETUP.md)** - Configure test container for E2E testing
 - **[CLI Usage Guide](docs/CLI_USAGE.md)** - Guide for using CommonJsonCli with JSON log parsing
 - **[X-Migration](docs/X_MIGRATION.md)** - Extended service initialization and migration commands
 
