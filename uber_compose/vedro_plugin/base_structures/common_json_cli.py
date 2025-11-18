@@ -2,8 +2,11 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Callable
+from typing import Generic
 from typing import List
 from typing import Optional
+from typing import Type
+from typing import TypeVar
 from warnings import warn
 
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
@@ -110,19 +113,26 @@ class JsonParser:
 
 json_parser = JsonParser()
 
+TCommandResult = TypeVar('TCommandResult', bound=CommandResult)
 
-class CommonJsonCli:
+
+class CommonJsonCli(Generic[TCommandResult]):
+    """
+    Client for executing commands in Docker containers with JSON log parsing.
+
+    See docs/CLI_USAGE.md for detailed documentation and examples.
+    """
     def __init__(
         self,
         parse_json_logs: Callable[[bytes], OutputType] = json_parser.parse_output_to_json,
-        result_factory: Callable[[StdOutErrType, StdOutErrType, str, dict, ...], CommandResult] = CommandResult,
+        result_factory: Type[TCommandResult] = CommandResult,
         cli_client: TheUberCompose = None,
     ):
         self._cli_client: TheUberCompose = cli_client or TheUberCompose()
         self._parse_json_logs = parse_json_logs
         self._result_factory = result_factory
 
-    def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> CommandResult:
+    def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> TCommandResult:
         stdout, stderr = self._parse_json_logs(logs)
         return self._result_factory(stdout=stdout, stderr=stderr, cmd=cmd, env=env, **kwargs)
 
@@ -132,7 +142,7 @@ class CommonJsonCli:
                    extra_env: dict[str, str] = None,
                    wait: Callable | ProcessExit | None = ProcessExit(),
                    command_result_extra: dict = None,
-                   ) -> CommandResult:
+                   ) -> TCommandResult:
         if command_result_extra is None:
             command_result_extra = {}
 

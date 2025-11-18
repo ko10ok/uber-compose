@@ -12,7 +12,7 @@ class Scenario(vedro.Scenario):
     def given_mocked_client(self):
         self.cli_client_mock = Mock()
 
-        # Логи содержат ошибки (error, warning) и обычные сообщения
+        # Logs contain errors (error, warning) and regular messages
         self.result_logs = b'''{"level": "info", "message": "Starting process"}
 {"level": "warning", "message": "Low memory detected"}
 {"level": "error", "message": "Database connection failed"}
@@ -52,7 +52,7 @@ class Scenario(vedro.Scenario):
         assert isinstance(self.result, CommandResult)
 
     def then_result_should_contain_all_logs_in_stdout(self):
-        # В stdout должны быть все логи (full_stdout=True по умолчанию)
+        # All logs should be in stdout (full_stdout=True by default)
         assert self.result.stdout == schema.list([
             schema.str.contains('Starting process'),
             schema.str.contains('Low memory detected'),
@@ -62,7 +62,7 @@ class Scenario(vedro.Scenario):
         ]).len(5)
 
     def then_result_should_contain_errors_in_stderr(self):
-        # В stderr должны быть только ошибки (warning, error, fatal)
+        # Only errors should be in stderr (warning, error, fatal)
         assert self.result.stderr == schema.list([
             schema.str.contains('Low memory detected'),
             schema.str.contains('Database connection failed'),

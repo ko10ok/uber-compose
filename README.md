@@ -147,6 +147,17 @@ This approach ensures each test gets exactly the infrastructure it needs, improv
 
 ---
 
+## 📚 Library Usage
+
+- **[CLI Usage Guide](docs/CLI_USAGE.md)** - Guide for using CommonJsonCli with JSON log parsing
+- **[X-Migration](docs/X_MIGRATION.md)** - Extended service initialization and migration commands
+
+## 🛠️ Development Guide
+
+- **[Release Tags & Versioning](docs/RELEASE_TAGS.md)** - Versioning and release tagging guide
+
+---
+
 ## ✔️ Ideal For
 
 - ✅ End-to-End (E2E) testing
