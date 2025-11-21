@@ -20,8 +20,87 @@ class CommandResult:
     cmd: str
     env: dict[str, str]
 
-    def has_no_errors(self) -> bool:
+    def _format_value(self, key, value, indent_level=1, print_new_line=True):
+        """Formats value considering its type and nesting level."""
+        indent = "    " * indent_level
+
+        if key:
+            field_name_len = len(indent) + len(key) + len(" = ")
+            prefix = f"{indent}{key} = "
+        else:
+            field_name_len = 0
+            prefix = ""
+
+        if isinstance(value, str):
+            if print_new_line and '\n' in value:
+                # Multiline string with triple quotes
+                lines = value.split('\n')
+                continuation_indent = " " * field_name_len
+                formatted_lines = ["'''"] + [f"{continuation_indent}{line}" for line in lines] + [
+                    f'{continuation_indent}' + "'''"]
+                return prefix + "\n".join(formatted_lines)
+            # Single-line string with single quotes
+            return prefix + f"'{value}'"
+
+        if isinstance(value, list):
+            if len(value) == 0:
+                # Empty list on a single line
+                return prefix + "[]"
+            elif len(value) == 1:
+                # Single-element list - check if multiline formatting is needed
+                item = value[0]
+                if isinstance(item, dict) and len(item) > 2:
+                    # Dict with 3+ keys - multiline format
+                    formatted_item = self._format_value(None, item, indent_level + 1)
+                    return prefix + "[\n" + f"{indent}    {formatted_item}\n{indent}]"
+                else:
+                    # Simple element - single-line format
+                    return prefix + repr(value)
+            else:
+                # Multiline output for lists with length > 1
+                items = [f"{indent}    {self._format_value(None, item, indent_level + 1)}" for item in value]
+                return prefix + "[\n" + ",\n".join(items) + f"\n{indent}]"
+
+        elif isinstance(value, dict):
+            if len(value) <= 2:
+                # Single line for dicts with <= 2 keys
+                return prefix + repr(value)
+            else:
+                # Multiline output for dicts with > 2 keys
+                items = [
+                    f"{indent}    {repr(k)}: {self._format_value(None, v, indent_level + 1)}"
+                    for k, v in value.items()
+                ]
+                return prefix + "{\n" + ",\n".join(items) + f"\n{indent}}}"
+
+        else:
+            return prefix + repr(value)
+
+    def __str__(self):
+        stderr_key = "stderr"
+        if not self._has_no_errors():
+            stderr_key = "❌ stderr"
+        fields = [
+            self._format_value("stdout", self.stdout),
+            self._format_value(stderr_key, self.stderr),
+            self._format_value("cmd", self.cmd, print_new_line=True),
+            self._format_value("env", self.env),
+        ]
+
+        return f"{self.__class__.__name__}(\n" + ",\n".join(fields) + "\n)"
+
+    def _has_no_errors(self) -> bool:
         return self.stderr == []
+
+    def __bool__(self):
+        has_no_errors = self._has_no_errors()
+        if not has_no_errors:
+            raise AssertionError(f'Command result contains errors:\n {str(self)}')
+        return True
+
+    def has_no_errors(self):
+        return self
+
 
 class LogLevels:
     TRACE = 'trace'
@@ -122,6 +201,7 @@ class CommonJsonCli(Generic[TCommandResult]):
 
     See docs/CLI_USAGE.md for detailed documentation and examples.
     """
+
     def __init__(
         self,
         parse_json_logs: Callable[[bytes], OutputType] = json_parser.parse_output_to_json,

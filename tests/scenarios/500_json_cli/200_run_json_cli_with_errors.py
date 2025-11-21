@@ -70,8 +70,8 @@ class Scenario(vedro.Scenario):
         ]).len(3)
 
     def then_result_should_have_errors(self):
-        assert not self.result.has_no_errors()
         assert len(self.result.stderr) > 0
+        assert not self.result._has_no_errors()
 
     def then_result_should_contain_command_info(self):
         assert self.result.cmd == self.command
