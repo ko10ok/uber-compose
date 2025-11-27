@@ -4,6 +4,7 @@ from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
+from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
@@ -178,6 +179,8 @@ class SystemUberCompose:
         dc_shell = self.system_docker_compose.get_dc_shell()
 
         dc_state = await dc_shell.dc_state()
+        assert isinstance(dc_state, ServicesComposeState), f'Got error: {dc_state}'
+
         service_state = dc_state.get_all_for(
             lambda service_state: service_state.check(Label.ENV_ID, env_id)
                                   and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)

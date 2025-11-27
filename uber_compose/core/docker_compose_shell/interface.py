@@ -106,7 +106,7 @@ class ComposeShellInterface:
 
         if process.returncode != 0:
             print(f"Can't get container's status {stdout} {stderr}")
-            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}')
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nExtraEnvs:{env}')
 
         state_result = ServicesComposeState(stdout.decode('utf-8'))
         self.logger.system_commands_output(state_result.as_rich_text())

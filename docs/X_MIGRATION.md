@@ -30,7 +30,7 @@ services:
       - after_all: echo "All services ready"
 ```
 
-### Execute on Another Service
+### Execute in Another Service
 
 ```yaml
 services:
@@ -40,9 +40,9 @@ services:
   db:
     image: postgres:14
     x-migration:
-      # Execute on app before db starts
+      # Execute in app before db starts
       - before_start: [[python manage.py check], app]
-      # Execute on app after db starts
+      # Execute in app after db starts
       - after_start: [[python manage.py migrate], app]
 ```
 
@@ -104,7 +104,7 @@ services:
   db:
     image: postgres:14
     x-migration:
-      # Execute migration on app after db starts
+      # Execute migration in app after db starts
       - after_start: [[python manage.py migrate], app]
 ```
 
@@ -149,7 +149,7 @@ services:
       db:
         condition: service_healthy
     x-migration:
-      # Check before start on db
+      # Check before start in db
       - before_start: [[psql -c "SELECT 1;"], db]
       # Migration after start
       - after_start: python manage.py migrate
@@ -190,20 +190,3 @@ x-migration:
 ```
 
 Use only: `before_all`, `before_start`, `after_start`, `after_healthy`, `after_all`
-
-## Usage in Tests
-
-```python
-from uber_compose import UberCompose, Environment, Service
-
-# Migrations execute automatically
-await UberCompose().up(
-    compose_files='docker-compose.yml',
-    config_template=Environment(
-        Service('db'),
-        Service('app'),
-    )
-)
-```
-
-After `up()` completes, all migrations are applied according to service startup order and dependencies.

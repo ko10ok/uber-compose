@@ -9,6 +9,8 @@ from typing import Type
 from typing import TypeVar
 from warnings import warn
 
+from uber_compose.uber_compose import SystemUberCompose
+
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.uber_compose import TheUberCompose
 
@@ -42,7 +44,7 @@ class CommandResult:
             # Single-line string with single quotes
             return prefix + f"'{value}'"
 
-        if isinstance(value, list):
+        elif isinstance(value, list):
             if len(value) == 0:
                 # Empty list on a single line
                 return prefix + "[]"
@@ -206,9 +208,9 @@ class CommonJsonCli(Generic[TCommandResult]):
         self,
         parse_json_logs: Callable[[bytes], OutputType] = json_parser.parse_output_to_json,
         result_factory: Type[TCommandResult] = CommandResult,
-        cli_client: TheUberCompose = None,
+        cli_client: SystemUberCompose = None,
     ):
-        self._cli_client: TheUberCompose = cli_client or TheUberCompose()
+        self._cli_client: SystemUberCompose = cli_client or TheUberCompose()
         self._parse_json_logs = parse_json_logs
         self._result_factory = result_factory
 

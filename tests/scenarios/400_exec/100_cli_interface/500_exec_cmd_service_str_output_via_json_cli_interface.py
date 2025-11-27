@@ -9,6 +9,7 @@ from uber_compose import CommandResult
 from uber_compose import CommonJsonCli
 from uber_compose import Environment
 from uber_compose import Service
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
@@ -44,7 +45,7 @@ services:
         self.env = {'AAA': '1'}
 
     async def when_user_exec_service_cmd(self):
-        self.response = await CommonJsonCli().exec(
+        self.response = await CommonJsonCli(cli_client=UberCompose()).exec(
             container='s1',
             command=self.cmd,
             extra_env=self.env,
@@ -54,4 +55,4 @@ services:
         self.expected_log_line = 'Hello, World! 1'
         assert isinstance(self.response, CommandResult)
         assert self.response.stdout == schema.list % [self.expected_log_line]
-        assert self.response.stderr == schema.list % [self.expected_log_line ]
+        assert self.response.stderr == schema.list % [self.expected_log_line]
