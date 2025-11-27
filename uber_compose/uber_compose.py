@@ -94,7 +94,7 @@ class SystemUberCompose:
         if broken_services:
             self.logger.stage(
                 Text(
-                    f'Not started or broken containers in current environment: ', style=Style.suspicious
+                    f'Not started or not ready containers in current environment: ', style=Style.suspicious
                 ).append(Text(f'{broken_services}', style=Style.regular))
             )
         if len(services_state) != 0 and len(broken_services) == 0 and not force_restart:
@@ -121,8 +121,10 @@ class SystemUberCompose:
                 f'Previous state {services_state.as_json()}', style=Style.info
             ))
 
+
         _for = f' {config_template.description}' if config_template.description else ''
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
+        self.logger.stage_details(f'Use compose files: {compose_files}')
 
         new_env_id = get_new_env_id()
         self.last_release_id = release_id
