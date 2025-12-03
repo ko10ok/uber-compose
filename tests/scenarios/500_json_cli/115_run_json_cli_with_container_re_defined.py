@@ -8,7 +8,7 @@ from uber_compose.helpers.exec_result import ExecResult
 
 
 class Scenario(vedro.Scenario):
-    subject = 'run command through CommonJsonCli with container predefined'
+    subject = 'run command through CommonJsonCli with container re defined'
 
     def given_mocked_client(self):
         self.cli_client_mock = Mock()
@@ -22,7 +22,7 @@ class Scenario(vedro.Scenario):
         self.cli_client_mock.exec = AsyncMock(return_value=self.mock_exec_result)
 
     def given_container_predefined(self):
-        self.container = 'test_container'
+        self.container = 'blahbla_test_container'
 
     def given_common_json_cli(self):
         self.json_cli = CommonJsonCli(
@@ -31,11 +31,13 @@ class Scenario(vedro.Scenario):
         )
 
     def given_command_parameters(self):
+        self.redefined_container = 'test_container'
         self.command = 'echo "test"'
         self.extra_env = {'TEST_VAR': 'test_value'}
 
     async def when_user_executes_command(self):
         self.result = await self.json_cli.exec(
+            container=self.redefined_container,
             command=self.command,
             extra_env=self.extra_env
         )
@@ -45,7 +47,7 @@ class Scenario(vedro.Scenario):
 
     def then_cli_client_exec_should_be_called_with_correct_params(self):
         self.cli_client_mock.exec.assert_called_with(
-            container=self.container,
+            container=self.redefined_container,
             command=self.command,
             extra_env=self.extra_env,
             wait=ANY,
