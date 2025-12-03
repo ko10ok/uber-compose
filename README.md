@@ -45,7 +45,7 @@ See **[E2E Test Setup](docs/E2E_CONTAINER_SETUP.md)** for configure test contain
 ### 2. Enable the Plugin in vedro.cfg.py
 
 ```python
-from uber_compose import VedroUberCompose, ComposeConfig, Environment, Service
+from uber_compose import VedroUberCompose, ComposeConfig, Environment, Service, DEFAULT_ENV_DESCRIPTION
 
 class Config(vedro.Config):
     class Plugins(vedro.Config.Plugins):
@@ -58,6 +58,7 @@ class Config(vedro.Config):
                 Service("db"),
                 # or simply
                 "api",
+                description=DEFAULT_ENV_DESCRIPTION
             )
 
             # Define Compose profiles
@@ -70,6 +71,8 @@ class Config(vedro.Config):
                 ),
             }
 ```
+
+See **[Uber-Compose vedro config](docs/UBER_COMPOSE_VEDRO_CONFIG.md)** for fine tune uber-compose plugin in vedro.cfg.py
 
 ### 3. Run Your Tests
 

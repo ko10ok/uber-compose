@@ -5,7 +5,7 @@ from typing import Iterator
 from typing import List
 from typing import NamedTuple
 
-DEFAULT_ENV = 'DEFAULT'
+DEFAULT_ENV_DESCRIPTION = 'DEFAULT'
 
 
 class Environments:

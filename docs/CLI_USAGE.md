@@ -41,6 +41,9 @@ print(result.has_no_errors())  # True if no errors
 
 ### With Environment Variables
 
+By default, any executed command uses env variables set in container. 
+You can override it by adding extra environment variables via extra_env.
+
 ```python
 async def run_with_env(self) -> CommandResult:
     return await self.exec(
@@ -51,6 +54,23 @@ async def run_with_env(self) -> CommandResult:
 ```
 
 ---
+
+### Setup Container For All Commands
+
+```python
+from uber_compose import CommonJsonCli, CommandResult
+
+class MyCli(CommonJsonCli):
+    def __init__(self):
+        super().__init__(container = 'app_container')
+
+    async def run_command(self) -> CommandResult:
+        return await self.exec(command='my-app --option value')
+    
+    async def run_another_command(self) -> CommandResult:
+        return await self.exec(command='my-app-another-part --any-option value2')
+
+```
 
 ## Extended Command Result
 
@@ -246,17 +266,18 @@ Non-JSON lines are treated as errors and:
 ## Complete Example
 
 ```python
+import time
+
 from dataclasses import dataclass
 from uber_compose import CommonJsonCli, CommandResult, JsonParser
 
+
 @dataclass
 class MyCommandResult(CommandResult):
-    execution_time: float = 0.0
+    start_time: float = 0.0
 
 class AppCli(CommonJsonCli[MyCommandResult]):
-    def __init__(self):
-        self.container = 'my_app'
-        
+    def __init__(self):        
         # Configure parser
         parser = JsonParser(
             dict_output=True,
@@ -265,20 +286,17 @@ class AppCli(CommonJsonCli[MyCommandResult]):
         )
         
         super().__init__(
+            container = 'my_app',
             parse_json_logs=parser.parse_output_to_json,
             result_factory=MyCommandResult
         )
     
     async def process_data(self, data_path: str) -> MyCommandResult:
-        import time
-        start = time.time()
-        
         result = await self.exec(
-            container=self.container,
             command=f'process --file {data_path}',
             extra_env={'LOG_FORMAT': 'json'},
             command_result_extra={
-                'execution_time': time.time() - start
+                'start_time': time.time()
             }
         )
         
@@ -288,48 +306,5 @@ class AppCli(CommonJsonCli[MyCommandResult]):
 cli = AppCli()
 result = await cli.process_data('/data/input.csv')
 
-if result.has_no_errors():
-    print(f"Processing completed in {result.execution_time:.2f}s")
-    for log in result.stdout:
-        if isinstance(log, dict) and log.get('level') == 'info':
-            print(f"INFO: {log.get('msg')}")
-else:
-    print("Errors encountered:")
-    for error in result.stderr:
-        print(error)
-```
-
----
-
-## Testing
-
-Example test scenario:
-
-```python
-import vedro
-from unittest.mock import AsyncMock, Mock
-from d42 import schema
-
-class Scenario(vedro.Scenario):
-    subject = 'run command through CommonJsonCli'
-
-    def given_mocked_client(self):
-        self.cli_client_mock = Mock()
-        self.result_logs = b'{"level": "info", "msg": "Success"}'
-        self.mock_exec_result = Mock(stdout=self.result_logs)
-        self.cli_client_mock.exec = AsyncMock(return_value=self.mock_exec_result)
-
-    def given_common_json_cli(self):
-        self.json_cli = CommonJsonCli(cli_client=self.cli_client_mock)
-
-    async def when_user_executes_command(self):
-        self.result = await self.json_cli.exec(
-            container='test_container',
-            command='echo "test"'
-        )
-
-    def then_result_should_contain_parsed_stdout(self):
-        assert self.result.stdout == schema.list([
-            schema.str.contains('Success')
-        ]).len(1)
+assert result.has_no_errors()
 ```
