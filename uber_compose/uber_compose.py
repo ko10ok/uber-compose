@@ -4,6 +4,8 @@ from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
+
+from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 
 from uber_compose.core.constants import Constants
@@ -172,6 +174,7 @@ class SystemUberCompose:
                    extra_env: dict[str, str] = None,
                    wait: Callable | ProcessExit | None = ProcessExit(),
                    env_id: str = DEFAULT_ENV_ID,
+                   timeout: TimeOutCheck = None,
                    ) -> ExecResult | ExecTimeout:
         uid = str(uuid4())
         log_file = f'{uid}.log'
@@ -191,7 +194,7 @@ class SystemUberCompose:
         container = service_state.get_any().labels[Label.SERVICE_NAME]
 
         cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
-        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, wait=wait)
+        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, wait=wait, timeout=timeout)
 
         job_result, stdout, stderr = await dc_shell.dc_exec(container, f'cat /tmp/{log_file}')
         if job_result != JobResult.GOOD:

@@ -40,6 +40,12 @@ class ProcessExit:
         return isinstance(other, ProcessExit)
 
 
+@dataclass(frozen=True)
+class TimeOutCheck:
+    attempts: int
+    delay_s: float
+
+
 class ComposeShellInterface:
     def __init__(self,
                  compose_files: str,
@@ -318,6 +324,7 @@ class ComposeShellInterface:
                                   cmd: str,
                                   extra_env: dict[str, str] = None,
                                   wait: Callable | ProcessExit | None = ProcessExit(),
+                                  timeout: TimeOutCheck = None,
                                   break_on_timeout: bool = True,
                                   kill_before: bool = True,
                                   kill_after: bool = True,
@@ -326,6 +333,12 @@ class ComposeShellInterface:
                                   ) -> ExecResult:
         cmd = cmd.strip()
         cmd_name = parse_process_command_name(cmd)
+
+        if timeout is None:
+            timeout = TimeOutCheck(
+                attempts=Constants().exec_pids_check_attempts_count,
+                delay_s=Constants().exec_pids_check_retry_delay,
+            )
 
         if kill_before:
             await self.dc_exec(container, f'killall {cmd_name}')
@@ -345,8 +358,8 @@ class ComposeShellInterface:
         if wait == ProcessExit():
             self.logger.stage_info(Text('Retrieving process IDs wait completion', style=Style.info))
             process_ids = await retry(
-                attempts=Constants().exec_pids_check_attempts_count,
-                delay=Constants().exec_pids_check_retry_delay,
+                attempts=timeout.attempts,
+                delay=timeout.delay_s,
                 until=lambda pids: pids != [] and pids != [-1]
             )(self._dc_exec_process_pids)(container, cmd)
             self.logger.stage_debug(f'pids retrieved {process_ids}')
@@ -360,8 +373,8 @@ class ComposeShellInterface:
                     check_done_result = False
                     if break_on_timeout:
                         raise ExecWasntSuccesfullyDone(
-                            f'\nProcess\n{cmd}\nwas not finished in {Constants().exec_pids_check_attempts_count}x'
-                            f'{Constants().exec_pids_check_retry_delay} seconds'
+                            f'\nProcess\n{cmd}\nwas not finished in {timeout.attempts}x'
+                            f'{timeout.delay_s} seconds'
                         )
         elif isinstance(wait, Callable):
             if asyncio.iscoroutinefunction(wait):

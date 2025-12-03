@@ -141,3 +141,30 @@ Verify `HOST_PROJECT_ROOT_DIRECTORY` is set correctly:
 ```bash
 docker-compose exec e2e-tests env | grep HOST_PROJECT_ROOT_DIRECTORY
 ```
+
+## Advanced Configuration
+
+Optional environment variables for fine-tuning Uber-Compose behavior.
+
+| Variable | Default | Purpose | Use Case |
+|----------|---------|---------|----------|
+| `LOG_POLICY` | `DEFAULT` | Control logging verbosity | Primary control via `--uc-v` parameter at runtime. Set to `VERBOSE` for detailed logs during debugging.  |
+| `TMP_ENVS_DIRECTORY` | `/tmp/uc-envs` | Temporary environment files storage | Change if `/tmp` has limited space or specific requirements |
+| `PROJECT_ROOT_DIRECTORY` | `/project` | Container project root path | Set when project mounted to non-standard location |
+| `DOCKER_COMPOSE_FILES_SCAN_DEPTH` | `2` | Directory scan depth for compose files | Increase if compose files nested deeper than 2 levels |
+| `DOCKER_COMPOSE_EXTRA_EXEC_PARAMS` | `-T` | Extra parameters for `docker-compose exec` | Modify to add flags like `--user` or remove `-T` for TTY |
+| `CLI_COMPOSE_UTIL` | `None` | Override compose CLI path | Set when using standalone `docker-compose` binary. Primary uses `docker compose` |
+| `EXEC_PIDS_CHECK_ATTEMPTS_COUNT` | `150` | Process completion check attempts during migrations | Increase for slow systems or long migration times |
+| `EXEC_PIDS_CHECK_RETRY_DELAY` | `1` | Delay (seconds) between process completion checks during migrations | Increase to reduce CPU usage on slow systems |
+| `IGNORE_PIDOF_UNEXISTANCE` | `True` | Ignore missing `pidof` utility | Set to `False` if strict process checking required |
+
+**Example:**
+```yaml
+environment:
+  # Deeper directory scanning: only project root directory
+  - DOCKER_COMPOSE_FILES_SCAN_DEPTH=1  
+  
+  # Extended monitoring for slow systems
+  - EXEC_PIDS_CHECK_ATTEMPTS_COUNT=300
+  - EXEC_PIDS_CHECK_RETRY_DELAY=2
+```

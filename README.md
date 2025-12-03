@@ -40,7 +40,7 @@ uber-compose
 
 ### 1. Setup tests container params and utils
 
-See **[E2E Test Setup](docs/E2E_SETUP.md)** for configure test container for E2E testing
+See **[E2E Test Setup](docs/E2E_CONTAINER_SETUP.md)** for configure test container for E2E testing
 
 ### 2. Enable the Plugin in vedro.cfg.py
 
@@ -171,7 +171,7 @@ This approach ensures each test gets exactly the infrastructure it needs, improv
 
 ## 📚 Library Usage
 
-- **[E2E Test Setup](docs/E2E_SETUP.md)** - Configure test container for E2E testing
+- **[E2E Test Setup](docs/E2E_CONTAINER_SETUP.md)** - Configure test container for E2E testing
 - **[CLI Usage Guide](docs/CLI_USAGE.md)** - Guide for using CommonJsonCli with JSON log parsing
 - **[X-Migration](docs/X_MIGRATION.md)** - Extended service initialization and migration commands
 

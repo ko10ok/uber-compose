@@ -9,6 +9,9 @@ from typing import Type
 from typing import TypeVar
 from warnings import warn
 
+from uber_compose.helpers.exec_result import ExecResult
+
+from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.uber_compose import SystemUberCompose
 
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
@@ -209,10 +212,12 @@ class CommonJsonCli(Generic[TCommandResult]):
         parse_json_logs: Callable[[bytes], OutputType] = json_parser.parse_output_to_json,
         result_factory: Type[TCommandResult] = CommandResult,
         cli_client: SystemUberCompose = None,
+        timeout: TimeOutCheck = TimeOutCheck(attempts=10, delay_s=1),
     ):
         self._cli_client: SystemUberCompose = cli_client or TheUberCompose()
         self._parse_json_logs = parse_json_logs
         self._result_factory = result_factory
+        self._timeout = timeout
 
     def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> TCommandResult:
         stdout, stderr = self._parse_json_logs(logs)
@@ -224,16 +229,23 @@ class CommonJsonCli(Generic[TCommandResult]):
                    extra_env: dict[str, str] = None,
                    wait: Callable | ProcessExit | None = ProcessExit(),
                    command_result_extra: dict = None,
+                   timeout: TimeOutCheck = None,
                    ) -> TCommandResult:
         if command_result_extra is None:
             command_result_extra = {}
+
+        if timeout is None:
+            timeout = self._timeout
 
         result = await self._cli_client.exec(
             container=container,
             command=command,
             extra_env=extra_env,
             wait=wait,
+            timeout=timeout,
         )
+        assert isinstance(result, ExecResult), f'Expected successful command completion, got:\n{result}\nTimeout settings: attempts={timeout.attempts}, delay_s={timeout.delay_s}'
+
         return self._make_result(
             cmd=command,
             env=extra_env or {},

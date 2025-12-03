@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, Mock
 from unittest.mock import ANY
 from uber_compose import CommonJsonCli
 from uber_compose.vedro_plugin.base_structures.common_json_cli import CommandResult
+from uber_compose.helpers.exec_result import ExecResult
 
 
 class Scenario(vedro.Scenario):
@@ -16,7 +17,8 @@ class Scenario(vedro.Scenario):
 {"level": "debug", "message": "Processing data"}
 {"level": "info", "message": "Completed successfully"}'''
 
-        self.mock_exec_result = Mock(stdout=self.result_logs)
+        # Use ExecResult instead of Mock
+        self.mock_exec_result = ExecResult(stdout=self.result_logs, cmd='test_command')
         self.cli_client_mock.exec = AsyncMock(return_value=self.mock_exec_result)
 
     def given_common_json_cli(self):
@@ -42,7 +44,8 @@ class Scenario(vedro.Scenario):
             container=self.container,
             command=self.command,
             extra_env=self.extra_env,
-            wait=ANY
+            wait=ANY,
+            timeout=ANY
         )
 
     def then_result_should_be_command_result(self):
