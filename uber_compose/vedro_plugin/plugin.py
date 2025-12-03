@@ -3,6 +3,8 @@ from typing import Union
 from uuid import uuid4
 
 import vedro.events
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
+
 from uber_compose import Environment
 from uber_compose.core.sequence_run_types import ComposeConfig
 from uber_compose.env_description.env_types import OverridenService
@@ -23,12 +25,16 @@ from vedro.events import ConfigLoadedEvent
 from vedro.events import ScenarioRunEvent
 from vedro.events import StartupEvent
 
+from uber_compose.vedro_plugin.helpers.scenario_tag_processing import mark_skip_unsuitable
+
 DEFAULT_COMPOSE = 'default'
 
 class VedroUberComposePlugin(Plugin):
     def __init__(self, config: Type["VedroUberCompose"]) -> None:
         super().__init__(config)
         self._enabled = config.enabled
+        if config.default_env:
+            assert config.default_env._description == DEFAULT_ENV_DESCRIPTION, 'default_env must have description set to DEFAULT_ENV_DESCRIPTION'
         self._default_env: Environment = config.default_env
 
         # cli args
@@ -42,6 +48,7 @@ class VedroUberComposePlugin(Plugin):
         self._health_policy = config.health_policy
 
         self._uc_external_services: list[OverridenService] = None
+        self._uc_env: str = None
 
         self.run_id = str(uuid4())[:8]
 
@@ -52,20 +59,23 @@ class VedroUberComposePlugin(Plugin):
         dispatcher.listen(ConfigLoadedEvent, self.on_config_loaded) \
             .listen(vedro.events.ArgParseEvent, self.handle_arg_parse) \
             .listen(vedro.events.ArgParsedEvent, self.handle_arg_parsed) \
-            .listen(vedro.events.StartupEvent, self.handle_scenarios) \
-            .listen(vedro.events.ScenarioRunEvent, self.handle_setup_test_config)
+            .listen(vedro.events.StartupEvent, self.handle_prepare_scenarios) \
+            .listen(vedro.events.ScenarioRunEvent, self.handle_pre_run_scenario)
 
     def on_config_loaded(self, event: ConfigLoadedEvent) -> None:
         self._global_config: ConfigType = event.config
 
-    async def handle_scenarios(self, event: StartupEvent) -> None:
+    async def handle_prepare_scenarios(self, event: StartupEvent) -> None:
         self.uber_compose_client = TheUberCompose(
             log_policy=self._logging_policy,
             health_policy=self._health_policy,
             run_id=self.run_id,
         )
 
-        needed_configs = extract_scenarios_configs_set(event.scheduler.scheduled)
+        if self._uc_env:
+            await mark_skip_unsuitable(event.scheduler, self._uc_env)
+
+        needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:
             return
 
@@ -86,8 +96,8 @@ class VedroUberComposePlugin(Plugin):
                     services_override=self._uc_external_services,
                 )
 
-    async def handle_setup_test_config(self, event: ScenarioRunEvent):
-        env_config = extract_scenario_config(event.scenario_result.scenario)
+    async def handle_pre_run_scenario(self, event: ScenarioRunEvent):
+        env_config = await extract_scenario_config(event.scenario_result.scenario)
 
         if env_config == None:
             env_config = self._default_env
@@ -114,6 +124,10 @@ class VedroUberComposePlugin(Plugin):
                            action='store_true',
                            help="Force restart env")
 
+        group.add_argument("--uc-env",
+                           type=str,
+                           help="Filter by environment name/description")
+
         group.add_argument("--uc-v",
                            type=str,
                            nargs='?',
@@ -129,6 +143,7 @@ class VedroUberComposePlugin(Plugin):
                 for overriden_service in config.overridden_services
             ]
         ]
+
         group.add_argument("--uc-external-services",
                            type=str,
                            nargs='?',
@@ -139,6 +154,7 @@ class VedroUberComposePlugin(Plugin):
                            ]),
                            help="Run with overriden to external services")
 
+
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
         for choice_name, config in self._compose_configs.items():
             if getattr(event.args, f'uc_{choice_name}'):
@@ -146,6 +162,9 @@ class VedroUberComposePlugin(Plugin):
 
         if event.args.uc_fr:
             self._force_restart = event.args.uc_fr
+
+        if event.args.uc_env:
+            self._uc_env = event.args.uc_env
 
         if event.args.uc_external_services:
             if event.args.uc_external_services == 'ALL':

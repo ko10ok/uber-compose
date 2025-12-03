@@ -109,6 +109,7 @@ You can customize behavior dynamically:
 - --uc-fr — Force restart of services
 - --uc-v — Set logging verbosity level
 - --uc-default / --uc-dev — Choose defined ComposeConfigs
+- --uc-env — Filter tests by environment name/description
 
 ---
 
@@ -170,9 +171,28 @@ Uber-Compose will:
 
 This approach ensures each test gets exactly the infrastructure it needs, improving test isolation and reducing resource usage.
 
+### Filter Tests by Environment
+
+You can filter which tests to run based on their environment using the `--uc-env` flag:
+
+```bash
+# Run only tests that use the default environment
+vedro run scenarios/ --uc-env default
+
+# Run only tests with a specific environment description
+vedro run scenarios/ --uc-env "WEB_S3_MOCKMQ"
+```
+
+This is particularly useful when:
+- 🎯 You want to run only tests for a specific infrastructure setup
+- 🚀 Running focused test suites in CI/CD pipelines
+- 🧪 Testing specific service configurations
+
+**Important:** Tests without an explicit `env` parameter are considered to use the default environment and will match `--uc-env default`.
+
 ---
 
-## 📚 Library Usage
+## 📚 Library Usage Details
 
 - **[E2E Test Setup](docs/E2E_CONTAINER_SETUP.md)** - Configure test container for E2E testing
 - **[CLI Usage Guide](docs/CLI_USAGE.md)** - Guide for using CommonJsonCli with JSON log parsing
