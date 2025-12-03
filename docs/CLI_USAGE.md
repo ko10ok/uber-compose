@@ -8,6 +8,7 @@
 - [Custom JSON Parser](#custom-json-parser)
 - [CommandResult](#commandresult)
 - [JsonParser Configuration](#jsonparser-configuration)
+- [Timeouts Redefinition](#timeouts-redefinition)
 
 ---
 
@@ -307,4 +308,53 @@ cli = AppCli()
 result = await cli.process_data('/data/input.csv')
 
 assert result.has_no_errors()
+```
+
+## Timeouts Redefinition
+
+By default `CommonJsonCli` uses the following timeouts for command execution:
+
+```python
+from uber_compose import TimeOutCheck
+
+timeout = TimeOutCheck(
+    attempts=10, 
+    delay_s=1
+),
+```
+
+It's possible to redefine these timeouts in the `__init__` method of your CLI class:
+
+```python
+from uber_compose import CommonJsonCli, CommandResult, JsonParser, TimeOutCheck
+
+class AppCli(CommonJsonCli):
+    def __init__(self):                
+        super().__init__(
+            timeout = TimeOutCheck(
+                attempts=10, 
+                delay_s=1
+            ),
+        )
+```
+
+Or redefine only for specific command:
+
+```python
+import time
+
+from uber_compose import CommonJsonCli, CommandResult, JsonParser, TimeOutCheck
+
+class AppCli(CommonJsonCli):
+    def __init__(self):                
+        super().__init__(container='app')
+        
+    async def run_command_with_custom_timeout(self) -> CommandResult:
+        return await self.exec(
+            command='command',
+            timeout = TimeOutCheck(
+                attempts=50, 
+                delay_s=2
+            ),
+        )
 ```
