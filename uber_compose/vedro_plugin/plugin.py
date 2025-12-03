@@ -3,7 +3,7 @@ from typing import Union
 from uuid import uuid4
 
 import vedro.events
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 
 from uber_compose import Environment
 from uber_compose.core.sequence_run_types import ComposeConfig
@@ -34,7 +34,7 @@ class VedroUberComposePlugin(Plugin):
         super().__init__(config)
         self._enabled = config.enabled
         if config.default_env:
-            assert config.default_env._description == DEFAULT_ENV, 'default_env must have description set to DEFAULT_ENV'
+            assert config.default_env._description == DEFAULT_ENV_DESCRIPTION, 'default_env must have description set to DEFAULT_ENV_DESCRIPTION'
         self._default_env: Environment = config.default_env
 
         # cli args

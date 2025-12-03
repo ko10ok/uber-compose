@@ -6,7 +6,7 @@ from d42 import fake
 from d42 import schema
 from district42_exp_types.unordered import unordered_schema
 
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from vedro.core import MonotonicScenarioScheduler
 
 from vedro.events import ArgParsedEvent
@@ -72,7 +72,7 @@ services:
         self.desc = fake(schema.str('') | schema.str('a a'))
 
     async def given_plugin_initialized_without_default_env_defined(self):
-        # self.default_env = Environment(Service('s2'), description=DEFAULT_ENV)
+        # self.default_env = Environment(Service('s2'), description=DEFAULT_ENV_DESCRIPTION)
         class _VedroUberCompose(VedroUberCompose):
             enabled = True
             default_env: Environment = None  # leave default value
@@ -88,7 +88,7 @@ services:
                 uc_fr=None,
                 uc_external_services=None,
                 uc_v=None,
-                uc_env=DEFAULT_ENV,
+                uc_env=DEFAULT_ENV_DESCRIPTION,
             )
         )
         self.plugin.handle_arg_parsed(self.args)

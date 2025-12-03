@@ -18,7 +18,7 @@ from schemas.vedro.described_scenario import DescribedScenarios
 from uber_compose import ComposeConfig
 from uber_compose import DEFAULT_COMPOSE
 from uber_compose import VedroUberCompose
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.uber_compose import UberCompose
@@ -63,7 +63,7 @@ services:
         self.uber_compose_client = UberCompose()
 
     async def given_plugin_initialized(self):
-        self.default_env = Environment(Service('s2'), description=DEFAULT_ENV)
+        self.default_env = Environment(Service('s2'), description=DEFAULT_ENV_DESCRIPTION)
 
         class _VedroUberCompose(VedroUberCompose):
             enabled = True

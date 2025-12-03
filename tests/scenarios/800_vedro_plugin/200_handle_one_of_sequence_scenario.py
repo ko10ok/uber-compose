@@ -19,7 +19,7 @@ from schemas.vedro.described_scenario import DescribedScenarios
 from uber_compose import ComposeConfig
 from uber_compose import DEFAULT_COMPOSE
 from uber_compose import VedroUberCompose
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
@@ -65,7 +65,7 @@ services:
         self.uber_compose_client = UberCompose()
 
     async def given_plugin_initialized(self):
-        self.default_env = Environment(Service('s2'), description=DEFAULT_ENV)
+        self.default_env = Environment(Service('s2'), description=DEFAULT_ENV_DESCRIPTION)
 
         class _VedroUberCompose(VedroUberCompose):
             enabled = True
@@ -148,7 +148,7 @@ services:
                         '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
-                    Label.ENV_DESCRIPTION: DEFAULT_ENV,
+                    Label.ENV_DESCRIPTION: DEFAULT_ENV_DESCRIPTION,
                     Label.COMPOSE_FILES: ':'.join([
                         f'{self.compose_filename_1}',
                         f'{self.compose_filename_2}',

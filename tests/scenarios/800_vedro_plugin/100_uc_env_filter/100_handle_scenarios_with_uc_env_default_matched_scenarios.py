@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import vedro
 from d42 import fake
 from d42 import schema
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from vedro.core import MonotonicScenarioScheduler
 
 from vedro.events import ArgParsedEvent
@@ -68,7 +68,7 @@ services:
         self.uber_compose_client = UberCompose()
 
     async def given_plugin_initialized(self):
-        self.default_env = Environment(Service('s2'), description=DEFAULT_ENV)
+        self.default_env = Environment(Service('s2'), description=DEFAULT_ENV_DESCRIPTION)
         class _VedroUberCompose(VedroUberCompose):
             enabled = True
             default_env = self.default_env
@@ -84,7 +84,7 @@ services:
                 uc_fr=None,
                 uc_external_services=None,
                 uc_v=None,
-                uc_env=DEFAULT_ENV,
+                uc_env=DEFAULT_ENV_DESCRIPTION,
             )
         )
         self.plugin.handle_arg_parsed(self.args)
@@ -141,7 +141,7 @@ services:
                         '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
-                    Label.ENV_DESCRIPTION: DEFAULT_ENV,
+                    Label.ENV_DESCRIPTION: DEFAULT_ENV_DESCRIPTION,
                     Label.COMPOSE_FILES: ':'.join([
                         f'{self.compose_filename_1}',
                         f'{self.compose_filename_2}',

@@ -4,7 +4,7 @@ from operator import truediv
 import vedro
 from d42 import fake
 from d42 import schema
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from vedro.core import MonotonicScenarioScheduler
 
 from vedro.events import ArgParsedEvent
@@ -72,7 +72,7 @@ services:
     async def given_plugin_initialized(self):
         class _VedroUberCompose(VedroUberCompose):
             enabled = True
-            default_env = Environment(Service('s2'), description=DEFAULT_ENV)
+            default_env = Environment(Service('s2'), description=DEFAULT_ENV_DESCRIPTION)
             compose_cfgs = {
                 DEFAULT_COMPOSE: ComposeConfig(compose_files='docker-compose.yaml:docker-compose.dev.yaml'),
             }

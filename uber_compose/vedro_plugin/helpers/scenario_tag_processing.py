@@ -1,7 +1,7 @@
 from vedro.core import ScenarioScheduler
 from vedro.core import VirtualScenario
 
-from uber_compose.env_description.env_types import DEFAULT_ENV
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.bytes_pickle import base64_pickled
 
@@ -28,7 +28,7 @@ async def extract_scenarios_configs_set(scenarios: ScenarioScheduler) -> set[Env
             needed_configs.add(None)
             continue
 
-        if env_config.description == DEFAULT_ENV:
+        if env_config.description == DEFAULT_ENV_DESCRIPTION:
             needed_configs.add(None)
         else:
             needed_configs.add(env_config)
@@ -41,7 +41,7 @@ async def mark_skip_unsuitable(scenarios: ScenarioScheduler, env_desc) -> None:
         scenario_env = await extract_scenario_config(scenario)
 
         if scenario_env is None:
-            scenario_env = Environment(description=DEFAULT_ENV)
+            scenario_env = Environment(description=DEFAULT_ENV_DESCRIPTION)
 
         if env_desc != scenario_env.description:
             scenario.skip()
