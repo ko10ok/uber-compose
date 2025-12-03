@@ -5,7 +5,7 @@ from typing import Iterator
 from typing import List
 from typing import NamedTuple
 
-DEFAULT_ENV = 'DEFAULT'
+DEFAULT_ENV_DESCRIPTION = 'DEFAULT'
 
 
 class Environments:
@@ -89,7 +89,7 @@ class Service(NamedTuple):
     def __repr__(self):
         return f'Service({self.name}, {self.mode})'
 
-    def with_env(self, env: Env):
+    def with_env(self, env: Env | dict):
         return Service(
             name=self.name,
             env=Env(self.env | env),

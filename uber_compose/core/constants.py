@@ -5,6 +5,7 @@ from pathlib import Path
 class Constants:
     def __init__(self,
                  docker_compose_files_scan_depth: int = 2,
+                 cli_compose_util_override: str = None,
                  ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
@@ -33,3 +34,5 @@ class Constants:
 
         self.exec_pids_check_attempts_count: int = int(os.environ.get('EXEC_PIDS_CHECK_ATTEMPTS_COUNT', '150'))
         self.exec_pids_check_retry_delay: int = int(os.environ.get('EXEC_PIDS_CHECK_RETRY_DELAY', '1'))
+
+        self.cli_compose_util_override: str = os.environ.get('CLI_COMPOSE_UTIL', cli_compose_util_override)

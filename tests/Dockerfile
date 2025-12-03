@@ -5,7 +5,7 @@ WORKDIR /tests
 
 ARG TARGETPLATFORM
 
-RUN apk add --no-cache python3 py-pip curl
+RUN apk add --no-cache python3 py-pip curl docker-cli docker-cli-compose
 
 RUN if [[ "$TARGETPLATFORM" = "linux/amd64" ]] ; then curl -SL https://github.com/docker/compose/releases/download/v2.24.4/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose ; fi
 RUN if [[ "$TARGETPLATFORM" = "linux/arm64" ]] ; then curl -SL https://github.com/docker/compose/releases/download/v2.24.4/docker-compose-linux-aarch64 -o /usr/local/bin/docker-compose ; fi

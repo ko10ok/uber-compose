@@ -23,8 +23,8 @@ from uber_compose.output.console import CONSOLE
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
-DC_BIN = '/usr/local/bin/docker'
-COMPOSE = f'{DC_BIN}-compose'
+DC_BIN = '/usr/bin/docker'
+COMPOSE = f'{DC_BIN} compose'
 
 
 class NoDockerCompose(BaseException):
@@ -38,6 +38,12 @@ class ExecWasntSuccesfullyDone(BaseException):
 class ProcessExit:
     def __eq__(self, other):
         return isinstance(other, ProcessExit)
+
+
+@dataclass(frozen=True)
+class TimeOutCheck:
+    attempts: int
+    delay_s: float
 
 
 class ComposeShellInterface:
@@ -62,10 +68,23 @@ class ComposeShellInterface:
             self.execution_envs |= execution_envs
         self.extra_exec_params = self.cfg_constants.docker_compose_extra_exec_params
 
+        if self.cfg_constants.cli_compose_util_override:
+            logger.system_commands(
+                f'Using overridden {self.cfg_constants.cli_compose_util_override} CLI compose command'
+            )
+
+            # for check binary existance
+            global DC_BIN
+            DC_BIN = self.cfg_constants.cli_compose_util_override
+
+            # for binary usage
+            global COMPOSE
+            COMPOSE = self.cfg_constants.cli_compose_util_override
+
         # check if DC_BIN exists
-        # if not Path(DC_BIN).exists():
-        #     raise NoDockerCompose(
-        #         f'Docker Compose binary not found at {DC_BIN}. Please install Docker Client with compose.')
+        if not Path(DC_BIN).exists():
+            raise NoDockerCompose(
+                f'Docker Compose binary not found at {DC_BIN}. Please install Docker Client with compose: \n   Alpine - apk add docker-cli docker-cli-compose\n   Debian/Ubuntu - apt install docker-ce-cli docker-compose-plugin')
 
     @retry(attempts=10, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_state(self, env: dict = None, root: Path | str = None) -> ServicesComposeState | OperationError:
@@ -93,7 +112,7 @@ class ComposeShellInterface:
 
         if process.returncode != 0:
             print(f"Can't get container's status {stdout} {stderr}")
-            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}')
+            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nExtraEnvs:{env}')
 
         state_result = ServicesComposeState(stdout.decode('utf-8'))
         self.logger.system_commands_output(state_result.as_rich_text())
@@ -183,7 +202,7 @@ class ComposeShellInterface:
         if extra_env is None:
             extra_env = {}
         extra_env_str = ' '.join(
-            f'-e {key}={shlex.quote(value)}' for key, value in extra_env.items()
+            f'-e {key}={shlex.quote(str(value))}' for key, value in extra_env.items()
         )
 
         if env is None:
@@ -304,7 +323,8 @@ class ComposeShellInterface:
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
                                   extra_env: dict[str, str] = None,
-                                  until: Callable | ProcessExit | None = ProcessExit(),
+                                  wait: Callable | ProcessExit | None = ProcessExit(),
+                                  timeout: TimeOutCheck = None,
                                   break_on_timeout: bool = True,
                                   kill_before: bool = True,
                                   kill_after: bool = True,
@@ -314,6 +334,12 @@ class ComposeShellInterface:
         cmd = cmd.strip()
         cmd_name = parse_process_command_name(cmd)
 
+        if timeout is None:
+            timeout = TimeOutCheck(
+                attempts=Constants().exec_pids_check_attempts_count,
+                delay_s=Constants().exec_pids_check_retry_delay,
+            )
+
         if kill_before:
             await self.dc_exec(container, f'killall {cmd_name}')
 
@@ -321,19 +347,19 @@ class ComposeShellInterface:
         if cmd.endswith('&'):
             self.logger.stage_details(f'Command {cmd} is detached-mode running, skipping any finish checks')
             cmd = cmd[:-1]
-            until = None
+            wait = None
 
         result, stdout, stderr = await self.dc_exec(container, cmd, extra_env=extra_env, env=env, root=root,
-                                    detached=(until != ProcessExit()))
+                                                    detached=(wait != ProcessExit()))
 
         if isinstance(result, OperationError):
             check_done_result = False
 
-        if until == ProcessExit():
-            self.logger.stage_info(Text('Retrieving process IDs until completion', style=Style.info))
+        if wait == ProcessExit():
+            self.logger.stage_info(Text('Retrieving process IDs wait completion', style=Style.info))
             process_ids = await retry(
-                attempts=Constants().exec_pids_check_attempts_count,
-                delay=Constants().exec_pids_check_retry_delay,
+                attempts=timeout.attempts,
+                delay=timeout.delay_s,
                 until=lambda pids: pids != [] and pids != [-1]
             )(self._dc_exec_process_pids)(container, cmd)
             self.logger.stage_debug(f'pids retrieved {process_ids}')
@@ -347,14 +373,14 @@ class ComposeShellInterface:
                     check_done_result = False
                     if break_on_timeout:
                         raise ExecWasntSuccesfullyDone(
-                            f'\nProcess\n{cmd}\nwas not finished in {Constants().exec_pids_check_attempts_count}x'
-                            f'{Constants().exec_pids_check_retry_delay} seconds'
+                            f'\nProcess\n{cmd}\nwas not finished in {timeout.attempts}x'
+                            f'{timeout.delay_s} seconds'
                         )
-        elif isinstance(until, Callable):
-            if asyncio.iscoroutinefunction(until):
-                check_done_result = await until(container, cmd, env, extra_env, break_on_timeout)
+        elif isinstance(wait, Callable):
+            if asyncio.iscoroutinefunction(wait):
+                check_done_result = await wait(container, cmd, env, extra_env, break_on_timeout)
             else:
-                check_done_result = until(container, cmd, env, extra_env, break_on_timeout)
+                check_done_result = wait(container, cmd, env, extra_env, break_on_timeout)
 
         if kill_after:
             await self.dc_exec(container, f'killall {cmd_name}')

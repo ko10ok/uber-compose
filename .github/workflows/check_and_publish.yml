@@ -6,6 +6,9 @@ on:
       - "main"
     tags:
       - 'v*.*.*'
+      - 'v*.*.*a*'     # alpha (e.g., v2.0.0a1)
+      - 'v*.*.*b*'     # beta (e.g., v2.0.0b1)
+      - 'v*.*.*rc*'    # release candidate (e.g., v2.0.0rc1)
   pull_request:
     branches:
       - "**"
@@ -42,14 +45,40 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.10'
+
+    - name: Determine version type
+      id: version_type
+      run: |
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        echo "Tag name: $TAG_NAME"
+        
+        # Check if tag contains pre-release suffix (a, b, rc) - short forms only
+        if [[ "$TAG_NAME" =~ (a|b|rc)[0-9]+$ ]]; then
+          echo "Pre-release version detected from tag name"
+          # Extract suffix from tag (e.g., v1.0.0a1 -> a1, v1.0.0b2 -> b2, v1.0.0rc1 -> rc1)
+          SUFFIX=$(echo "$TAG_NAME" | sed -E 's/v[0-9]+\.[0-9]+\.[0-9]+(.*)/\1/')
+          echo "ext_version=$SUFFIX" >> $GITHUB_OUTPUT
+          echo "Version will be published with suffix: $SUFFIX"
+        else
+          echo "Stable release - no suffix"
+          echo "ext_version=" >> $GITHUB_OUTPUT
+        fi
+
     - name: Build
-      run: make build
+      env:
+        EXT_VERSION: ${{ steps.version_type.outputs.ext_version }}
+      run: |
+        echo "Building with EXT_VERSION='$EXT_VERSION'"
+        make build
+
     - name: Publish
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        EXT_VERSION: ${{ steps.version_type.outputs.ext_version }}
       run: make publish

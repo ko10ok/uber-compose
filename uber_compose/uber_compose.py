@@ -5,11 +5,14 @@ from uuid import uuid4
 
 from rich.text import Text
 
+from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
+from uber_compose.core.docker_compose_shell.types import ServicesComposeState
+
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
-from uber_compose.core.sequence_run_types import EMPTY_ID
+from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.env_description.env_types import Environment
@@ -37,7 +40,7 @@ class ReadyEnv:
     release_id: str
 
 
-class _UberCompose:
+class SystemUberCompose:
     def __init__(self,
                  log_policy: LogPolicySet = None,
                  health_policy=UpHealthPolicy(),
@@ -128,7 +131,7 @@ class _UberCompose:
 
         if parallelism_limit == 1:
             self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
-            new_env_id = EMPTY_ID
+            new_env_id = DEFAULT_ENV_ID
 
             services = await self.system_docker_compose.get_running_services()
             services_to_down = list(set(services) - set(self.cfg_constants.non_stop_containers))
@@ -165,8 +168,13 @@ class _UberCompose:
             self.last_release_id,
         )
 
-    async def exec(self, env_id: str, container: str, command, extra_env: dict[str, str] = None,
-                   until: Callable | ProcessExit | None = ProcessExit(),
+    async def exec(self,
+                   container: str,
+                   command: str,
+                   extra_env: dict[str, str] = None,
+                   wait: Callable | ProcessExit | None = ProcessExit(),
+                   env_id: str = DEFAULT_ENV_ID,
+                   timeout: TimeOutCheck = None,
                    ) -> ExecResult | ExecTimeout:
         uid = str(uuid4())
         log_file = f'{uid}.log'
@@ -174,6 +182,8 @@ class _UberCompose:
         dc_shell = self.system_docker_compose.get_dc_shell()
 
         dc_state = await dc_shell.dc_state()
+        assert isinstance(dc_state, ServicesComposeState), f'Got error: {dc_state}'
+
         service_state = dc_state.get_all_for(
             lambda service_state: service_state.check(Label.ENV_ID, env_id)
                                   and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
@@ -184,7 +194,7 @@ class _UberCompose:
         container = service_state.get_any().labels[Label.SERVICE_NAME]
 
         cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
-        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, until=until)
+        res = await dc_shell.dc_exec_until_state(container, cmd, extra_env=extra_env, wait=wait, timeout=timeout)
 
         job_result, stdout, stderr = await dc_shell.dc_exec(container, f'cat /tmp/{log_file}')
         if job_result != JobResult.GOOD:
@@ -196,14 +206,14 @@ class _UberCompose:
         return ExecResult(stdout=stdout, cmd=command)
 
 
-class UberCompose(_UberCompose):
+class UberCompose(SystemUberCompose):
     """
     UberCompose is client class for managing Docker Compose environments.
     """
     ...
 
 
-class TheUberCompose(_UberCompose, metaclass=SingletonMeta):
+class TheUberCompose(SystemUberCompose, metaclass=SingletonMeta):
     """
     TheUberCompose is unified instance of env manager for all scenarios.
     """

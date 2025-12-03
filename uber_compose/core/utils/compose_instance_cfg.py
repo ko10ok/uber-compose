@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from uber_compose.core.sequence_run_types import EMPTY_ID
+from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
 from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
@@ -10,7 +10,7 @@ from uber_compose.env_description.env_types import ServiceMode
 
 
 def make_env_service_name(service, env_id):
-    if env_id == EMPTY_ID:
+    if env_id == DEFAULT_ENV_ID:
         return service
     return f'{service}-{env_id}'
 
