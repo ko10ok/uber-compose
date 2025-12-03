@@ -209,11 +209,13 @@ class CommonJsonCli(Generic[TCommandResult]):
 
     def __init__(
         self,
+        container: str = None,
         parse_json_logs: Callable[[bytes], OutputType] = json_parser.parse_output_to_json,
         result_factory: Type[TCommandResult] = CommandResult,
         cli_client: SystemUberCompose = None,
         timeout: TimeOutCheck = TimeOutCheck(attempts=10, delay_s=1),
     ):
+        self._container = container
         self._cli_client: SystemUberCompose = cli_client or TheUberCompose()
         self._parse_json_logs = parse_json_logs
         self._result_factory = result_factory
@@ -224,8 +226,8 @@ class CommonJsonCli(Generic[TCommandResult]):
         return self._result_factory(stdout=stdout, stderr=stderr, cmd=cmd, env=env, **kwargs)
 
     async def exec(self,
-                   container: str,
                    command: str,
+                   container: str = None,
                    extra_env: dict[str, str] = None,
                    wait: Callable | ProcessExit | None = ProcessExit(),
                    command_result_extra: dict = None,
@@ -236,6 +238,10 @@ class CommonJsonCli(Generic[TCommandResult]):
 
         if timeout is None:
             timeout = self._timeout
+
+        if container is None:
+            assert self._container is not None, 'No container specified. Container must be specified either in method call or in CommonJsonCli initialization'
+            container = self._container
 
         result = await self._cli_client.exec(
             container=container,
