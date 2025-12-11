@@ -25,7 +25,7 @@ from vedro.events import ConfigLoadedEvent
 from vedro.events import ScenarioRunEvent
 from vedro.events import StartupEvent
 
-from uber_compose.vedro_plugin.helpers.scenario_tag_processing import mark_skip_unsuitable
+from uber_compose.vedro_plugin.helpers.scenario_tag_processing import ignore_unsuitable
 
 DEFAULT_COMPOSE = 'default'
 
@@ -73,7 +73,7 @@ class VedroUberComposePlugin(Plugin):
         )
 
         if self._uc_env:
-            await mark_skip_unsuitable(event.scheduler, self._uc_env)
+            await ignore_unsuitable(event.scheduler, self._uc_env)
 
         needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:

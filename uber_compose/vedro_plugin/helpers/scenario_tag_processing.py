@@ -36,7 +36,7 @@ async def extract_scenarios_configs_set(scenarios: ScenarioScheduler) -> set[Env
     return sorted(needed_configs, key=lambda x: base64_pickled(x))
 
 
-async def mark_skip_unsuitable(scenarios: ScenarioScheduler, env_desc) -> None:
+async def ignore_unsuitable(scenarios: ScenarioScheduler, env_desc) -> None:
     async for scenario in scenarios:
         scenario_env = await extract_scenario_config(scenario)
 
@@ -44,4 +44,4 @@ async def mark_skip_unsuitable(scenarios: ScenarioScheduler, env_desc) -> None:
             scenario_env = Environment(description=DEFAULT_ENV_DESCRIPTION)
 
         if env_desc != scenario_env.description:
-            scenario.skip()
+            scenarios.ignore(scenario)

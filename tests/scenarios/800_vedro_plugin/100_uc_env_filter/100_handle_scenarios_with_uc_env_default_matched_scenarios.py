@@ -116,19 +116,9 @@ services:
         self.actual_result_scenarios = [
             describe_scenario(scenario) for scenario in self.scenarios
         ]
-        assert self.actual_result_scenarios == DescribedScenarios % [
-            {
-                'skipped': False,
-                'description': repr(self.scenarios[0]),
-            },
-            {
-                'skipped': False,
-                'description': repr(self.scenarios[1]),
-            },
-            {
-                'skipped': True,
-                'description': repr(self.scenarios[2]),
-            },
+        assert list(self.startup_event.scheduler.scheduled) == [
+            self.scenarios[0],
+            self.scenarios[1],
         ]
 
     async def then_it_should_up_s2_only(self):

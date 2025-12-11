@@ -26,7 +26,6 @@ def describe_scenario(scenario: VirtualScenario) -> dict:
     desc += ")"
     return {
         "name": scenario._orig_scenario.__name__,
-        "skipped": scenario.is_skipped(),
         "env": env,
         "env_desc": env_desc,
         "description": repr(scenario),

@@ -111,23 +111,14 @@ services:
     async def when_vedro_fires_startup_event(self):
         await self.plugin.handle_prepare_scenarios(self.startup_event)
 
-    async def then_it_should_filter_unmatched_scenarios(self):
+    async def then_it_should_not_filter_any_scenarios(self):
         self.actual_result_scenarios = [
             describe_scenario(scenario) for scenario in self.scenarios
         ]
-        assert self.actual_result_scenarios == DescribedScenarios % [
-            {
-                'skipped': False,
-                'description': repr(self.scenarios[0]),
-            },
-            {
-                'skipped': False,
-                'description': repr(self.scenarios[1]),
-            },
-            {
-                'skipped': False,
-                'description': repr(self.scenarios[2]),
-            },
+        assert list(self.startup_event.scheduler.scheduled) == [
+            self.scenarios[0],
+            self.scenarios[1],
+            self.scenarios[2],
         ]
 
     async def then_it_should_up_s2_only(self):
