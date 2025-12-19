@@ -39,7 +39,10 @@ StrQuotedDumper.add_representer(str, quoted_scalar)
 
 def read_dc_file(filename: str | Path) -> dict:
     with open(filename) as f:
-        return yaml.load(f, Loader=yaml.FullLoader)
+        yaml_content = yaml.load(f, Loader=yaml.FullLoader)
+        if yaml_content is None:
+            return {}
+        return yaml_content
 
 
 def write_dc_file(filename: str | Path, cfg: dict) -> None:
