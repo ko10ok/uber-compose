@@ -196,7 +196,7 @@ class ComposeShellInterface:
     async def dc_exec(self, container: str, cmd: str, extra_env: dict = None, env: dict = None, root: Path | str = None,
                       detached=False,
                       ) -> tuple[JobResult, bytes, bytes] | tuple[OperationError, bytes, bytes]:
-        self.logger.stage_details(f'Executing {cmd} in {container} container')
+        self.logger.stage_details(f'Executing "{cmd}" in "{container}" container')
         sys.stdout.flush()
 
         if extra_env is None:
@@ -272,7 +272,7 @@ class ComposeShellInterface:
         check_output = stdout.decode('utf-8')
         sys_error = stderr.decode("utf-8")
 
-        self.logger.system_commands_debug(f'Pids of command {cmd} in {container}:\n {check_output} \nErr: {sys_error}')
+        self.logger.system_commands_debug(f'Pids of command "{cmd}" in "{container}":\n {check_output} \nErr: {sys_error}')
 
         if check_output != '':
             try:
@@ -283,12 +283,12 @@ class ComposeShellInterface:
             except ValueError:
                 ...
             if self.cfg_constants.ignore_pidof_unexistance:
-                self.logger.stage_details(f'Error parsing pids from {check_output} for {cmd} in {container}')
+                self.logger.stage_details(f'Error parsing pids from {check_output} for "{cmd}" in "{container}"')
                 return [-1]
-            self.logger.error(f'Somthing wrong for {cmd} in {container}:\n  {check_output}')
+            self.logger.error(f'Somthing wrong for "{cmd}" in "{container}":\n  {check_output}')
             return [-1]
         else:
-            self.logger.stage_info(f'Process done: {cmd} in {container}')
+            self.logger.stage_info(f'Process done: "{cmd}" in "{container}"')
             return []
 
     async def _dc_exec_print_processes(self, container: str,
