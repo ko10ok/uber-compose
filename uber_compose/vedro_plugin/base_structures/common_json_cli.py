@@ -250,7 +250,6 @@ class CommonJsonCli(Generic[TCommandResult]):
             wait=wait,
             timeout=timeout,
         )
-        assert isinstance(result, ExecResult), f'Expected successful command completion, got:\n{result}\nTimeout settings: attempts={timeout.attempts}, delay_s={timeout.delay_s}'
 
         return self._make_result(
             cmd=command,

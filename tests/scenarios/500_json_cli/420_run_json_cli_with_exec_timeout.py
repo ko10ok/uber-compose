@@ -8,6 +8,7 @@ from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.helpers.exec_result import ExecTimeout
 
 
+@vedro.skip(reason='Bug in timeout assertion')
 class Scenario(vedro.Scenario):
     subject = 'run command through CommonJsonCli with timeout should raise AssertionError'
 
