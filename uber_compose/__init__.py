@@ -1,3 +1,4 @@
+from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.sequence_run_types import ComposeConfig
@@ -24,6 +25,7 @@ __all__ = (
     'TheUberCompose', 'SystemUberCompose',
     'Environment', 'Service', 'Env', 'OverridenService',
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
+    'ExecLifeCyclePolicy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
     'DEFAULT_ENV_ID',
 )

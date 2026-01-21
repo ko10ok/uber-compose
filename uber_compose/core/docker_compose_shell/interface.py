@@ -315,10 +315,9 @@ class ComposeShellInterface:
         self.logger.stage_debug(stderr.decode('utf-8'))
 
     class ExecResult(NamedTuple):
-        check_result: bool
-        err: OperationError | None = None
         stdout: str = ''
         stderr: str = ''
+        finished: bool = False
 
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
@@ -343,7 +342,7 @@ class ComposeShellInterface:
         if kill_before:
             await self.dc_exec(container, f'killall {cmd_name}')
 
-        check_done_result = True
+        check_finished_result = True
         if cmd.endswith('&'):
             self.logger.stage_details(f'Command {cmd} is detached-mode running, skipping any finish checks')
             cmd = cmd[:-1]
@@ -353,39 +352,50 @@ class ComposeShellInterface:
                                                     detached=(wait != ProcessExit()))
 
         if isinstance(result, OperationError):
-            check_done_result = False
+            self.logger.stage_details(Text(f'Running command "{cmd}" leads to error:\n {result}', style=Style.info))
+            check_finished_result = False
 
         if wait == ProcessExit():
-            self.logger.stage_info(Text('Retrieving process IDs wait completion', style=Style.info))
+            self.logger.stage_info(Text('Retrieving in-container process IDs and wait completion', style=Style.info))
             process_ids = await retry(
                 attempts=timeout.attempts,
                 delay=timeout.delay_s,
                 until=lambda pids: pids != [] and pids != [-1]
             )(self._dc_exec_process_pids)(container, cmd)
             self.logger.stage_debug(f'pids retrieved {process_ids}')
-            if process_ids:
-                if process_ids == [-1]:
-                    self.logger.stage_details(
-                        f'Process:\n{cmd}\nwas not checked for completion due to no "pidof" tool in container'
+            if process_ids == [-1]:
+                self.logger.stage_details(Text(
+                    (
+                        f'Process:\n{cmd}\nwas not checked for completion '
+                        f'due to no "pidof" tool in container {container}'
+                    ),
+                    style=Style.suspicious
+                ))
+                check_finished_result = False
+            elif process_ids:
+                self.logger.error(Text('Process was not completed', style=Style.suspicious))
+                check_finished_result = False
+                if break_on_timeout:
+                    raise ExecWasntSuccesfullyDone(
+                        f'\nProcess\n{cmd}\nwas not finished in {timeout.attempts}x'
+                        f'{timeout.delay_s} seconds'
                     )
-                else:
-                    self.logger.error(Text('Process was not completed', style=Style.suspicious))
-                    check_done_result = False
-                    if break_on_timeout:
-                        raise ExecWasntSuccesfullyDone(
-                            f'\nProcess\n{cmd}\nwas not finished in {timeout.attempts}x'
-                            f'{timeout.delay_s} seconds'
-                        )
+            else:
+                check_finished_result = True
         elif isinstance(wait, Callable):
             if asyncio.iscoroutinefunction(wait):
-                check_done_result = await wait(container, cmd, env, extra_env, break_on_timeout)
+                check_finished_result = await wait(container, cmd, env, extra_env, break_on_timeout)
             else:
-                check_done_result = wait(container, cmd, env, extra_env, break_on_timeout)
+                check_finished_result = wait(container, cmd, env, extra_env, break_on_timeout)
 
         if kill_after:
             await self.dc_exec(container, f'killall {cmd_name}')
 
-        return ComposeShellInterface.ExecResult(check_done_result, err=result, stdout=stdout, stderr=stderr)
+        return ComposeShellInterface.ExecResult(
+            stdout=stdout,
+            stderr=stderr,
+            finished=check_finished_result,
+        )
 
     @retry(attempts=3, delay=1, until=lambda x: x == JobResult.BAD)
     async def dc_down(self, services: list[str], env: dict = None,

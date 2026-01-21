@@ -117,7 +117,7 @@ class ComposeInstance:
                     kill_before=False,
                     kill_after=False,
                 )
-                if not migrate_result.check_result:
+                if not migrate_result.finished or migrate_result.stderr:
                     services_status = await self.compose_executor.dc_state()
                     error = Text(f"Can't migrate service {target_service}, with {substituted_cmd}", style=Style.bad).append(
                         Text(f"\n{migrate_result.stdout=}\n",style=Style.regular)

@@ -9,6 +9,7 @@ from typing import Type
 from typing import TypeVar
 from warnings import warn
 
+from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.helpers.exec_result import ExecResult
 
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
@@ -214,12 +215,14 @@ class CommonJsonCli(Generic[TCommandResult]):
         result_factory: Type[TCommandResult] = CommandResult,
         cli_client: SystemUberCompose = None,
         timeout: TimeOutCheck = TimeOutCheck(attempts=10, delay_s=1),
+        life_cycle_policy: ExecLifeCyclePolicy = ExecLifeCyclePolicy(),
     ):
         self._container = container
         self._cli_client: SystemUberCompose = cli_client or TheUberCompose()
         self._parse_json_logs = parse_json_logs
         self._result_factory = result_factory
         self._timeout = timeout
+        self._life_cycle_policy = life_cycle_policy
 
     def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> TCommandResult:
         stdout, stderr = self._parse_json_logs(logs)
@@ -232,6 +235,7 @@ class CommonJsonCli(Generic[TCommandResult]):
                    wait: Callable | ProcessExit | None = ProcessExit(),
                    command_result_extra: dict = None,
                    timeout: TimeOutCheck = None,
+                   life_cycle_policy: ExecLifeCyclePolicy = None,
                    ) -> TCommandResult:
         if command_result_extra is None:
             command_result_extra = {}
@@ -243,12 +247,16 @@ class CommonJsonCli(Generic[TCommandResult]):
             assert self._container is not None, 'No container specified. Container must be specified either in method call or in CommonJsonCli initialization'
             container = self._container
 
+        if life_cycle_policy is None:
+            life_cycle_policy = self._life_cycle_policy
+
         result = await self._cli_client.exec(
             container=container,
             command=command,
             extra_env=extra_env,
             wait=wait,
             timeout=timeout,
+            life_cycle_policy=life_cycle_policy,
         )
 
         return self._make_result(

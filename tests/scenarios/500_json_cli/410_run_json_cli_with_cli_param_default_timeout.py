@@ -3,6 +3,7 @@ from d42 import schema
 from unittest.mock import AsyncMock, Mock, ANY
 from vedro import catched
 from uber_compose import CommonJsonCli
+from uber_compose import ExecLifeCyclePolicy
 from uber_compose.vedro_plugin.base_structures.common_json_cli import CommandResult
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.helpers.exec_result import ExecTimeout
@@ -49,6 +50,7 @@ class Scenario(vedro.Scenario):
             extra_env=self.extra_env,
             wait=ANY,
             timeout=ANY,
+            life_cycle_policy=ExecLifeCyclePolicy(),
         )
 
 

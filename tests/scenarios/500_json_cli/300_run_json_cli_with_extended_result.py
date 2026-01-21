@@ -3,6 +3,7 @@ from d42 import schema
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, Mock, ANY
 
+from uber_compose import ExecLifeCyclePolicy
 from uber_compose.vedro_plugin.base_structures.common_json_cli import (
     CommonJsonCli,
     CommandResult,
@@ -86,5 +87,6 @@ class Scenario(vedro.Scenario):
             command=self.command,
             extra_env=self.extra_env,
             wait=ANY,
-            timeout=ANY
+            timeout=ANY,
+            life_cycle_policy=ExecLifeCyclePolicy(),
         )
