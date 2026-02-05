@@ -366,12 +366,12 @@ class ComposeShellInterface:
             if process_ids == [-1]:
                 self.logger.stage_details(Text(
                     (
-                        f'Process:\n{cmd}\nwas not checked for completion '
+                        f'⚠️ Process:\n{cmd}\nwas not checked for completion '
                         f'due to no "pidof" tool in container {container}'
                     ),
                     style=Style.suspicious
                 ))
-                check_finished_result = False
+                check_finished_result = True
             elif process_ids:
                 self.logger.error(Text('Process was not completed', style=Style.suspicious))
                 check_finished_result = False

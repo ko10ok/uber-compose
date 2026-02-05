@@ -145,14 +145,16 @@ class ComposeInstance:
                     error = Text(f"Can't migrate service {target_service}, with {substituted_cmd}", style=Style.bad).append(
                         Text(f"\n{migration_result.stdout=}\n",style=Style.regular)
                     ).append(
-                        Text(f"{migration_result.stderr=}", style=Style.bad)
+                        Text(f"{migration_result.stderr=}\n", style=Style.bad)
+                    ).append(
+                        Text(f"Services status:\n", style=Style.info)
                     ).append(
                         services_status.as_rich_text()
                     )
                     self.logger.error(error)
                     self.logger.error_details(f"\nServices logs:\n {await self.logs(services)}")
-                    raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}"
-                                          f"\n{migration_result.stdout=}\n{migration_result.stderr=}"
+                    raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}: {migration_result.finished=}"
+                                          f"\n{migration_result.stdout=}\n{migration_result.stderr=}\n"
                                           f"\nServices status:\n {services_status.as_rich_text()}") from None
 
     async def run_services_pack(self, services: list[str], migrations):
