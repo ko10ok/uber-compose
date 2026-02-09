@@ -8,6 +8,14 @@ from rich.text import Text
 from uber_compose.output.styles import Style
 
 
+@dataclass
+class ExecLifeCyclePolicy:
+    """Policy for skipping phases of command execution life cycle to reduce time consumption."""
+    kill_before_same_old_command_running: bool = True
+    kill_after_command_still_running: bool = True
+    break_on_timeout: bool = True
+
+
 class ComposeState:
     RUNNING = 'running'
     EXITED = 'exited'

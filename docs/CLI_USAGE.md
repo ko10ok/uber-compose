@@ -8,6 +8,7 @@
 - [Custom JSON Parser](#custom-json-parser)
 - [CommandResult](#commandresult)
 - [JsonParser Configuration](#jsonparser-configuration)
+- [ExecLifeCyclePolicy](#execlifecyclepolicy)
 - [Timeouts Redefinition](#timeouts-redefinition)
 
 ---
@@ -308,6 +309,68 @@ cli = AppCli()
 result = await cli.process_data('/data/input.csv')
 
 assert result.has_no_errors()
+```
+
+## ExecLifeCyclePolicy
+
+`ExecLifeCyclePolicy` controls the execution behavior of commands to optimize performance and resource usage. It allows you to skip certain phases of the command execution lifecycle.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `kill_before_same_old_command_running` | `bool` | `True` | Kill the previous instance of the same command if it is still running before executing a new one |
+| `kill_after_command_still_running` | `bool` | `True` | Kill the command if it is still running after the timeout has elapsed |
+| `break_on_timeout` | `bool` | `True` | Stop waiting and return early if the timeout is reached |
+
+### Basic Usage
+
+```python
+from uber_compose import CommonJsonCli, ExecLifeCyclePolicy
+
+class AppCli(CommonJsonCli):
+    def __init__(self):                
+        super().__init__(
+            container='app',
+            life_cycle_policy=ExecLifeCyclePolicy(
+                kill_before_same_old_command_running=True,
+                kill_after_command_still_running=True,
+                break_on_timeout=True
+            )
+        )
+```
+
+### Override Policy Per Command
+
+```python
+from uber_compose import CommonJsonCli, CommandResult, ExecLifeCyclePolicy
+
+class AppCli(CommonJsonCli):
+    def __init__(self):                
+        super().__init__(container='app')
+        
+    async def run_quick_command(self) -> CommandResult:
+        return await self.exec(
+            command='quick-task',
+            life_cycle_policy=ExecLifeCyclePolicy(
+                kill_before_same_old_command_running=False,
+                kill_after_command_still_running=False,
+            )
+        )
+```
+
+### Disable Lifecycle Management
+
+```python
+# Disable killing old instances
+policy = ExecLifeCyclePolicy(kill_before_same_old_command_running=False)
+
+# Disable all lifecycle management
+policy = ExecLifeCyclePolicy(
+    kill_before_same_old_command_running=False,
+    kill_after_command_still_running=False,
+    break_on_timeout=False
+)
 ```
 
 ## Timeouts Redefinition

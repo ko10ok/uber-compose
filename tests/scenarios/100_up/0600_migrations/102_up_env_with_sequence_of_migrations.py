@@ -1,5 +1,4 @@
 import vedro
-from d42 import fake
 from d42 import schema
 from rtry import retry
 
@@ -8,14 +7,10 @@ from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from helpers.docker_migration_result import get_file_from_container
-from uber_compose.uber_compose import UberCompose
+from schemas.docker import ContainerSchema
 from uber_compose import Environment
 from uber_compose import Service
-
-
-from schemas.docker import ContainerSchema
-from schemas.env_name import EnvNameSchema
-from schemas.http_codes import HTTPStatusCodeOk
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):

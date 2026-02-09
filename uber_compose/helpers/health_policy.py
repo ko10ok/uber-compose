@@ -9,3 +9,5 @@ class UpHealthPolicy:
     service_up_check_delay_s: int = 3
 
     pre_check_delay_s: float = 0
+
+    skip_migrations_errors: list[bytes] = None

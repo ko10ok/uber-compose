@@ -112,24 +112,49 @@ class ComposeInstance:
                 # TODO check if need to template migrations
                 #   substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
                 substituted_cmd = handler.cmd
-                migrate_result = await self.compose_executor.dc_exec_until_state(
+                migration_result = await self.compose_executor.dc_exec_until_state(
                     target_service, substituted_cmd,
                     kill_before=False,
                     kill_after=False,
                 )
-                if not migrate_result.check_result:
+
+                migration_errors = [error for error in migration_result.stderr.split(b'\n') if error]  # empty or none skips
+                skipper_migration_errors = [
+                    current_error
+                    for current_error in migration_errors
+                    if any(
+                        skip_error in current_error for skip_error in (self.health_policy.skip_migrations_errors or [])
+                    )
+                ]
+
+                for skipped_error in skipper_migration_errors:
+                    self.logger.stage_info(
+                        Text(
+                            f'⚠️Skipping migration error for "{substituted_cmd}" on {target_service}:'
+                            f'\n{skipped_error=}'
+                        )
+                    )
+
+                critical_migration_errors = [
+                    error
+                    for error in migration_errors
+                    if error not in skipper_migration_errors
+                ]
+                if not migration_result.finished or critical_migration_errors:
                     services_status = await self.compose_executor.dc_state()
                     error = Text(f"Can't migrate service {target_service}, with {substituted_cmd}", style=Style.bad).append(
-                        Text(f"\n{migrate_result.stdout=}\n",style=Style.regular)
+                        Text(f"\n{migration_result.stdout=}\n",style=Style.regular)
                     ).append(
-                        Text(f"{migrate_result.stderr=}", style=Style.bad)
+                        Text(f"{migration_result.stderr=}\n", style=Style.bad)
+                    ).append(
+                        Text(f"Services status:\n", style=Style.info)
                     ).append(
                         services_status.as_rich_text()
                     )
                     self.logger.error(error)
                     self.logger.error_details(f"\nServices logs:\n {await self.logs(services)}")
-                    raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}"
-                                          f"\n{migrate_result.stdout=}\n{migrate_result.stderr=}"
+                    raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}: {migration_result.finished=}"
+                                          f"\n{migration_result.stdout=}\n{migration_result.stderr=}\n"
                                           f"\nServices status:\n {services_status.as_rich_text()}") from None
 
     async def run_services_pack(self, services: list[str], migrations):
