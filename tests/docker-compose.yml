@@ -1,14 +1,14 @@
 services:
   test-docker-daemon:
-    image: docker:28.3.2-dind-alpine3.22
+    image: docker:28.3.3-dind-alpine3.22
     privileged: true
     environment:
       - DOCKER_TLS_CERTDIR=
-    command: ["--registry-mirror", "http://docker-registry-proxy.2gis.io"]
+    command: ["--registry-mirror", "http://docker-registry-proxy.2gis.io", "--tls=false"]
     ports:
       - 2375
     healthcheck:
-      test: "wget -q -O - http://localhost:2375/v1.40/version || exit 1"
+      test: "wget -q -O - http://localhost:2375/version || exit 1"
       interval: 5s
       timeout: 10s
       retries: 100

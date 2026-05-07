@@ -15,7 +15,8 @@ from vedro.events import ConfigLoadedEvent
 from vedro.events import ScenarioRunEvent
 from vedro.events import StartupEvent
 
-from output.styles import Style
+from uber_compose import SystemUberCompose
+from uber_compose.output.styles import Style
 from uber_compose import Environment
 from uber_compose.core.constants import Constants
 from uber_compose.core.sequence_run_types import ComposeConfig
@@ -34,7 +35,7 @@ from uber_compose.vedro_plugin.helpers.test_env_vars_setter import setup_env_for
 DEFAULT_COMPOSE = 'default'
 
 class VedroUberComposePlugin(Plugin):
-    def __init__(self, config: Type["VedroUberCompose"]) -> None:
+    def __init__(self, config: Type["VedroUberCompose"], client: SystemUberCompose = None) -> None:
         super().__init__(config)
         self._enabled = config.enabled
         if config.default_env:
@@ -55,8 +56,10 @@ class VedroUberComposePlugin(Plugin):
 
         self._uc_external_services: list[OverridenService] = None
         self._uc_env: str = None
+        self._uber_compose_client = client
 
         self.run_id = str(uuid4())[:8]
+
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
@@ -72,11 +75,12 @@ class VedroUberComposePlugin(Plugin):
         self._global_config: ConfigType = event.config
 
     async def handle_prepare_scenarios(self, event: StartupEvent) -> None:
-        self.uber_compose_client = TheUberCompose(
-            log_policy=self._logging_policy,
-            health_policy=self._health_policy,
-            run_id=self.run_id,
-        )
+        if self._uber_compose_client is None:
+            self._uber_compose_client = TheUberCompose(
+                log_policy=self._logging_policy,
+                health_policy=self._health_policy,
+                run_id=self.run_id,
+            )
 
         if self._uc_env:
             await ignore_unsuitable(event.scheduler, self._uc_env)
@@ -90,17 +94,26 @@ class VedroUberComposePlugin(Plugin):
             self._global_config.Registry.ScenarioOrderer.register(EnvTagsOrderer, self)
 
         # Up all needed env simultaneously if parallelism allowed
-        if self._compose_choice.parallel_env_limit >= len(needed_configs):
-            for env_config in list(needed_configs):
-                if env_config == None:
-                    env_config = self._default_env
-                await self.uber_compose_client.up(
-                    config_template=env_config,
-                    compose_files=self._compose_choice.compose_files,
-                    parallelism_limit=self._compose_choice.parallel_env_limit,
-                    force_restart=self._force_restart,
-                    services_override=self._uc_external_services,
+        try:
+            if self._compose_choice.parallel_env_limit >= len(needed_configs):
+                for env_config in list(needed_configs):
+                    if env_config == None:
+                        env_config = self._default_env
+                    await self._uber_compose_client.up(
+                        config_template=env_config,
+                        compose_files=self._compose_choice.compose_files,
+                        parallelism_limit=self._compose_choice.parallel_env_limit,
+                        force_restart=self._force_restart,
+                        services_override=self._uc_external_services,
+                    )
+        except Exception as e:
+            self._logger.stage(
+                Text(
+                    f'Error while starting environment: {e}\nExiting test environment preparation.',
+                    style=Style.bad
                 )
+            )
+            sys.exit(75)
 
         if self._just_up:
             self._logger.stage(
@@ -117,14 +130,14 @@ class VedroUberComposePlugin(Plugin):
         if env_config == None:
             env_config = self._default_env
 
-        ready_env = await self.uber_compose_client.up(
+        ready_env = await self._uber_compose_client.up(
             config_template=env_config,
             compose_files=self._compose_choice.compose_files,
             parallelism_limit=self._compose_choice.parallel_env_limit,
             services_override=self._uc_external_services,
         )
 
-        setup_env_for_tests(ready_env.env, self._uc_external_services, self.uber_compose_client.run_id)
+        setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose")

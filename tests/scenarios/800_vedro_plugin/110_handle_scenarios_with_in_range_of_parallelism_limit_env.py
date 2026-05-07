@@ -81,6 +81,7 @@ services:
             args=Namespace(
                 uc_default=None,
                 uc_fr=None,
+                uc_ju=None,
                 uc_external_services=None,
                 uc_v=None,
                 uc_env=None,
