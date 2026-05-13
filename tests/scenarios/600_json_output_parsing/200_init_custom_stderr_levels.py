@@ -20,7 +20,8 @@ class Scenario(vedro.Scenario):
     def given_logs_with_warnings(self):
         self.logs = b'''{"level": "info", "msg": "Info message"}
 {"level": "warning", "msg": "Warning message"}
-{"level": "error", "msg": "Error message"}'''
+{"level": "error", "msg": "Error message"}
+{"msg": "No log level error message"}'''
 
     def when_user_parses_logs_with_custom_parser(self):
         self.stdout, self.stderr = self.parser.parse_output_to_json(self.logs)
@@ -28,8 +29,8 @@ class Scenario(vedro.Scenario):
     def then_it_should_not_treat_warning_as_error(self):
         # With custom levels, warning should not be in stderr
         assert self.stderr == schema.list([
-            schema.str % '{"level": "error", "msg": "Error message"}'
+            schema.str % '{"level": "error", "msg": "Error message"}',
         ])
 
     def then_it_should_have_all_in_stdout(self):
-        assert self.stdout == schema.list(schema.str).len(3)
+        assert self.stdout == schema.list(schema.str).len(4)
