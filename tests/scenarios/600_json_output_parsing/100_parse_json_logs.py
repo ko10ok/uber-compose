@@ -14,7 +14,8 @@ class Scenario(vedro.Scenario):
         self.logs = b'''{"level": "info", "msg": "Starting service"}
 {"level": "debug", "msg": "Debug message"}
 {"level": "error", "msg": "Something went wrong"}
-{"level": "info", "msg": "Service started"}'''
+{"level": "info", "msg": "Service started"}
+{"msg": "No log level error message"}'''
 
     def when_user_parses_logs(self):
         self.stdout, self.stderr = self.parser.parse_output_to_json(self.logs)
@@ -25,10 +26,12 @@ class Scenario(vedro.Scenario):
             schema.str % '{"level": "info", "msg": "Starting service"}',
             schema.str % '{"level": "debug", "msg": "Debug message"}',
             schema.str % '{"level": "error", "msg": "Something went wrong"}',
-            schema.str % '{"level": "info", "msg": "Service started"}'
+            schema.str % '{"level": "info", "msg": "Service started"}',
+            schema.str % '{"msg": "No log level error message"}',
         ])
 
     def then_it_should_return_parsed_errors(self):
         assert self.stderr == schema.list([
-            schema.str % '{"level": "error", "msg": "Something went wrong"}'
+            schema.str % '{"level": "error", "msg": "Something went wrong"}',
+            schema.str % '{"msg": "No log level error message"}',
         ])

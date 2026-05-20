@@ -116,6 +116,7 @@ class LogLevels:
     ERROR = 'error'
     FATAL = 'fatal'
     PANIC = 'panic'
+    NO_LOG_LEVEL_KEY_EXIST = 'NO_LOG_LEVEL_KEY_EXIST'
 
 
 StdOutErrType = list[str | dict]
@@ -132,7 +133,8 @@ class JsonParser:
         self.log_level_key = log_level_key
         self.stderr_log_levels = stderr_log_levels or [
             LogLevels.PANIC, LogLevels.FATAL,
-            LogLevels.ERROR, LogLevels.WARNING
+            LogLevels.ERROR, LogLevels.WARNING,
+            LogLevels.NO_LOG_LEVEL_KEY_EXIST,
         ]
         self.skips = skips or []
         self.full_stdout = full_stdout
@@ -182,7 +184,7 @@ class JsonParser:
                 try:
                     json_obj = json.loads(log_line)
                     json_str = json.dumps(json_obj, ensure_ascii=False)
-                    log_level = json_obj[self.log_level_key]
+                    log_level = json_obj.get(self.log_level_key, LogLevels.NO_LOG_LEVEL_KEY_EXIST)
 
                     is_error = log_level in self.stderr_log_levels
 

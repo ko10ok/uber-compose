@@ -15,10 +15,10 @@ from uber_compose.output.console import LogPolicy
 
 
 class Scenario(vedro.Scenario):
-    async def no_docker_containers(self):
+    async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def no_docker_copose_files(self):
+    async def given_no_docker_compose_files(self):
         no_docker_compose_files()
 
     async def given_compose_files(self):

@@ -108,7 +108,8 @@ You can customize behavior dynamically:
 
 - --uc-fr — Force restart of services
 - --uc-v — Set logging verbosity level
-- --uc-default / --uc-dev — Choose defined ComposeConfigs
+- --uc-ju — Bring up the environment without running any tests
+- --uc-default / --uc-dev — Choose between defined ComposeConfigs
 - --uc-env — Filter tests by environment name/description
 
 ---
