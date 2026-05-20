@@ -30,10 +30,10 @@ from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 class Scenario(vedro.Scenario):
     subject = 'handle --uc-ju option: up environment then exit, no scenarios run'
 
-    async def no_docker_containers(self):
+    async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def no_docker_copose_files(self):
+    async def given_no_docker_compose_files(self):
         no_docker_compose_files()
 
     async def given_compose_files(self):
@@ -112,16 +112,6 @@ services:
         self.plugin._global_config.Registry.ScenarioOrderer = Mock()
         self.plugin._global_config.Registry.ScenarioOrderer.register = Mock(return_value=None)
 
-    async def given_pre_run_scenario_spy(self):
-        self.original_pre_run = self.plugin.handle_pre_run_scenario
-        self.pre_run_called = False
-
-        async def spy(event):
-            self.pre_run_called = True
-            return await self.original_pre_run(event)
-
-        self.plugin.handle_pre_run_scenario = spy
-
     async def when_vedro_fires_startup_event(self):
         with catched(SystemExit) as self.exc_info:
             await self.plugin.handle_prepare_scenarios(self.startup_event)
@@ -152,7 +142,3 @@ services:
                 },
             },
         ])
-
-    async def then_scenario_pre_run_handler_should_not_be_called(self):
-        assert self.pre_run_called is False, \
-            'No scenario must be run when --uc-ju option is set'

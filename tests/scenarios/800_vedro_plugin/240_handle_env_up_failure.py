@@ -27,10 +27,10 @@ from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 class Scenario(vedro.Scenario):
     subject = 'handle env-up failure: log error and exit with code 75'
 
-    async def no_docker_containers(self):
+    async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def no_docker_copose_files(self):
+    async def given_no_docker_compose_files(self):
         no_docker_compose_files()
 
     async def given_broken_compose_file(self):
