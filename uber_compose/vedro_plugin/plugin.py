@@ -126,6 +126,7 @@ class VedroUberComposePlugin(Plugin):
 
     async def handle_pre_run_scenario(self, event: ScenarioRunEvent):
         env_config = await extract_scenario_config(event.scenario_result.scenario)
+
         if env_config == None:
             env_config = self._default_env
 
@@ -137,6 +138,7 @@ class VedroUberComposePlugin(Plugin):
             parallelism_limit=self._compose_choice.parallel_env_limit,
             services_override=self._uc_external_services,
         )
+
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
 
         env_restarted = previous_release_id is not None and previous_release_id != ready_env.release_id
