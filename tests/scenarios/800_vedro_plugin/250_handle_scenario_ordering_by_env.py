@@ -1,0 +1,34 @@
+import vedro
+from vedro.core import MonotonicScenarioScheduler
+
+from helpers.vedro.scenario import make_scenario
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
+from uber_compose.env_description.env_types import Environment
+from uber_compose.env_description.env_types import Service
+from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
+
+
+class Scenario(vedro.Scenario):
+    async def given_scenarios_with_mixed_envs(self):
+        self.default_env = Environment(Service('s1'), description=DEFAULT_ENV_DESCRIPTION)
+        self.another_env = Environment(Service('s2'), description='another')
+
+        self.scenarios = [
+            make_scenario(env=self.another_env),
+            make_scenario(env=self.default_env),
+            make_scenario(env=self.another_env),
+        ]
+
+    async def when_orderer_sorts_scenarios(self):
+        self.orderer = EnvTagsOrderer()
+        self.sorted_scenarios = await self.orderer.sort(self.scenarios)
+
+    async def then_scenarios_should_be_grouped_by_env(self):
+        sorted_envs = [
+            getattr(s._orig_scenario, 'env', None)
+            for s in self.sorted_scenarios
+        ]
+
+        assert sorted_envs[0] == sorted_envs[1] or sorted_envs[1] == sorted_envs[2], (
+            f"Сценарии не сгруппированы по окружению: {sorted_envs}"
+        )
