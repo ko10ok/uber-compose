@@ -7,12 +7,21 @@ from vedro.core import VirtualScenario
 from uber_compose import Environment
 
 
-def make_scenario(env: Environment = None) -> VirtualScenario:
+def make_scenario(env: Environment = None, with_env_restart_hook: bool = False) -> VirtualScenario:
     class _Scenario(Scenario):
         __file__ = Path(f"scenario_{monotonic_ns()}.py").absolute()
 
     if env:
         _Scenario.env = env
+
+    if with_env_restart_hook:
+        _Scenario.on_env_restarted_called = False
+
+        async def on_env_restarted(self):
+            self.__class__.on_env_restarted_called = True
+
+        _Scenario.on_env_restarted = on_env_restarted
+
     return VirtualScenario(_Scenario, steps=[])
 
 
