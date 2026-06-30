@@ -13,7 +13,6 @@ def make_scenario(env: Environment = None) -> VirtualScenario:
 
     if env:
         _Scenario.env = env
-
     return VirtualScenario(_Scenario, steps=[])
 
 
