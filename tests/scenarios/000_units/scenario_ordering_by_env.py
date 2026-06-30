@@ -25,10 +25,10 @@ class Scenario(vedro.Scenario):
 
     async def then_scenarios_should_be_grouped_by_env(self):
         sorted_envs = [
-            getattr(s._orig_scenario, 'env', None)
+            getattr(s._orig_scenario, 'env', None).description
             for s in self.sorted_scenarios
         ]
 
-        assert sorted_envs[0] == sorted_envs[1] or sorted_envs[1] == sorted_envs[2], (
-            f"Сценарии не сгруппированы по окружению: {sorted_envs}"
+        assert sorted_envs == [DEFAULT_ENV_DESCRIPTION, 'another', 'another'], (
+            f"Unexpected order: {sorted_envs}"
         )

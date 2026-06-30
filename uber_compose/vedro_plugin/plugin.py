@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import sys
 from typing import Type
 from typing import Union
@@ -89,9 +90,13 @@ class VedroUberComposePlugin(Plugin):
         if not needed_configs:
             return
 
-        # If no parallelism allowed, reorder scenarios by env tags
+        # If no parallelism allowed, reorder scenarios by env
         if len(needed_configs) > self._compose_choice.parallel_env_limit:
-            self._global_config.Registry.ScenarioOrderer.register(EnvTagsOrderer, self)
+            orderer = EnvTagsOrderer()
+            sorted_scenarios = await orderer.sort(list(event.scheduler.scheduled))
+            event.scheduler._scheduled = OrderedDict(
+                (s.unique_id, (s, 0)) for s in sorted_scenarios
+            )
 
         # Up all needed env simultaneously if parallelism allowed
         try:
@@ -130,8 +135,6 @@ class VedroUberComposePlugin(Plugin):
         if env_config == None:
             env_config = self._default_env
 
-        previous_release_id = self._uber_compose_client.last_release_id
-
         ready_env = await self._uber_compose_client.up(
             config_template=env_config,
             compose_files=self._compose_choice.compose_files,
@@ -140,12 +143,6 @@ class VedroUberComposePlugin(Plugin):
         )
 
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
-
-        env_restarted = previous_release_id is not None and previous_release_id != ready_env.release_id
-        if env_restarted:
-            scenario = event.scenario_result.scenario._orig_scenario
-            if hasattr(scenario, 'on_env_restarted'):
-                await scenario().on_env_restarted()
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose")
