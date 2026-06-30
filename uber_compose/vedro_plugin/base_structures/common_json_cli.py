@@ -174,7 +174,7 @@ class JsonParser:
 
         log_strs = logs.decode('utf-8').split('\n')
         for log_line in log_strs:
-            log_line = log_line.strip()
+            log_line = log_line.rstrip()
             if log_line:
                 if self.should_skips(log_line):
                     record = self.format_raw_output(log_line)
