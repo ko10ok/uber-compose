@@ -91,10 +91,6 @@ class VedroUberComposePlugin(Plugin):
         if not needed_configs:
             return
 
-        # If no parallelism allowed, reorder scenarios by env tags
-        if len(needed_configs) > self._compose_choice.parallel_env_limit:
-            pass
-
         # Up all needed env simultaneously if parallelism allowed
         try:
             if self._compose_choice.parallel_env_limit >= len(needed_configs):
