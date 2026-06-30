@@ -1,5 +1,6 @@
 import vedro
 from vedro.core import MonotonicScenarioScheduler
+from d42 import schema
 
 from helpers.vedro.scenario import make_scenario
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
@@ -24,11 +25,12 @@ class Scenario(vedro.Scenario):
         self.sorted_scenarios = await self.orderer.sort(self.scenarios)
 
     async def then_scenarios_should_be_grouped_by_env(self):
-        sorted_envs = [
+        self.sorted_scenarios_descriptions = [
             getattr(s._orig_scenario, 'env', None).description
             for s in self.sorted_scenarios
         ]
-
-        assert sorted_envs == [DEFAULT_ENV_DESCRIPTION, 'another', 'another'], (
-            f"Unexpected order: {sorted_envs}"
-        )
+        assert self.sorted_scenarios_descriptions == schema.list([
+            schema.str(DEFAULT_ENV_DESCRIPTION),
+            schema.str('another'),
+            schema.str('another'),
+        ])
