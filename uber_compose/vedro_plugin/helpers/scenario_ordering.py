@@ -11,7 +11,12 @@ class EnvTagsOrderer(ScenarioOrderer):
     async def sort(self, scenarios: List[VirtualScenario]) -> List[VirtualScenario]:
         copied = scenarios[:]
 
+        keys = {}
+        for scenario in copied:
+            config = await extract_scenario_config(scenario)
+            keys[id(scenario)] = base64_pickled(config)
+
         return sorted(
             copied,
-            key=lambda x: base64_pickled(extract_scenario_config(x))
+            key=lambda x: keys[id(x)]
         )

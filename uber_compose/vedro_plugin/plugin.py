@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import sys
 from typing import Type
 from typing import Union
@@ -73,6 +74,7 @@ class VedroUberComposePlugin(Plugin):
 
     def on_config_loaded(self, event: ConfigLoadedEvent) -> None:
         self._global_config: ConfigType = event.config
+        self._global_config.Registry.ScenarioOrderer.register(EnvTagsOrderer, self)
 
     async def handle_prepare_scenarios(self, event: StartupEvent) -> None:
         if self._uber_compose_client is None:
@@ -88,10 +90,6 @@ class VedroUberComposePlugin(Plugin):
         needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:
             return
-
-        # If no parallelism allowed, reorder scenarios by env tags
-        if len(needed_configs) > self._compose_choice.parallel_env_limit:
-            self._global_config.Registry.ScenarioOrderer.register(EnvTagsOrderer, self)
 
         # Up all needed env simultaneously if parallelism allowed
         try:
