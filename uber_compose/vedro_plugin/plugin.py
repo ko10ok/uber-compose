@@ -61,9 +61,6 @@ class VedroUberComposePlugin(Plugin):
 
         self.run_id = str(uuid4())[:8]
 
-        self._warn_missing_env: bool = config.warn_missing_env
-        self._warned_scenarios: set[str] = set()
-
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
@@ -126,22 +123,9 @@ class VedroUberComposePlugin(Plugin):
             sys.exit(0)
 
     async def handle_pre_run_scenario(self, event: ScenarioRunEvent):
-        scenario = event.scenario_result.scenario
-        env_config = await extract_scenario_config(scenario)
+        env_config = await extract_scenario_config(event.scenario_result.scenario)
 
-        if env_config is None and self._warn_missing_env:
-            scenario_id = str(scenario.path)
-            if scenario_id not in self._warned_scenarios:
-                self._warned_scenarios.add(scenario_id)
-                self._logger.stage(
-                    Text(
-                        f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set. '
-                        f'Default env will be used. Consider adding "env = Envs.DEFAULT" to your scenario.',
-                        style=Style.suspicious
-                    )
-                )
-
-        if env_config is None:
+        if env_config == None:
             env_config = self._default_env
 
         ready_env = await self._uber_compose_client.up(
@@ -252,9 +236,6 @@ class VedroUberCompose(PluginConfig):
 
     # ComposeConfig set of compose files and default parallelism restrictions
     compose_cfgs: dict[str, ComposeConfig] = None
-
-    # Show warning if scenario does not have 'env' field set
-    warn_missing_env: bool = True
 
     # Retries for health
     health_policy: UpHealthPolicy = UpHealthPolicy(
