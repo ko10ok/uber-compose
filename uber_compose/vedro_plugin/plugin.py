@@ -135,7 +135,7 @@ class VedroUberComposePlugin(Plugin):
                 self._warned_scenarios.add(scenario_id)
                 self._logger.stage(
                     Text(
-                        f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set. '
+                        f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set.\n'
                         'Default env will be used. Consider adding "env = Envs.DEFAULT" to your scenario.',
                         style=Style.suspicious
                     )
