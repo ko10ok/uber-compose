@@ -27,6 +27,23 @@ class Config(vedro.Config):
                     compose_files="docker-compose.yml:docker-compose.dev.yml",
                 ),
             }
+
+            # Warn if a scenario has no `env = ...` field (enabled by default)
+            warn_missing_env = True
+```
+
+## Missing `env` warning
+
+By default, the plugin logs a warning when a scenario does not define an `env` field and falls back to `default_env`.
+
+Disable this warning if your project intentionally relies on `default_env`:
+
+```python
+class Config(vedro.Config):
+    class Plugins(vedro.Config.Plugins):
+        class UberCompose(VedroUberCompose):
+            enabled = True
+            warn_missing_env = False
 ```
 
 # Setup Uber-Compose Startup Services HealthCheck Params
