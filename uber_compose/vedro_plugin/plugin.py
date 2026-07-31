@@ -129,17 +129,14 @@ class VedroUberComposePlugin(Plugin):
         scenario = event.scenario_result.scenario
         env_config = await extract_scenario_config(scenario)
 
-        if env_config is None and self._warn_missing_env:
-            scenario_id = str(scenario.path)
-            if scenario_id not in self._warned_scenarios:
-                self._warned_scenarios.add(scenario_id)
-                self._logger.stage(
-                    Text(
-                        f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set.\n'
-                        'Default env will be used. Consider adding "env = Envs.DEFAULT" to your scenario.',
-                        style=Style.suspicious
-                    )
+        if self._warn_missing_env and env_config is None:
+            self._logger.stage(
+                Text(
+                    f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set.\n'
+                    'Default env will be used. Consider adding "env = Envs.DEFAULT" to your scenario.',
+                    style=Style.suspicious
                 )
+            )
 
         if env_config is None:
             env_config = self._default_env
