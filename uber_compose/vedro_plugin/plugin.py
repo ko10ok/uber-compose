@@ -62,8 +62,6 @@ class VedroUberComposePlugin(Plugin):
         self.run_id = str(uuid4())[:8]
 
         self._warn_missing_env: bool = config.warn_missing_env
-        self._warned_scenarios: set[str] = set()
-
 
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
