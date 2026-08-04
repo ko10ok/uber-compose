@@ -61,8 +61,6 @@ class VedroUberComposePlugin(Plugin):
 
         self.run_id = str(uuid4())[:8]
 
-        self._warn_missing_env: bool = config.warn_missing_env
-
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
             return
@@ -127,11 +125,11 @@ class VedroUberComposePlugin(Plugin):
         scenario = event.scenario_result.scenario
         env_config = await extract_scenario_config(scenario)
 
-        if self._warn_missing_env and env_config is None:
+        if self._default_env is None and env_config is None:
             self._logger.stage(
                 Text(
                     f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set.\n'
-                    'Default env will be used. Consider adding "env = Envs.DEFAULT" to your scenario.',
+                    'Consider adding "env = Envs.DEFAULT" to your scenario.',
                     style=Style.suspicious
                 )
             )
@@ -195,7 +193,6 @@ class VedroUberComposePlugin(Plugin):
                            ]),
                            help="Run with overriden to external services")
 
-
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
         for choice_name, config in self._compose_configs.items():
             if getattr(event.args, f'uc_{choice_name}'):
@@ -247,9 +244,6 @@ class VedroUberCompose(PluginConfig):
 
     # ComposeConfig set of compose files and default parallelism restrictions
     compose_cfgs: dict[str, ComposeConfig] = None
-
-    # Show warning if scenario does not have 'env' field set
-    warn_missing_env: bool = True
 
     # Retries for health
     health_policy: UpHealthPolicy = UpHealthPolicy(
