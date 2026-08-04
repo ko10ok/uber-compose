@@ -14,8 +14,6 @@ from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 
 
 class Scenario(vedro.Scenario):
-    subject = "no warn with default_env and without env_config"
-
     def given_plugin_initialized_with_default_env(self):
         self.default_env = Environment(Service("s1"), description=DEFAULT_ENV_DESCRIPTION)
 
