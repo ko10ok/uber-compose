@@ -61,7 +61,6 @@ class VedroUberComposePlugin(Plugin):
 
         self.run_id = str(uuid4())[:8]
 
-
     def subscribe(self, dispatcher: Dispatcher) -> None:
         if not self._enabled:
             return
@@ -123,9 +122,19 @@ class VedroUberComposePlugin(Plugin):
             sys.exit(0)
 
     async def handle_pre_run_scenario(self, event: ScenarioRunEvent):
-        env_config = await extract_scenario_config(event.scenario_result.scenario)
+        scenario = event.scenario_result.scenario
+        env_config = await extract_scenario_config(scenario)
 
-        if env_config == None:
+        if self._default_env is None and env_config is None:
+            self._logger.stage(
+                Text(
+                    f'[UberCompose] Warning: scenario "{scenario.path}" has no "env" field set.\n'
+                    'Consider adding "env = Envs.DEFAULT" to your scenario.',
+                    style=Style.suspicious
+                )
+            )
+
+        if env_config is None:
             env_config = self._default_env
 
         ready_env = await self._uber_compose_client.up(
@@ -183,7 +192,6 @@ class VedroUberComposePlugin(Plugin):
                                *overridden_services_names,
                            ]),
                            help="Run with overriden to external services")
-
 
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
         for choice_name, config in self._compose_configs.items():
