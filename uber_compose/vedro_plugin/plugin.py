@@ -94,8 +94,18 @@ class VedroUberComposePlugin(Plugin):
         try:
             if self._compose_choice.parallel_env_limit >= len(needed_configs):
                 for env_config in list(needed_configs):
+                    if self._default_env is None and env_config is None:
+                        self._logger.stage(
+                            Text(
+                                f'[UberCompose] Warning: some scenarios has no "env" field set.\n'
+                                'Consider adding "env = Envs.DEFAULT" to your scenario.',
+                                style=Style.suspicious
+                            )
+                        )
+
                     if env_config == None:
                         env_config = self._default_env
+
                     await self._uber_compose_client.up(
                         config_template=env_config,
                         compose_files=self._compose_choice.compose_files,
