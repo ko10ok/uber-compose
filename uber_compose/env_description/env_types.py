@@ -84,6 +84,8 @@ class Service(NamedTuple):
     mode: ServiceMode = ServiceMode.ON
 
     def __eq__(self, other):
+        if not isinstance(other, Service):
+            return False
         return self.name == other.name
 
     def __repr__(self):

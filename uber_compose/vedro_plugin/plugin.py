@@ -105,7 +105,7 @@ class VedroUberComposePlugin(Plugin):
                             )
                         )
 
-                    if env_config == None:
+                    if env_config is None:
                         env_config = self._default_env
 
                     await self._uber_compose_client.up(
