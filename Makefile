@@ -9,6 +9,28 @@ install-deps:
 install-local: install-deps
 	pip3 install . --force-reinstall
 
+.PHONY: install-dev-deps
+install-dev-deps:
+	pip3 install --quiet --upgrade pip
+	pip3 install --quiet -r requirements-dev.txt
+
+path ?= uber_compose tests
+
+.PHONY: isort
+isort: install-dev-deps
+	python3 -m isort --check-only --diff $(path)
+
+.PHONY: fix-imports
+fix-imports: install-dev-deps
+	python3 -m isort $(path)
+
+.PHONY: flake8
+flake8: install-dev-deps
+	python3 -m flake8 $(path)
+
+.PHONY: lint
+lint: isort flake8
+
 .PHONY: build
 build:
 	pip3 install --quiet --upgrade pip

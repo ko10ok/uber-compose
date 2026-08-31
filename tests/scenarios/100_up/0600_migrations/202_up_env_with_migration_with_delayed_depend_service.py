@@ -1,21 +1,17 @@
-import vedro
-from d42 import fake
-from d42 import schema
-from rtry import retry
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
+from d42 import fake
+from d42 import schema
 from helpers.docker_migration_result import get_file_from_container
-from uber_compose.uber_compose import UberCompose
+from rtry import retry
+from schemas.docker import ContainerSchema
+import vedro
+
 from uber_compose import Environment
 from uber_compose import Service
-
-
-from schemas.docker import ContainerSchema
-from schemas.env_name import EnvNameSchema
-from schemas.http_codes import HTTPStatusCodeOk
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
@@ -45,13 +41,13 @@ services:
       interval: 5s
       timeout: 10s
       retries: 100
-    x-migration: 
+    x-migration:
       - after_start: sh -c 'echo `date +%s` > /tmp/migration.log'
-      
+
   s2:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
-    x-migration: 
+    x-migration:
       - after_start: sh -c 'echo `date +%s` > /tmp/migration.log'
     depends_on:
       s1:

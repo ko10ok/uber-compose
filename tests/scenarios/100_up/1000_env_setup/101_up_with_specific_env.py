@@ -1,4 +1,3 @@
-import vedro
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
@@ -7,6 +6,8 @@ from contexts.no_docker_containers import retrieve_dockerish_containers
 from d42 import schema
 from schemas.docker import ContainerSchema
 from schemas.service_env import ServiceEnvSchema
+import vedro
+
 from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
@@ -70,7 +71,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(Environment(Service('s2'))),

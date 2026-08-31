@@ -11,7 +11,9 @@ class Constants:
 
         self.project: str = os.environ.get('COMPOSE_PROJECT_NAME')
         self.compose_project_name = os.environ.get('COMPOSE_PROJECT_NAME')
-        assert self.compose_project_name, 'COMPOSE_PROJECT_NAME environment variable is not set: - COMPOSE_PROJECT_NAME=${PWD##*/}'
+        assert self.compose_project_name, (
+            'COMPOSE_PROJECT_NAME environment variable is not set: - COMPOSE_PROJECT_NAME=${PWD##*/}'
+        )
 
         self.docker_host = os.environ.get('DOCKER_HOST', 'unix:///var/run/docker.sock')
 

@@ -1,6 +1,5 @@
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
-from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
 from uber_compose.utils.docker_compose_service_deps import parse_docker_compose_services_deps
 
 

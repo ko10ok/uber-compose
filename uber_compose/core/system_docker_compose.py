@@ -1,17 +1,15 @@
-import pprint
-from itertools import groupby
 from pathlib import Path
+import pprint
 
 from rich.text import Text
+
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.types import ServicesComposeState
-from uber_compose.core.utils.compose_instance_cfg import get_service_map
 from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
 from uber_compose.helpers.labels import Label
-from uber_compose.output.console import CONSOLE
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
@@ -29,7 +27,9 @@ class SystemDockerCompose:
             scan_for_compose_files(inner_project_root, self.cfg_constants.docker_compose_files_scan_depth)
         )
         self.logger.commands(f'All found compose files: {self.default_compose_files}')
-        assert self.default_compose_files, f'No docker-compose files found in the project root {inner_project_root} directory.'
+        assert self.default_compose_files, (
+            f'No docker-compose files found in the project root {inner_project_root} directory.'
+        )
 
         self.default_environment = make_default_environment(
             compose_files=get_absolute_compose_files(self.default_compose_files, inner_project_root),
@@ -54,7 +54,9 @@ class SystemDockerCompose:
         services_state = await self.dc_shell.dc_state()
         services_states = services_state.get_all_for(
             lambda service_state: (
-                service_state.check(Label.ENV_CONFIG_TEMPLATE, base64_pickled(Environment.from_environment(config_template)))
+                service_state.check(
+                    Label.ENV_CONFIG_TEMPLATE, base64_pickled(Environment.from_environment(config_template))
+                )
                 and service_state.check(Label.COMPOSE_FILES, compose_files)
             )
         )

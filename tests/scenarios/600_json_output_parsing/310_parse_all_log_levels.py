@@ -1,7 +1,7 @@
-import vedro
 from d42 import schema
+import vedro
 
-from uber_compose.vedro_plugin.base_structures.common_json_cli import JsonParser, LogLevels
+from uber_compose.vedro_plugin.base_structures.common_json_cli import JsonParser
 
 
 class Scenario(vedro.Scenario):

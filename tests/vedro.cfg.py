@@ -1,6 +1,6 @@
 import vedro
-import vedro_valera_validator as valera_validator
 from vedro.plugins.director import RichReporter
+import vedro_valera_validator as valera_validator
 
 
 class Config(vedro.Config):

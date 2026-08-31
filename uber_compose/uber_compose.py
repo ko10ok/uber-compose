@@ -1,19 +1,17 @@
-import shlex
 from dataclasses import dataclass
-from typing import Any
+import shlex
 from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
 
-from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
-from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
-from uber_compose.core.docker_compose_shell.types import ServicesComposeState
-
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
+from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
+from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
+from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
@@ -71,9 +69,30 @@ class SystemUberCompose:
                  services_override: list[OverridenService] | None = None,
                  ) -> ReadyEnv:
 
+        compose_files = self._resolve_compose_files(compose_files)
+        config_template = self._resolve_config_template(config_template, compose_files, services_override)
+
+        services_state = await self._get_current_state(config_template, compose_files)
+
+        reusable_env = self._find_reusable_env(services_state, config_template, force_restart)
+        if reusable_env is not None:
+            return reusable_env
+
+        self._log_inflight_and_restart_info(services_state, force_restart)
+
+        return await self._start_new_environment(config_template, compose_files, release_id, parallelism_limit)
+
+    def _resolve_compose_files(self, compose_files: str | None) -> str:
         if not compose_files:
             compose_files = self.system_docker_compose.get_default_compose_files()
+        return compose_files
 
+    def _resolve_config_template(
+        self,
+        config_template: Environment | None,
+        compose_files: str,
+        services_override: list[OverridenService] | None,
+    ) -> Environment:
         if not config_template:
             config_template = make_default_environment(
                 compose_files=get_absolute_compose_files(compose_files, self.cfg_constants.in_docker_project_root_path),
@@ -82,6 +101,9 @@ class SystemUberCompose:
         if services_override:
             config_template = config_template.from_environment(config_template, services_override=services_override)
 
+        return config_template
+
+    async def _get_current_state(self, config_template: Environment, compose_files: str) -> ServicesComposeState:
         self.logger.stage_debug(
             f'Searching for environment {config_template} with template: {base64_pickled(config_template)}'
         )
@@ -92,28 +114,50 @@ class SystemUberCompose:
         self.logger.stage_debug(
             f'Found environments containers: {services_state}'
         )
+        return services_state
+
+    def _should_restart(self, services_state: ServicesComposeState, broken_services: list, force_restart: bool) -> bool:
+        return len(services_state) == 0 or len(broken_services) != 0 or force_restart
+
+    def _find_reusable_env(
+        self,
+        services_state: ServicesComposeState,
+        config_template: Environment,
+        force_restart: bool,
+    ) -> ReadyEnv | None:
         broken_services = calc_broken_services(services_state, config_template, self.cfg_constants.non_stop_containers)
         if broken_services:
             self.logger.stage(
                 Text(
-                    f'Not started or not ready containers in current environment: ', style=Style.suspicious
+                    'Not started or not ready containers in current environment: ', style=Style.suspicious
                 ).append(Text(f'{broken_services}', style=Style.regular))
             )
-        if len(services_state) != 0 and len(broken_services) == 0 and not force_restart:
-            existing_env_id = services_state.get_any().labels.get(Label.ENV_ID, None)
-            env_config = debase64_pickled(services_state.get_any().labels.get(Label.ENV_CONFIG))
-            _for = f' for {config_template.description}' if config_template.description else ''
-            self.logger.stage_details(Text(
-                f'Found suitable{_for} ready env: ', style=Style.info
-            ).append(Text(existing_env_id, style=Style.mark)))
 
-            last_release_id = services_state.get_any().labels.get(Label.RELEASE_ID)
-            self.last_release_id = last_release_id
-            return ReadyEnv(existing_env_id, env_config, last_release_id)
+        if self._should_restart(services_state, broken_services, force_restart):
+            return None
 
+        existing_env_id = services_state.get_any().labels.get(Label.ENV_ID, None)
+        env_config = debase64_pickled(services_state.get_any().labels.get(Label.ENV_CONFIG))
+        _for = f' for {config_template.description}' if config_template.description else ''
+        self.logger.stage_details(Text(
+            f'Found suitable{_for} ready env: ', style=Style.info
+        ).append(Text(existing_env_id, style=Style.mark)))
+
+        last_release_id = services_state.get_any().labels.get(Label.RELEASE_ID)
+        self.last_release_id = last_release_id
+        return ReadyEnv(existing_env_id, env_config, last_release_id)
+
+    def _log_inflight_and_restart_info(self, services_state: ServicesComposeState, force_restart: bool) -> None:
+        in_flight_templates = [
+            (
+                debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]),
+                service["labels"][Label.ENV_CONFIG_TEMPLATE],
+            )
+            for service in services_state.as_json()
+        ]
         self.logger.stage_debug(
             f'In-flight containers:\n'
-            f'{[(debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]), service["labels"][Label.ENV_CONFIG_TEMPLATE]) for service in services_state.as_json()]}'
+            f'{in_flight_templates}'
         )
         if force_restart:
             self.logger.stage_details(Text(
@@ -123,7 +167,13 @@ class SystemUberCompose:
                 f'Previous state {services_state.as_json()}', style=Style.info
             ))
 
-
+    async def _start_new_environment(
+        self,
+        config_template: Environment,
+        compose_files: str,
+        release_id: str | None,
+        parallelism_limit: int,
+    ) -> ReadyEnv:
         _for = f' {config_template.description}' if config_template.description else ''
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
         self.logger.stage_details(f'Use compose files: {compose_files}')
@@ -164,7 +214,7 @@ class SystemUberCompose:
 
         # TODO check if ready by state checking
 
-        self.logger.stage_info(Text(f'New environment started'))
+        self.logger.stage_info(Text('New environment started'))
 
         return ReadyEnv(
             new_env_id,
@@ -191,7 +241,7 @@ class SystemUberCompose:
 
         service_state = dc_state.get_all_for(
             lambda service_state: service_state.check(Label.ENV_ID, env_id)
-                                  and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
+            and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
         )
         if len(service_state.as_json()) != 1:
             raise ValueError(f'Container {container} not found in environment {env_id}')

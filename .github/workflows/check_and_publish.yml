@@ -13,13 +13,39 @@ on:
     branches:
       - "**"
   workflow_dispatch:
+    inputs:
+      publish_alpha:
+        description: 'Publish alpha package to PyPI'
+        type: boolean
+        default: false
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Check imports order (isort)
+      run: make isort
+
+    - name: Lint (flake8)
+      run: make flake8
+
   tests:
+    name: "tests ${{ matrix.python-version }}: ${{ matrix.node-index }}/${{ matrix.node-total }}"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14.0b2']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        node-total: [3]
+        node-index: [1, 2, 3]
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4
@@ -34,13 +60,15 @@ jobs:
         COMPOSE_FILE: "docker-compose.yml"
         CI_DC_DISABLE_TTY: "-T"
         PYTHON_VERSION: ${{ matrix.python-version }}
+        NODE_TOTAL: ${{ matrix.node-total }}
+        NODE_INDEX: ${{ matrix.node-index }}
       run: |
         cd tests
-        make e2e-run args='-vvv' -B
+        make e2e-run args="-vvv --slicer-total=${NODE_TOTAL} --slicer-index=$((NODE_INDEX - 1))" -B
 
   publish_pypi:
     runs-on: ubuntu-latest
-    needs: tests
+    needs: [tests, lint]
     if: github.ref_type == 'tag'
 
     steps:
@@ -87,6 +115,7 @@ jobs:
   publish_alpha_pypi:
     runs-on: ubuntu-latest
     needs: tests
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_alpha == true
     environment: manual-gate
 
     steps:

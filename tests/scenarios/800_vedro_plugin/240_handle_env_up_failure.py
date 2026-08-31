@@ -1,26 +1,25 @@
 from argparse import Namespace
 from unittest.mock import Mock
 
+from contexts.compose_file import compose_file
+from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.no_docker_containers import no_docker_containers
+from helpers.vedro.scenario import make_scenario
 import vedro
-
-from uber_compose.output.console import LogPolicy
-from uber_compose import UpHealthPolicy
-from uber_compose.uber_compose import UberCompose
 from vedro import catched
 from vedro.core import MonotonicScenarioScheduler
 from vedro.events import ArgParsedEvent
 from vedro.events import StartupEvent
 
-from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
-from contexts.no_docker_containers import no_docker_containers
-from helpers.vedro.scenario import make_scenario
 from uber_compose import ComposeConfig
 from uber_compose import DEFAULT_COMPOSE
+from uber_compose import UpHealthPolicy
 from uber_compose import VedroUberCompose
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
+from uber_compose.output.console import LogPolicy
+from uber_compose.uber_compose import UberCompose
 from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 
 

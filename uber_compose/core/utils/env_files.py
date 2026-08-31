@@ -12,9 +12,9 @@ def make_debug_bash_env(env_config_compose_instance: ComposeInstanceFiles,
     )
 
     with open(env_config_compose_instance.directory / '.env', 'w') as f:
-        f.write(f'alias dc="docker-compose --project-directory ."\n')
+        f.write('alias dc="docker-compose --project-directory ."\n')
         f.write(f'export COMPOSE_FILE={new_external_compose_file}\n')
-        f.write(f'alias deactivate-env="unset COMPOSE_FILE"\n')
+        f.write('alias deactivate-env="unset COMPOSE_FILE"\n')
         # TODO Envs
         # for k,value in updated_envs.items():
         #     f.write(f'{k}={value}\n')

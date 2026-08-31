@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import NamedTuple
 from typing import Union
 
-from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Environment
+from uber_compose.env_description.env_types import OverridenService
 
 DEFAULT_ENV_ID = 'default_env_id'
 

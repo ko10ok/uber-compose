@@ -24,5 +24,6 @@ def calc_broken_services(
         if service.service.name not in services_state.get_services_names()
     ]
     return list(
-        set(non_ready_services) | set(not_included_services) - set(excluded_from_check) - set(skipped_overridden_services)
+        set(non_ready_services) | set(not_included_services)
+        - set(excluded_from_check) - set(skipped_overridden_services)
     )

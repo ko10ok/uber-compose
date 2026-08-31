@@ -1,11 +1,10 @@
+from unittest.mock import AsyncMock
+from unittest.mock import Mock
+
 import vedro
-from d42 import schema
-from unittest.mock import AsyncMock, Mock
-from unittest.mock import ANY
 from vedro import catched
+
 from uber_compose import CommonJsonCli
-from uber_compose.vedro_plugin.base_structures.common_json_cli import CommandResult
-from uber_compose.helpers.exec_result import ExecResult
 
 
 class Scenario(vedro.Scenario):

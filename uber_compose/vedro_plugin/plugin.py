@@ -1,24 +1,22 @@
-from collections import OrderedDict
 import sys
 from typing import Type
 from typing import Union
 from uuid import uuid4
 
-import vedro.events
 from rich.text import Text
 from vedro.core import ConfigType
 from vedro.core import Dispatcher
 from vedro.core import Plugin
 from vedro.core import PluginConfig
+import vedro.events
 from vedro.events import ArgParseEvent
 from vedro.events import ArgParsedEvent
 from vedro.events import ConfigLoadedEvent
 from vedro.events import ScenarioRunEvent
 from vedro.events import StartupEvent
 
-from uber_compose import SystemUberCompose
-from uber_compose.output.styles import Style
 from uber_compose import Environment
+from uber_compose import SystemUberCompose
 from uber_compose.core.constants import Constants
 from uber_compose.core.sequence_run_types import ComposeConfig
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
@@ -26,6 +24,7 @@ from uber_compose.env_description.env_types import OverridenService
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
+from uber_compose.output.styles import Style
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
 from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
 from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config
@@ -35,12 +34,15 @@ from uber_compose.vedro_plugin.helpers.test_env_vars_setter import setup_env_for
 
 DEFAULT_COMPOSE = 'default'
 
+
 class VedroUberComposePlugin(Plugin):
     def __init__(self, config: Type["VedroUberCompose"], client: SystemUberCompose = None) -> None:
         super().__init__(config)
         self._enabled = config.enabled
         if config.default_env:
-            assert config.default_env._description == DEFAULT_ENV_DESCRIPTION, 'default_env must have description set to DEFAULT_ENV_DESCRIPTION'
+            assert config.default_env._description == DEFAULT_ENV_DESCRIPTION, (
+                'default_env must have description set to DEFAULT_ENV_DESCRIPTION'
+            )
         self._default_env: Environment = config.default_env
 
         # cli args
@@ -97,13 +99,13 @@ class VedroUberComposePlugin(Plugin):
                     if self._default_env is None and env_config is None:
                         self._logger.stage(
                             Text(
-                                f'[UberCompose] Warning: some scenarios has no "env" field set.\n'
+                                '[UberCompose] Warning: some scenarios has no "env" field set.\n'
                                 'Consider adding "env = Envs.DEFAULT" to your scenario.',
                                 style=Style.suspicious
                             )
                         )
 
-                    if env_config == None:
+                    if env_config is None:
                         env_config = self._default_env
 
                     await self._uber_compose_client.up(
@@ -125,7 +127,7 @@ class VedroUberComposePlugin(Plugin):
         if self._just_up:
             self._logger.stage(
                 Text(
-                    f'Environment has been started successfully. Exiting as requested.',
+                    'Environment has been started successfully. Exiting as requested.',
                     style=Style.good
                 )
             )

@@ -1,21 +1,16 @@
-import vedro
-from d42 import fake
-from d42 import schema
-from rtry import retry
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
+from d42 import schema
 from helpers.docker_migration_result import get_file_from_container
-from uber_compose.uber_compose import UberCompose
+from rtry import retry
+from schemas.docker import ContainerSchema
+import vedro
+
 from uber_compose import Environment
 from uber_compose import Service
-
-
-from schemas.docker import ContainerSchema
-from schemas.env_name import EnvNameSchema
-from schemas.http_codes import HTTPStatusCodeOk
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
@@ -40,7 +35,7 @@ services:
     x-migration:
       - after_start: sh -c 'echo "migration 1 done" >> /tmp/migration.log'
       - after_start: [[sh -c 'echo "migration 2 done" >> /tmp/migration.log'], s1]
-  
+
   s2:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
@@ -66,11 +61,11 @@ services:
 
     async def when_user_up_env_without_params(self):
         self.response = await UberCompose().up(compose_files=self.compose_filename,
-            config_template=Environment(
-                Service('s1'),
-                Service('s2'),
-                Service('s3'),
-            ),)
+                                               config_template=Environment(
+                                                   Service('s1'),
+                                                   Service('s2'),
+                                                   Service('s3'),
+                                                   ),)
 
     async def then_it_should_return_successful_code(self):
         assert self.response.env_id == schema.str

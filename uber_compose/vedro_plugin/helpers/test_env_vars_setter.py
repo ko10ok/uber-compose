@@ -1,5 +1,4 @@
 import os
-from _warnings import warn
 
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService

@@ -1,12 +1,10 @@
 import collections
-import os
-import shutil
-from _warnings import warn
 from copy import deepcopy
+import os
 from pathlib import Path
+import shutil
 
 import yaml
-from uber_compose.env_description.env_types import OverridenService
 
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
@@ -14,6 +12,7 @@ from uber_compose.core.utils.compose_instance_cfg import made_up_instance_compos
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import EventStage
 from uber_compose.env_description.env_types import Handler
+from uber_compose.env_description.env_types import OverridenService
 from uber_compose.errors.migrations import ServicesMigrationsError
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.labels import Label
@@ -110,7 +109,12 @@ def patch_service_set(dc_cfg: dict, services_map: dict[str, str] | None):
     return new_dc_cfg
 
 
-def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, overridden_services: list[OverridenService] | None = None) -> dict:
+def patch_envs(
+    dc_cfg: dict,
+    services_environment_vars: Environment,
+    run_id,
+    overridden_services: list[OverridenService] | None = None,
+) -> dict:
     # TODO envs order and override question!!
     #  if we overrides env, should we save order? or insert before, for allow to override codegen
     new_dc_cfg = deepcopy(dc_cfg)
@@ -160,7 +164,11 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, ove
     return new_dc_cfg
 
 
-def patch_services_names(dc_cfg: dict, services_map: dict[str, str], overridden_services: list[OverridenService] | None = None) -> dict:
+def patch_services_names(
+    dc_cfg: dict,
+    services_map: dict[str, str],
+    overridden_services: list[OverridenService] | None = None,
+) -> dict:
     new_service_dc_cfg = deepcopy(dc_cfg)
     new_service_dc_cfg['services'] = {}
 
@@ -438,7 +446,8 @@ def parse_docker_compose(file_paths):
 
 
 def topological_sort(services_dict):
-    from collections import defaultdict, deque
+    from collections import defaultdict
+    from collections import deque
 
     # Prepare the adjacency list
     graph = defaultdict(list)
@@ -456,7 +465,6 @@ def topological_sort(services_dict):
     topologically_sorted_services = []
 
     while zero_in_degree_queue:
-        level_services = list(zero_in_degree_queue)
         for _ in range(len(zero_in_degree_queue)):
             node = zero_in_degree_queue.popleft()
             topologically_sorted_services.append(node)

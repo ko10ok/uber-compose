@@ -84,6 +84,8 @@ class Service(NamedTuple):
     mode: ServiceMode = ServiceMode.ON
 
     def __eq__(self, other):
+        if not isinstance(other, Service):
+            return False
         return self.name == other.name
 
     def __repr__(self):
@@ -129,7 +131,9 @@ def remove_dups(*services: Service) -> List[Service]:
 
 class Environment:  # TODO rename Environment
     @classmethod
-    def from_environment(cls, env: 'Environment', *services: Service, description='', services_override = None) -> 'Environment':
+    def from_environment(
+        cls, env: 'Environment', *services: Service, description='', services_override=None,
+    ) -> 'Environment':
         # TODO duplicated services merging
         description = description or env._description
         services_overrides = []
@@ -139,7 +143,9 @@ class Environment:  # TODO rename Environment
             services_overrides += env._services_override
         return Environment(*env._services, *services, description=description, services_override=services_overrides)
 
-    def __init__(self, *services: Service | str, description='', services_override: List[OverridenService] | None = None):
+    def __init__(
+        self, *services: Service | str, description='', services_override: List[OverridenService] | None = None,
+    ):
         # TODO duplicated services merging
         self._description = description
         services = [
