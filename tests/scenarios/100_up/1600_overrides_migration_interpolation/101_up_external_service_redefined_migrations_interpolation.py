@@ -1,22 +1,22 @@
-import vedro
-from contexts.no_docker_containers import retrieve_dockerish_containers
-from d42 import fake
-from d42 import schema
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
+from contexts.no_docker_containers import retrieve_dockerish_containers
+from d42 import fake
+from d42 import schema
 from helpers.docker_migration_result import get_file_from_container
 from libs.env_const import AUTO_SCANNED
-from uber_compose.output.console import LogPolicy
 from schemas.docker import ContainerSchema
 from schemas.service_env import ServiceEnvSchema
+import vedro
+
 from uber_compose import OverridenService
-from uber_compose.uber_compose import UberCompose
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
+from uber_compose.output.console import LogPolicy
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):

@@ -1,9 +1,9 @@
-import vedro
-from vedro import catched
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
+import vedro
+from vedro import catched
+
 from uber_compose import Environment
 from uber_compose import Service
 from uber_compose.errors.up import ServicesUpError

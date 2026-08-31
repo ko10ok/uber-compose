@@ -1,13 +1,12 @@
 import asyncio
+from asyncio import subprocess
+from dataclasses import dataclass
 import os
+from pathlib import Path
 import pprint
 import shlex
 import sys
-from asyncio import subprocess
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable
-from typing import Coroutine
 from typing import NamedTuple
 
 from rich.text import Text
@@ -19,7 +18,6 @@ from uber_compose.core.utils.process_command_output import process_output_till_d
 from uber_compose.core.utils.shell_process import parse_process_command_name
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.jobs_result import OperationError
-from uber_compose.output.console import CONSOLE
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
@@ -77,7 +75,11 @@ class ComposeShellInterface:
 
         if not Path(self.compose_bin).exists():
             raise NoDockerCompose(
-                f'Docker Compose binary not found at {self.compose_bin}. Please install Docker Client with compose: \n   Alpine - apk add docker-cli docker-cli-compose\n   Debian/Ubuntu - apt install docker-ce-cli docker-compose-plugin')
+                f'Docker Compose binary not found at {self.compose_bin}. '
+                'Please install Docker Client with compose: \n'
+                '   Alpine - apk add docker-cli docker-cli-compose\n'
+                '   Debian/Ubuntu - apt install docker-ce-cli docker-compose-plugin'
+            )
 
     def _prepare_env_root(self, env: dict = None, root: Path | str = None) -> tuple[dict, str]:
         if env is None:
@@ -174,9 +176,12 @@ class ComposeShellInterface:
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
-                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
+                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\n'
+                    f'ComposeState:\n{state_result.as_rich_text()}'
                 ), None
-            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'), None
+            return OperationError(
+                f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'
+            ), None
 
         return JobResult.GOOD, stdout
 
@@ -200,7 +205,10 @@ class ComposeShellInterface:
         detached_end_str = ''
 
         process = await asyncio.create_subprocess_shell(
-            cmd := f'{self.compose_cmd} --project-directory {root} exec {extra_env_str} {detached_param_str} {self.extra_exec_params} {container} {cmd} {detached_end_str}',
+            cmd := (
+                f'{self.compose_cmd} --project-directory {root} exec {extra_env_str} '
+                f'{detached_param_str} {self.extra_exec_params} {container} {cmd} {detached_end_str}'
+            ),
             env=env,
             cwd=root,
             stdout=asyncio.subprocess.PIPE,
@@ -220,7 +228,8 @@ class ComposeShellInterface:
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
-                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
+                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\n'
+                    f'ComposeState:\n{state_result.as_rich_text()}'
                 ), stdout, stderr
             return OperationError(
                 f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'
@@ -232,12 +241,19 @@ class ComposeShellInterface:
                                     cmd: str,
                                     env: dict = None,
                                     root: Path | str = None,
-                                    ) -> tuple[JobResult, bytes, bytes] | list[int] | tuple[OperationError, bytes, bytes]:
+                                    ) -> (
+                                        tuple[JobResult, bytes, bytes]
+                                        | list[int]
+                                        | tuple[OperationError, bytes, bytes]
+                                    ):
         env, root = self._prepare_env_root(env, root)
 
         cmd = parse_process_command_name(cmd)
         process_state = await asyncio.create_subprocess_shell(
-            check_cmd := f'{self.compose_cmd} --project-directory {root} exec {self.extra_exec_params} {container} pidof {cmd}',
+            check_cmd := (
+                f'{self.compose_cmd} --project-directory {root} exec '
+                f'{self.extra_exec_params} {container} pidof {cmd}'
+            ),
             env=env,
             cwd=root,
             stdout=asyncio.subprocess.PIPE,
@@ -250,7 +266,9 @@ class ComposeShellInterface:
         check_output = stdout.decode('utf-8')
         sys_error = stderr.decode("utf-8")
 
-        self.logger.system_commands_debug(f'Pids of command "{cmd}" in "{container}":\n {check_output} \nErr: {sys_error}')
+        self.logger.system_commands_debug(
+            f'Pids of command "{cmd}" in "{container}":\n {check_output} \nErr: {sys_error}'
+        )
 
         if check_output != '':
             try:
@@ -276,7 +294,7 @@ class ComposeShellInterface:
         env, root = self._prepare_env_root(env, root)
 
         processes_state = await asyncio.create_subprocess_shell(
-            get_cmd := f'{self.compose_cmd} --project-directory {root} exec {self.extra_exec_params} {container} top -n 1',
+            f'{self.compose_cmd} --project-directory {root} exec {self.extra_exec_params} {container} top -n 1',
             env=env,
             cwd=root,
             stdout=asyncio.subprocess.PIPE,
@@ -401,8 +419,11 @@ class ComposeShellInterface:
             state_result = await self.dc_state()
             if state_result == JobResult.GOOD:
                 return OperationError(
-                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result.as_rich_text()}'
+                    f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\n'
+                    f'ComposeState:\n{state_result.as_rich_text()}'
                 )
-            return OperationError(f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}')
+            return OperationError(
+                f'Command: {cmd}\nStdout:\n{stdout}\n\nStderr:\n{stderr}\n\nComposeState:\n{state_result}'
+            )
 
         return JobResult.GOOD

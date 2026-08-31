@@ -1,11 +1,10 @@
-import os
-import sys
 from asyncio import sleep
+import os
 from pathlib import Path
+import sys
 
 from rich.text import Text
 
-from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
@@ -118,7 +117,8 @@ class ComposeInstance:
                     kill_after=False,
                 )
 
-                migration_errors = [error for error in migration_result.stderr.split(b'\n') if error]  # empty or none skips
+                # empty or none skips
+                migration_errors = [error for error in migration_result.stderr.split(b'\n') if error]
                 skipper_migration_errors = [
                     current_error
                     for current_error in migration_errors
@@ -142,20 +142,25 @@ class ComposeInstance:
                 ]
                 if not migration_result.finished or critical_migration_errors:
                     services_status = await self.compose_executor.dc_state()
-                    error = Text(f"Can't migrate service {target_service}, with {substituted_cmd}", style=Style.bad).append(
-                        Text(f"\n{migration_result.stdout=}\n",style=Style.regular)
+                    error = Text(
+                        f"Can't migrate service {target_service}, with {substituted_cmd}", style=Style.bad,
+                    ).append(
+                        Text(f"\n{migration_result.stdout=}\n", style=Style.regular)
                     ).append(
                         Text(f"{migration_result.stderr=}\n", style=Style.bad)
                     ).append(
-                        Text(f"Services status:\n", style=Style.info)
+                        Text("Services status:\n", style=Style.info)
                     ).append(
                         services_status.as_rich_text()
                     )
                     self.logger.error(error)
                     self.logger.error_details(f"\nServices logs:\n {await self.logs(services)}")
-                    raise ServicesUpError(f"Can't migrate service {target_service}, with {substituted_cmd}: {migration_result.finished=}"
-                                          f"\n{migration_result.stdout=}\n{migration_result.stderr=}\n"
-                                          f"\nServices status:\n {services_status.as_rich_text()}") from None
+                    raise ServicesUpError(
+                        f"Can't migrate service {target_service}, with {substituted_cmd}: "
+                        f"{migration_result.finished=}"
+                        f"\n{migration_result.stdout=}\n{migration_result.stderr=}\n"
+                        f"\nServices status:\n {services_status.as_rich_text()}"
+                    ) from None
 
     async def run_services_pack(self, services: list[str], migrations):
 
@@ -183,7 +188,6 @@ class ComposeInstance:
                 f"\nWith error: {up_result}"
                 f"\nServices status:\n {services_status.as_rich_text()}"
             ) from None
-
 
         await self.run_migration(
             [EventStage.AFTER_SERVICE_START],
@@ -274,7 +278,6 @@ class ComposeInstance:
                     # f"\nServices logs:\n {await self.logs(services)}"
                     f"\nServices status:\n {services_status.as_rich_text()}"
                 ) from None
-
 
     async def logs(self, services=None) -> str:
         job_result, log = await self.compose_executor.dc_logs(services, logs_param='')

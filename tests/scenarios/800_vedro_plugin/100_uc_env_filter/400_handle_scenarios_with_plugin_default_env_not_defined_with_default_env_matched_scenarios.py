@@ -1,34 +1,31 @@
 from argparse import Namespace
 from operator import truediv
 
-import vedro
-from d42 import fake
-from d42 import schema
-from district42_exp_types.unordered import unordered_schema
-
-from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
-from vedro.core import MonotonicScenarioScheduler
-
-from vedro.events import ArgParsedEvent
-from vedro.events import StartupEvent
-
-from helpers.vedro.scenario import describe_scenario
-from helpers.vedro.scenario import make_scenario
-from schemas.vedro.described_scenario import DescribedScenarios
-from uber_compose import ComposeConfig
-from uber_compose import DEFAULT_COMPOSE
-from uber_compose import VedroUberCompose
-from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
+from d42 import fake
+from d42 import schema
+from district42_exp_types.unordered import unordered_schema
+from helpers.vedro.scenario import describe_scenario
+from helpers.vedro.scenario import make_scenario
 from schemas.docker import ContainerSchema
-from uber_compose.uber_compose import UberCompose
+from schemas.vedro.described_scenario import DescribedScenarios
+import vedro
+from vedro.core import MonotonicScenarioScheduler
+from vedro.events import ArgParsedEvent
+from vedro.events import StartupEvent
+
+from uber_compose import ComposeConfig
+from uber_compose import DEFAULT_COMPOSE
+from uber_compose import VedroUberCompose
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
+from uber_compose.uber_compose import UberCompose
+from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 
 
 class Scenario(vedro.Scenario):

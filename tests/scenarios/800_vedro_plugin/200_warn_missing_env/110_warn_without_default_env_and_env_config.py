@@ -1,9 +1,9 @@
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
 
+from helpers.vedro.scenario import make_scenario
 import vedro
 
-from helpers.vedro.scenario import make_scenario
 from uber_compose import ComposeConfig
 from uber_compose import DEFAULT_COMPOSE
 from uber_compose import VedroUberCompose

@@ -1,15 +1,15 @@
-import vedro
-from d42 import schema
-
 from config import Config
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
+from d42 import schema
 from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
-from uber_compose.uber_compose import UberCompose
+import vedro
+
 from uber_compose.helpers.labels import Label
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):

@@ -1,21 +1,21 @@
 from time import sleep
 
-import vedro
-from d42 import schema
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
+from d42 import schema
+from schemas.http_codes import HTTPStatusCodeOk
+import vedro
+
 from uber_compose import Environment
 from uber_compose import Service
+from uber_compose.helpers.bytes_pickle import debase64_pickled
 from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
-from uber_compose.uber_compose import UberCompose
-from uber_compose.helpers.bytes_pickle import debase64_pickled
-from schemas.http_codes import HTTPStatusCodeOk
 from uber_compose.output.console import LogPolicy
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):

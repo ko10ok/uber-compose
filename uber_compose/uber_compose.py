@@ -1,19 +1,18 @@
-import shlex
 from dataclasses import dataclass
+import shlex
 from typing import Any
 from typing import Callable
 from uuid import uuid4
 
 from rich.text import Text
 
-from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
-from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
-from uber_compose.core.docker_compose_shell.types import ServicesComposeState
-
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
+from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
+from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
+from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id

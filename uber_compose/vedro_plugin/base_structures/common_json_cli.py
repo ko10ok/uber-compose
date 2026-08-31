@@ -1,6 +1,6 @@
+from dataclasses import dataclass
 import json
 import re
-from dataclasses import dataclass
 from typing import Callable
 from typing import Generic
 from typing import List
@@ -9,13 +9,11 @@ from typing import Type
 from typing import TypeVar
 from warnings import warn
 
+from uber_compose.core.docker_compose_shell.interface import ProcessExit
+from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.helpers.exec_result import ExecResult
-
-from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.uber_compose import SystemUberCompose
-
-from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.uber_compose import TheUberCompose
 
 

@@ -1,5 +1,5 @@
-import json
 from dataclasses import dataclass
+import json
 from typing import Callable
 from typing import Iterator
 
@@ -173,7 +173,7 @@ class ServicesComposeState:
             if service_state.check(label, value):
                 return service_state
 
-        return 
+        return None
 
     def __len__(self):
         return len(self._services)

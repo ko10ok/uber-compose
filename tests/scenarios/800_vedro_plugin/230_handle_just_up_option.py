@@ -1,15 +1,6 @@
 from argparse import Namespace
 from unittest.mock import Mock
 
-import vedro
-
-from uber_compose import UpHealthPolicy
-from uber_compose.uber_compose import UberCompose
-from vedro import catched
-from vedro.core import MonotonicScenarioScheduler
-from vedro.events import ArgParsedEvent
-from vedro.events import StartupEvent
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
@@ -17,13 +8,21 @@ from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
 from helpers.vedro.scenario import make_scenario
 from schemas.docker import ContainerSchema
+import vedro
+from vedro import catched
+from vedro.core import MonotonicScenarioScheduler
+from vedro.events import ArgParsedEvent
+from vedro.events import StartupEvent
+
 from uber_compose import ComposeConfig
 from uber_compose import DEFAULT_COMPOSE
+from uber_compose import UpHealthPolicy
 from uber_compose import VedroUberCompose
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
+from uber_compose.uber_compose import UberCompose
 from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 
 

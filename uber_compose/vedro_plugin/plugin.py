@@ -4,21 +4,20 @@ from typing import Type
 from typing import Union
 from uuid import uuid4
 
-import vedro.events
 from rich.text import Text
 from vedro.core import ConfigType
 from vedro.core import Dispatcher
 from vedro.core import Plugin
 from vedro.core import PluginConfig
+import vedro.events
 from vedro.events import ArgParseEvent
 from vedro.events import ArgParsedEvent
 from vedro.events import ConfigLoadedEvent
 from vedro.events import ScenarioRunEvent
 from vedro.events import StartupEvent
 
-from uber_compose import SystemUberCompose
-from uber_compose.output.styles import Style
 from uber_compose import Environment
+from uber_compose import SystemUberCompose
 from uber_compose.core.constants import Constants
 from uber_compose.core.sequence_run_types import ComposeConfig
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
@@ -26,6 +25,7 @@ from uber_compose.env_description.env_types import OverridenService
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
+from uber_compose.output.styles import Style
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
 from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
 from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config

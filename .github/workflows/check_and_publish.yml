@@ -15,6 +15,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Check imports order (isort)
+      run: make isort
+
+    - name: Lint (flake8)
+      run: make flake8
+
   tests:
     runs-on: ubuntu-latest
     strategy:

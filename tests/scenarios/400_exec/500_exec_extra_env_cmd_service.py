@@ -1,10 +1,10 @@
-import vedro
-from d42 import schema
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
+from d42 import schema
+import vedro
+
 from uber_compose import Environment
 from uber_compose import Service
 from uber_compose.helpers.exec_result import ExecResult

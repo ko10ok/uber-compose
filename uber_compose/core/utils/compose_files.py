@@ -1,12 +1,11 @@
-import collections
-import os
-import shutil
 from _warnings import warn
+import collections
 from copy import deepcopy
+import os
 from pathlib import Path
+import shutil
 
 import yaml
-from uber_compose.env_description.env_types import OverridenService
 
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
@@ -14,6 +13,7 @@ from uber_compose.core.utils.compose_instance_cfg import made_up_instance_compos
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import EventStage
 from uber_compose.env_description.env_types import Handler
+from uber_compose.env_description.env_types import OverridenService
 from uber_compose.errors.migrations import ServicesMigrationsError
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.labels import Label
@@ -438,7 +438,8 @@ def parse_docker_compose(file_paths):
 
 
 def topological_sort(services_dict):
-    from collections import defaultdict, deque
+    from collections import defaultdict
+    from collections import deque
 
     # Prepare the adjacency list
     graph = defaultdict(list)

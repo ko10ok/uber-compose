@@ -1,19 +1,19 @@
-import vedro
-from d42 import fake
-from d42 import schema
-from uber_compose.output.console import LogPolicy
-
 from contexts.compose_file import compose_file
 from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
-from uber_compose.core.constants import Constants
+from d42 import fake
+from d42 import schema
 from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
-from uber_compose.uber_compose import UberCompose
+import vedro
+
+from uber_compose.core.constants import Constants
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
+from uber_compose.output.console import LogPolicy
+from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):

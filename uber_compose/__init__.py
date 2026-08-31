@@ -1,6 +1,6 @@
-from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
+from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.core.sequence_run_types import ComposeConfig
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION

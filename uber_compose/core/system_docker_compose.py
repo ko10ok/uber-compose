@@ -1,8 +1,9 @@
-import pprint
 from itertools import groupby
 from pathlib import Path
+import pprint
 
 from rich.text import Text
+
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.types import ServicesComposeState
