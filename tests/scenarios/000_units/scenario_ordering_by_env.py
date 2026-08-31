@@ -1,7 +1,6 @@
 from d42 import schema
 from helpers.vedro.scenario import make_scenario
 import vedro
-from vedro.core import MonotonicScenarioScheduler
 
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment

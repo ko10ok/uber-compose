@@ -41,7 +41,7 @@ services:
         )
 
     async def given_command(self):
-        self.cmd = f'echo "Hello, World! $AAA"'
+        self.cmd = 'echo "Hello, World! $AAA"'
         self.env = {'AAA': '1'}
 
     async def when_user_exec_service_cmd(self):

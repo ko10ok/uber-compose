@@ -5,7 +5,6 @@ from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
 from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
-from schemas.http_codes import HTTPStatusCodeOk
 import vedro
 
 from uber_compose.core.constants import Constants

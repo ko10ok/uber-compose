@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import sys
 from typing import Type
 from typing import Union
@@ -35,12 +34,15 @@ from uber_compose.vedro_plugin.helpers.test_env_vars_setter import setup_env_for
 
 DEFAULT_COMPOSE = 'default'
 
+
 class VedroUberComposePlugin(Plugin):
     def __init__(self, config: Type["VedroUberCompose"], client: SystemUberCompose = None) -> None:
         super().__init__(config)
         self._enabled = config.enabled
         if config.default_env:
-            assert config.default_env._description == DEFAULT_ENV_DESCRIPTION, 'default_env must have description set to DEFAULT_ENV_DESCRIPTION'
+            assert config.default_env._description == DEFAULT_ENV_DESCRIPTION, (
+                'default_env must have description set to DEFAULT_ENV_DESCRIPTION'
+            )
         self._default_env: Environment = config.default_env
 
         # cli args
@@ -97,7 +99,7 @@ class VedroUberComposePlugin(Plugin):
                     if self._default_env is None and env_config is None:
                         self._logger.stage(
                             Text(
-                                f'[UberCompose] Warning: some scenarios has no "env" field set.\n'
+                                '[UberCompose] Warning: some scenarios has no "env" field set.\n'
                                 'Consider adding "env = Envs.DEFAULT" to your scenario.',
                                 style=Style.suspicious
                             )
@@ -125,7 +127,7 @@ class VedroUberComposePlugin(Plugin):
         if self._just_up:
             self._logger.stage(
                 Text(
-                    f'Environment has been started successfully. Exiting as requested.',
+                    'Environment has been started successfully. Exiting as requested.',
                     style=Style.good
                 )
             )

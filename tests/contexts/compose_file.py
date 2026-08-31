@@ -22,7 +22,7 @@ def cleanup_compose_files():
             file.unlink(missing_ok=True)
         elif file.is_dir():
             file.rmdir()
-    
+
 
 def compose_file(filename: str, content: str):
     _make_compose_file(filename, content)

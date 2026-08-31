@@ -11,7 +11,6 @@ from uber_compose import Environment
 from uber_compose import Service
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy
-from uber_compose.output.console import LogPolicy
 from uber_compose.uber_compose import UberCompose
 
 

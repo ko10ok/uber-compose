@@ -9,7 +9,6 @@ from d42 import fake
 from d42 import schema
 from helpers.vedro.scenario import describe_scenario
 from helpers.vedro.scenario import make_scenario
-from schemas.vedro.described_scenario import DescribedScenarios
 import vedro
 from vedro.core import MonotonicScenarioScheduler
 from vedro.events import ArgParsedEvent

@@ -4,7 +4,6 @@ from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import fake
 from d42 import schema
-from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
 import vedro
 
@@ -70,7 +69,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(Environment(Service('s2'), description=self.desc)),

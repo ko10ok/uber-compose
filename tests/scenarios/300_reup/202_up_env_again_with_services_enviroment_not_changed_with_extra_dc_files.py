@@ -37,7 +37,7 @@ services:
   s2:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
-  
+
   s3:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'

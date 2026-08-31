@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import shlex
-from typing import Any
 from typing import Callable
 from uuid import uuid4
 
@@ -88,11 +87,12 @@ class SystemUberCompose:
             compose_files = self.system_docker_compose.get_default_compose_files()
         return compose_files
 
-    def _resolve_config_template(self,
-                                  config_template: Environment | None,
-                                  compose_files: str,
-                                  services_override: list[OverridenService] | None,
-                                  ) -> Environment:
+    def _resolve_config_template(
+        self,
+        config_template: Environment | None,
+        compose_files: str,
+        services_override: list[OverridenService] | None,
+    ) -> Environment:
         if not config_template:
             config_template = make_default_environment(
                 compose_files=get_absolute_compose_files(compose_files, self.cfg_constants.in_docker_project_root_path),
@@ -119,16 +119,17 @@ class SystemUberCompose:
     def _should_restart(self, services_state: ServicesComposeState, broken_services: list, force_restart: bool) -> bool:
         return len(services_state) == 0 or len(broken_services) != 0 or force_restart
 
-    def _find_reusable_env(self,
-                            services_state: ServicesComposeState,
-                            config_template: Environment,
-                            force_restart: bool,
-                            ) -> ReadyEnv | None:
+    def _find_reusable_env(
+        self,
+        services_state: ServicesComposeState,
+        config_template: Environment,
+        force_restart: bool,
+    ) -> ReadyEnv | None:
         broken_services = calc_broken_services(services_state, config_template, self.cfg_constants.non_stop_containers)
         if broken_services:
             self.logger.stage(
                 Text(
-                    f'Not started or not ready containers in current environment: ', style=Style.suspicious
+                    'Not started or not ready containers in current environment: ', style=Style.suspicious
                 ).append(Text(f'{broken_services}', style=Style.regular))
             )
 
@@ -147,9 +148,16 @@ class SystemUberCompose:
         return ReadyEnv(existing_env_id, env_config, last_release_id)
 
     def _log_inflight_and_restart_info(self, services_state: ServicesComposeState, force_restart: bool) -> None:
+        in_flight_templates = [
+            (
+                debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]),
+                service["labels"][Label.ENV_CONFIG_TEMPLATE],
+            )
+            for service in services_state.as_json()
+        ]
         self.logger.stage_debug(
             f'In-flight containers:\n'
-            f'{[(debase64_pickled(service["labels"][Label.ENV_CONFIG_TEMPLATE]), service["labels"][Label.ENV_CONFIG_TEMPLATE]) for service in services_state.as_json()]}'
+            f'{in_flight_templates}'
         )
         if force_restart:
             self.logger.stage_details(Text(
@@ -159,12 +167,13 @@ class SystemUberCompose:
                 f'Previous state {services_state.as_json()}', style=Style.info
             ))
 
-    async def _start_new_environment(self,
-                                      config_template: Environment,
-                                      compose_files: str,
-                                      release_id: str | None,
-                                      parallelism_limit: int,
-                                      ) -> ReadyEnv:
+    async def _start_new_environment(
+        self,
+        config_template: Environment,
+        compose_files: str,
+        release_id: str | None,
+        parallelism_limit: int,
+    ) -> ReadyEnv:
         _for = f' {config_template.description}' if config_template.description else ''
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
         self.logger.stage_details(f'Use compose files: {compose_files}')
@@ -205,7 +214,7 @@ class SystemUberCompose:
 
         # TODO check if ready by state checking
 
-        self.logger.stage_info(Text(f'New environment started'))
+        self.logger.stage_info(Text('New environment started'))
 
         return ReadyEnv(
             new_env_id,
@@ -232,7 +241,7 @@ class SystemUberCompose:
 
         service_state = dc_state.get_all_for(
             lambda service_state: service_state.check(Label.ENV_ID, env_id)
-                                  and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
+            and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
         )
         if len(service_state.as_json()) != 1:
             raise ValueError(f'Container {container} not found in environment {env_id}')

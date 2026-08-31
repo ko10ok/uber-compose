@@ -70,7 +70,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(Environment(Service('s2'), description=self.desc)),

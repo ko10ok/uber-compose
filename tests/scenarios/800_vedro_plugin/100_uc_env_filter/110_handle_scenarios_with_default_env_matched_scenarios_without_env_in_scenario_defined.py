@@ -10,7 +10,6 @@ from district42_exp_types.unordered import unordered_schema
 from helpers.vedro.scenario import describe_scenario
 from helpers.vedro.scenario import make_scenario
 from schemas.docker import ContainerSchema
-from schemas.vedro.described_scenario import DescribedScenarios
 import vedro
 from vedro.core import MonotonicScenarioScheduler
 from vedro.events import ArgParsedEvent
@@ -109,6 +108,7 @@ services:
         assert list(self.startup_event.scheduler.scheduled) == [
             self.scenarios[0],
         ]
+
     async def then_it_should_up_all_default_services(self):
         self.containers = retrieve_all_docker_containers()
         assert self.containers == unordered_schema([
@@ -116,7 +116,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(Environment(Service('s1'), Service('s2'), description='AUTO_SCANNED')),
@@ -134,7 +135,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(Environment(Service('s1'), Service('s2'), description='AUTO_SCANNED')),

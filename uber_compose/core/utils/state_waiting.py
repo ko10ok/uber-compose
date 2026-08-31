@@ -42,7 +42,7 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
         ]
 
         if not non_ready_services:
-            logger_func(Text(f' ✔ All services up\n', style=output_style.mark_neutral))
+            logger_func(Text(' ✔ All services up\n', style=output_style.mark_neutral))
             return JobResult.GOOD
 
         # some service not ready routine
@@ -54,7 +54,7 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
             return JobResult.BAD
 
         if state_keeper.not_in_state(services_state):
-            logger_func(Text(f' ✗ Still not ready services:', style=output_style.bad))
+            logger_func(Text(' ✗ Still not ready services:', style=output_style.bad))
             logger_func(services_state.as_rich_text(
                 filter=is_service_in_bad_state,
                 style=output_style

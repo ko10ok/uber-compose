@@ -37,7 +37,10 @@ class LogPolicySet:
 
 class LogPolicy:
     DEFAULT = LogPolicySet(LogEvents.STAGE, LogEvents.ERROR)
-    VERBOSE = LogPolicySet(LogEvents.STAGE, LogEvents.STAGE_INFO, LogEvents.STAGE_DETAILS, LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT)
+    VERBOSE = LogPolicySet(
+        LogEvents.STAGE, LogEvents.STAGE_INFO, LogEvents.STAGE_DETAILS,
+        LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT,
+    )
     DEBUG = LogPolicySet(LogEvents.GLOBAL_DEBUG)
 
     @staticmethod
@@ -51,7 +54,7 @@ class LogPolicy:
 
 # TODO collect all into file and on level in stdout
 class Logger:
-    def __init__(self, log_policy: LogPolicySet = None, cfg_constants = None):
+    def __init__(self, log_policy: LogPolicySet = None, cfg_constants=None):
         if cfg_constants is None:
             cfg_constants = Constants()
         if log_policy is None:
@@ -64,7 +67,7 @@ class Logger:
         if LogEvents.GLOBAL_DEBUG in self.log_policy:
             if line_no == 0:
                 self.stream.print(f'{level}:', style='bold grey15 on green', end='')
-                self.stream.print(f'', style='white on default')
+                self.stream.print('', style='white on default')
             self.stream.print(text)
             return
 

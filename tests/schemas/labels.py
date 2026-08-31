@@ -15,7 +15,7 @@ LabelsSchema = schema.dict({
     Label.TEMPLATE_SERVICE_NAME: schema.str,
     Label.SERVICE_NAME: schema.str,
 
-Label.COMPOSE_FILES: schema.str,
+    Label.COMPOSE_FILES: schema.str,
     Label.COMPOSE_FILES_INSTANCE: schema.str,
 
     Label.ENV_CONFIG_TEMPLATE: schema.str,

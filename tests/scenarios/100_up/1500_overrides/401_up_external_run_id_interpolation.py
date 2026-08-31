@@ -3,9 +3,7 @@ from contexts.no_docker_compose_files import no_docker_compose_files
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from contexts.no_docker_containers import retrieve_dockerish_containers
-from d42 import fake
 from d42 import schema
-from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
 from schemas.service_env import ServiceEnvSchema
 import vedro

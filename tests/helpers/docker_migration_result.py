@@ -36,5 +36,5 @@ def get_file_from_container(container_name: str, file_path: str) -> bytes:
     except docker.errors.NotFound:
         return None
 
-    except (docker.errors.APIError, Exception) as e:
+    except (docker.errors.APIError, Exception):
         return None

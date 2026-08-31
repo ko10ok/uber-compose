@@ -12,7 +12,7 @@ class Scenario(vedro.Scenario):
         self.parser = JsonParser(skips=[
             r'health.*check',           # Matches "health check", "health status check", etc.
             r'keepalive\s+signal',      # Matches "keepalive signal" with spaces
-            r'connection\s+error\s+\d+' # Matches "connection error" with numbers
+            r'connection\s+error\s+\d+'  # Matches "connection error" with numbers
         ])
 
     def given_logs_with_regex_skippable_lines(self):
@@ -48,7 +48,7 @@ Unformatted line not matching any regex
             schema.str('Plain text matching keepalive  signal pattern'),                   # Skipped by regex (raw)
             schema.str % '{"level": "error", "msg": "Connection failed"}',                   # Parsed JSON
             schema.str % '{"level": "info", "msg": "Processing request"}',                   # Parsed JSON
-            schema.str('{"level": "error", "msg": "Minor connection error 503 detected"}'), # Skipped by regex (raw)
+            schema.str('{"level": "error", "msg": "Minor connection error 503 detected"}'),  # Skipped by regex (raw)
             schema.str('Unformatted line not matching any regex'),                         # Non-JSON (raw)
             schema.str % '{"level": "warning", "msg": "connection timeout"}'                 # Parsed JSON
         ])

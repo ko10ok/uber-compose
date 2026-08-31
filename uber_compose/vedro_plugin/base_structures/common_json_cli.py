@@ -12,7 +12,6 @@ from warnings import warn
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
-from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.uber_compose import SystemUberCompose
 from uber_compose.uber_compose import TheUberCompose
 
@@ -244,7 +243,10 @@ class CommonJsonCli(Generic[TCommandResult]):
             timeout = self._timeout
 
         if container is None:
-            assert self._container is not None, 'No container specified. Container must be specified either in method call or in CommonJsonCli initialization'
+            assert self._container is not None, (
+                'No container specified. Container must be specified either in method call '
+                'or in CommonJsonCli initialization'
+            )
             container = self._container
 
         if life_cycle_policy is None:

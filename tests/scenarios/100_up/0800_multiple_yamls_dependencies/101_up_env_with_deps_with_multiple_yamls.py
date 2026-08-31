@@ -30,7 +30,7 @@ version: "3"
 services:
   s1:
     image: busybox:stable
-    command: 'sh -c "echo error service exception log && sleep 5000 && echo `date +%s` > /tmp/healthcheck; trap : 
+    command: 'sh -c "echo error service exception log && sleep 5000 && echo `date +%s` > /tmp/healthcheck; trap :
     TERM INT; sleep 604800; wait"'
     healthcheck:
       test: ["CMD", "sh", "-c", "[ -f /tmp/healthcheck ] || exit 1"]
@@ -43,7 +43,7 @@ services:
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
     depends_on:
         - s1
-    
+
 """
         )
         compose_file(
@@ -82,7 +82,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
                 },
             },
         ])

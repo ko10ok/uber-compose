@@ -1,4 +1,3 @@
-from _warnings import warn
 import collections
 from copy import deepcopy
 import os
@@ -110,7 +109,12 @@ def patch_service_set(dc_cfg: dict, services_map: dict[str, str] | None):
     return new_dc_cfg
 
 
-def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, overridden_services: list[OverridenService] | None = None) -> dict:
+def patch_envs(
+    dc_cfg: dict,
+    services_environment_vars: Environment,
+    run_id,
+    overridden_services: list[OverridenService] | None = None,
+) -> dict:
     # TODO envs order and override question!!
     #  if we overrides env, should we save order? or insert before, for allow to override codegen
     new_dc_cfg = deepcopy(dc_cfg)
@@ -160,7 +164,11 @@ def patch_envs(dc_cfg: dict, services_environment_vars: Environment, run_id, ove
     return new_dc_cfg
 
 
-def patch_services_names(dc_cfg: dict, services_map: dict[str, str], overridden_services: list[OverridenService] | None = None) -> dict:
+def patch_services_names(
+    dc_cfg: dict,
+    services_map: dict[str, str],
+    overridden_services: list[OverridenService] | None = None,
+) -> dict:
     new_service_dc_cfg = deepcopy(dc_cfg)
     new_service_dc_cfg['services'] = {}
 
@@ -457,7 +465,6 @@ def topological_sort(services_dict):
     topologically_sorted_services = []
 
     while zero_in_degree_queue:
-        level_services = list(zero_in_degree_queue)
         for _ in range(len(zero_in_degree_queue)):
             node = zero_in_degree_queue.popleft()
             topologically_sorted_services.append(node)

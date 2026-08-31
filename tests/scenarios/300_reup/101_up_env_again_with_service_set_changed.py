@@ -76,7 +76,6 @@ services:
         assert self.response.env_id == schema.str
         assert self.response.env == self.changed_environment
 
-
     async def then_it_should_up_entire_env(self):
         self.containers = retrieve_all_docker_containers()
         assert self.containers == schema.list([

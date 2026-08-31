@@ -7,8 +7,6 @@ from d42 import schema
 from helpers.docker_migration_result import get_file_from_container
 from rtry import retry
 from schemas.docker import ContainerSchema
-from schemas.env_name import EnvNameSchema
-from schemas.http_codes import HTTPStatusCodeOk
 import vedro
 
 from uber_compose import Environment
@@ -37,14 +35,14 @@ services:
   s1:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
-    x-migration: 
+    x-migration:
       - after_start: sh -c 'echo "s1 after_start" >> /tmp/migration.log'
       - after_all: sh -c 'echo "s1 after_all" >> /tmp/migration.log'
 
   s2:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
-    x-migration: 
+    x-migration:
       - before_start: [ [sh -c 'echo "s2 before_start" >> /tmp/migration.log' ], s1 ]
       - after_start: [ [sh -c 'echo "s2 after_start" >> /tmp/migration.log' ], s1 ]
     depends_on:

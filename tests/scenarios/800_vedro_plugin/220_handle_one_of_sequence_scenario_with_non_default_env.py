@@ -10,7 +10,6 @@ from d42 import schema
 from helpers.vedro.scenario import describe_scenario
 from helpers.vedro.scenario import make_scenario
 from schemas.docker import ContainerSchema
-from schemas.vedro.described_scenario import DescribedScenarios
 import vedro
 from vedro.core import MonotonicScenarioScheduler
 from vedro.events import ArgParsedEvent
@@ -137,7 +136,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
+                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(self.another_env),
