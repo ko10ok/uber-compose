@@ -10,6 +10,7 @@ from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
+from uber_compose.helpers.hooks import UberComposeEvent
 from uber_compose.uber_compose import SystemUberCompose
 from uber_compose.uber_compose import TheUberCompose
 from uber_compose.vedro_plugin.base_structures.common_json_cli import CommandResult
@@ -27,5 +28,5 @@ __all__ = (
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
     'ExecLifeCyclePolicy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
-    'DEFAULT_ENV_ID',
+    'DEFAULT_ENV_ID', 'UberComposeEvent',
 )

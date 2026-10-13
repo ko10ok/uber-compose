@@ -23,6 +23,8 @@ from uber_compose.helpers.bytes_pickle import debase64_pickled
 from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
+from uber_compose.helpers.hooks import HooksRegistry
+from uber_compose.helpers.hooks import UberComposeEvent
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
 from uber_compose.helpers.singleton import SingletonMeta
@@ -59,6 +61,11 @@ class SystemUberCompose:
         self.health_policy = health_policy
         self.run_id = run_id
         self.last_release_id = None
+        self._previous_release_id: str | None = None
+        self._hooks = HooksRegistry()
+
+    def on(self, event: UberComposeEvent, func: Callable, *args: Any, **kwargs: Any) -> None:
+        self._hooks.on(event, func, *args, **kwargs)
 
     async def up(self,
                  config_template: Environment | None = None,
@@ -145,7 +152,9 @@ class SystemUberCompose:
 
         last_release_id = services_state.get_any().labels.get(Label.RELEASE_ID)
         self.last_release_id = last_release_id
-        return ReadyEnv(existing_env_id, env_config, last_release_id)
+        self._previous_release_id = last_release_id
+            await self._hooks.run(UberComposeEvent.AFTER_UP)
+            return ReadyEnv(existing_env_id, env_config, last_release_id)
 
     def _log_inflight_and_restart_info(self, services_state: ServicesComposeState, force_restart: bool) -> None:
         in_flight_templates = [
@@ -183,6 +192,8 @@ class SystemUberCompose:
         if self.last_release_id is None:
             self.last_release_id = str(uuid4())
 
+        is_env_update = self._previous_release_id is not None
+
         if parallelism_limit == 1:
             self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
             new_env_id = DEFAULT_ENV_ID
@@ -215,6 +226,11 @@ class SystemUberCompose:
         # TODO check if ready by state checking
 
         self.logger.stage_info(Text('New environment started'))
+
+        await self._hooks.run(UberComposeEvent.AFTER_UP)
+        if is_env_update:
+            await self._hooks.run(UberComposeEvent.AFTER_UPDATED_ENV_UP)
+        self._previous_release_id = self.last_release_id
 
         return ReadyEnv(
             new_env_id,
