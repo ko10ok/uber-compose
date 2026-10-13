@@ -5,7 +5,6 @@ jump to and read that section before acting.
 
 1. [Running e2e tests](#running-e2e-tests)
 2. [After developing a feature and its tests](#after-developing-a-feature-and-its-tests)
-3. [Setting up a local venv for isort/flake8 (fix-imports / lint)](#setting-up-a-local-venv-for-isortflake8-fix-imports--lint)
 
 ## Running e2e tests
 
@@ -19,33 +18,14 @@ To run tests with environment rebuild or to up environment (only if application 
 
 ## After developing a feature and its tests
 
-Before considering a feature/task done, from the repo root run:
+Before considering a feature/task done, from the repo root (not from `tests/`)
+run, after the e2e tests pass:
 
-1. `make e2e-fix-imports` — auto-fixes import order (isort) in `uber_compose` and `tests`.
-2. `make lint` — re-checks import order and runs flake8; must pass with no errors.
-
-These two commands must be run from the repo root (not from `tests/`), after the
-e2e tests pass.
-
-## Setting up a local venv for isort/flake8 (fix-imports / lint)
-
-System `python3` on this machine is externally managed (PEP 668), so
-`pip3 install -r requirements-dev.txt` directly fails. Create and use a local
-venv once per machine:
-
-```
-python3 -m venv .venv-lint
-.venv-lint/bin/pip install --upgrade pip
-.venv-lint/bin/pip install -r requirements-dev.txt -r requirements.txt
-```
-
-Then run the checks through that venv's interpreter instead of the Makefile's
-`pip3`/`python3` (which assume a non-managed environment, as is the case in CI):
-
-```
-.venv-lint/bin/python3 -m isort uber_compose tests
-.venv-lint/bin/python3 -m flake8 uber_compose tests
-```
-
-`.venv-lint/` is a local tool only and must not be committed.
+1. `make venv` — creates/updates the local `.venv-lint` dev venv (isort, flake8)
+   used by the targets below. Not needed to call directly, it's a dependency
+   of `e2e-fix-imports` and `lint`, but can be run on its own too.
+2. `make e2e-fix-imports` — auto-fixes import order (isort) in `uber_compose`
+   and `tests`.
+3. `make lint` — re-checks import order and runs flake8; must pass with no
+   errors.
 
