@@ -1,6 +1,6 @@
-import inspect
 from collections import defaultdict
 from enum import Enum
+import inspect
 from typing import Any
 from typing import Callable
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import shlex
+from typing import Any
 from typing import Callable
 from uuid import uuid4
 
@@ -83,6 +84,7 @@ class SystemUberCompose:
 
         reusable_env = self._find_reusable_env(services_state, config_template, force_restart)
         if reusable_env is not None:
+            await self._hooks.run(UberComposeEvent.AFTER_UP)
             return reusable_env
 
         self._log_inflight_and_restart_info(services_state, force_restart)
@@ -153,8 +155,7 @@ class SystemUberCompose:
         last_release_id = services_state.get_any().labels.get(Label.RELEASE_ID)
         self.last_release_id = last_release_id
         self._previous_release_id = last_release_id
-            await self._hooks.run(UberComposeEvent.AFTER_UP)
-            return ReadyEnv(existing_env_id, env_config, last_release_id)
+        return ReadyEnv(existing_env_id, env_config, last_release_id)
 
     def _log_inflight_and_restart_info(self, services_state: ServicesComposeState, force_restart: bool) -> None:
         in_flight_templates = [

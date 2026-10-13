@@ -31,6 +31,9 @@ flake8: install-dev-deps
 .PHONY: lint
 lint: isort flake8
 
+.PHONY: e2e-fix-imports
+e2e-fix-imports: fix-imports
+
 .PHONY: build
 build:
 	pip3 install --quiet --upgrade pip
