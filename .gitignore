@@ -163,5 +163,6 @@ cython_debug/
 
 up
 deps
+load-images
 .vedro
 tests/mnt/

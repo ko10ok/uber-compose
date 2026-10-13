@@ -16,6 +16,15 @@ To run tests with verbose output: make e2e-run args='scenarios/ -vvv'
 
 To run tests with environment rebuild or to up environment (only if application code changed): make e2e-run args='scenarios/ -vvv' -B
 
+`make e2e-run` also loads pre-saved docker images (`tests/images/*.tar.gz`) into
+the dind daemon used by tests, via the `load-images` stage. This stage is
+cached like `up`/`deps`/`build` (a stamp file skips re-loading on unchanged
+runs) and is refreshed automatically by `-B`. To add an image that a test
+needs but that may be unreliable to pull from Docker Hub in CI, save it with
+`docker save <image> | gzip -9 > tests/images/<name>.tar.gz` and reference the
+same image tag in the test's compose file — `--pull missing` then reuses the
+loaded image instead of pulling it.
+
 ## After developing a feature and its tests
 
 Before considering a feature/task done, from the repo root (not from `tests/`)

@@ -6,6 +6,7 @@ export PYTHON_VERSION ?= 3.10
 down:
 	rm up || true
 	rm dep || true
+	rm load-images || true
 	docker compose down || true
 
 build:
@@ -23,6 +24,12 @@ deps: up
 	docker compose exec ${CI_DC_DISABLE_TTY} e2e /venv/bin/python3 -m pip install /uber-compose
 	echo "" > deps
 
+load-images: up
+	for image in images/*.tar.gz; do \
+		docker compose exec ${CI_DC_DISABLE_TTY} e2e sh -c "gunzip -c /tests/$$image | docker load"; \
+	done
+	echo "" > load-images
+
 .PHONY: e2e-run
-e2e-run: up deps
+e2e-run: up deps load-images
 	docker compose exec ${CI_DC_DISABLE_TTY} e2e /venv/bin/python3 -m vedro run $(args)
