@@ -9,27 +9,34 @@ install-deps:
 install-local: install-deps
 	pip3 install . --force-reinstall
 
-.PHONY: install-dev-deps
-install-dev-deps:
-	pip3 install --quiet --upgrade pip
-	pip3 install --quiet -r requirements-dev.txt
+VENV_DIR := .venv-lint
+VENV_PYTHON := $(VENV_DIR)/bin/python3
+
+.PHONY: venv
+venv:
+	test -x $(VENV_PYTHON) || python3 -m venv $(VENV_DIR)
+	$(VENV_PYTHON) -m pip install --quiet --upgrade pip
+	$(VENV_PYTHON) -m pip install --quiet -r requirements-dev.txt -r requirements.txt
 
 path ?= uber_compose tests
 
 .PHONY: isort
-isort: install-dev-deps
-	python3 -m isort --check-only --diff $(path)
+isort: venv
+	$(VENV_PYTHON) -m isort --check-only --diff $(path)
 
 .PHONY: fix-imports
-fix-imports: install-dev-deps
-	python3 -m isort $(path)
+fix-imports: venv
+	$(VENV_PYTHON) -m isort $(path)
 
 .PHONY: flake8
-flake8: install-dev-deps
-	python3 -m flake8 $(path)
+flake8: venv
+	$(VENV_PYTHON) -m flake8 $(path)
 
 .PHONY: lint
 lint: isort flake8
+
+.PHONY: e2e-fix-imports
+e2e-fix-imports: fix-imports
 
 .PHONY: build
 build:
