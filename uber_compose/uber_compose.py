@@ -16,8 +16,10 @@ from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
+from uber_compose.core.utils.state_waiting import is_service_not_running_or_not_healthy
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
+from uber_compose.env_description.env_types import ServiceMode
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
@@ -89,7 +91,9 @@ class SystemUberCompose:
 
         self._log_inflight_and_restart_info(services_state, force_restart)
 
-        return await self._start_new_environment(config_template, compose_files, release_id, parallelism_limit)
+        return await self._start_new_environment(
+            config_template, compose_files, release_id, parallelism_limit, force_restart
+        )
 
     def _resolve_compose_files(self, compose_files: str | None) -> str:
         if not compose_files:
@@ -177,12 +181,53 @@ class SystemUberCompose:
                 f'Previous state {services_state.as_json()}', style=Style.info
             ))
 
+    async def _compute_singleton_protected_services(
+        self,
+        config_template: Environment,
+        force_restart: bool,
+    ) -> list[str]:
+        """
+        Services that must survive this (re)start untouched: currently running, healthy,
+        and marked ServiceMode.SINGLETON — either in the new config_template (if declared
+        there) or, when absent from it, in the config_template that created the running
+        container (read back from its own ENV_CONFIG_TEMPLATE label).
+
+        An explicit force_restart bypasses this protection entirely.
+        """
+        if force_restart:
+            return []
+
+        declared_services = config_template.get_services()
+        all_services_state = await self.system_docker_compose.get_all_services_state()
+
+        protected_services = []
+        for service_state in all_services_state:
+            if is_service_not_running_or_not_healthy(service_state):
+                continue
+
+            declared_service = declared_services.get(service_state.name)
+            if declared_service is not None:
+                service_mode = declared_service.mode
+            else:
+                recorded_template = service_state.labels.get(Label.ENV_CONFIG_TEMPLATE)
+                recorded_service = (
+                    debase64_pickled(recorded_template).get_services().get(service_state.name)
+                    if recorded_template else None
+                )
+                service_mode = recorded_service.mode if recorded_service else None
+
+            if service_mode == ServiceMode.SINGLETON:
+                protected_services.append(service_state.name)
+
+        return protected_services
+
     async def _start_new_environment(
         self,
         config_template: Environment,
         compose_files: str,
         release_id: str | None,
         parallelism_limit: int,
+        force_restart: bool = False,
     ) -> ReadyEnv:
         _for = f' {config_template.description}' if config_template.description else ''
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
@@ -195,12 +240,25 @@ class SystemUberCompose:
 
         is_env_update = self._previous_release_id is not None
 
+        protected_singleton_services = []
         if parallelism_limit == 1:
             self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
             new_env_id = DEFAULT_ENV_ID
 
+            protected_singleton_services = await self._compute_singleton_protected_services(
+                config_template, force_restart
+            )
+            if protected_singleton_services:
+                self.logger.stage_debug(
+                    f'Protecting singleton services from restart: {protected_singleton_services}'
+                )
+
             services = await self.system_docker_compose.get_running_services()
-            services_to_down = list(set(services) - set(self.cfg_constants.non_stop_containers))
+            services_to_down = list(
+                set(services)
+                - set(self.cfg_constants.non_stop_containers)
+                - set(protected_singleton_services)
+            )
             if services_to_down:
                 await self.system_docker_compose.down_services(services_to_down)
 
@@ -213,7 +271,7 @@ class SystemUberCompose:
             config_template=config_template,
             in_docker_project_root=self.cfg_constants.in_docker_project_root_path,
             host_project_root_directory=self.cfg_constants.host_project_root_directory,
-            except_containers=self.cfg_constants.non_stop_containers,
+            except_containers=self.cfg_constants.non_stop_containers + protected_singleton_services,
             tmp_envs_path=self.cfg_constants.tmp_envs_path,
             execution_envs=None,
             release_id=self.last_release_id,

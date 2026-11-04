@@ -242,6 +242,7 @@ class ComposeInstance:
             service
             for service_tier_pack in services_tiers
             for service in service_tier_pack
+            if service not in self.except_containers
         ]
 
         await self.run_migration(
