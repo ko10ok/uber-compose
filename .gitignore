@@ -166,3 +166,4 @@ deps
 load-images
 .vedro
 tests/mnt/
+tests/logs/
