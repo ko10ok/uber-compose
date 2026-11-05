@@ -9,6 +9,7 @@ async def services_started(config_template: Environment,
                            parallelism_limit: int = 1,
                            run_id: str = '',
                            constants=None,
+                           env_id: str | None = None,
                            ):
     response = await UberCompose(
         cfg_constants=constants,
@@ -19,6 +20,7 @@ async def services_started(config_template: Environment,
         force_restart=force_restart,
         release_id=release_id,
         parallelism_limit=parallelism_limit,
+        env_id=env_id,
     )
 
     return response

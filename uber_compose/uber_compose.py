@@ -95,12 +95,18 @@ class SystemUberCompose:
                  release_id: str | None = None,
                  parallelism_limit: int = 1,
                  services_override: list[OverridenService] | None = None,
+                 env_id: str | None = None,
                  ) -> ReadyEnv:
 
         compose_files = self._resolve_compose_files(compose_files)
         config_template = self._resolve_config_template(config_template, compose_files, services_override)
 
+        requested_env_id = env_id if parallelism_limit > 1 else None
         services_state = await self._get_current_state(config_template, compose_files)
+        if requested_env_id is not None:
+            services_state = services_state.get_all_for(
+                lambda service_state: service_state.check(Label.ENV_ID, requested_env_id)
+            )
 
         reusable_env = self._find_reusable_env(services_state, config_template, force_restart)
         if reusable_env is not None:
@@ -110,7 +116,8 @@ class SystemUberCompose:
         self._log_inflight_and_restart_info(services_state, force_restart)
 
         return await self._start_new_environment(
-            config_template, compose_files, release_id, parallelism_limit, force_restart
+            config_template, compose_files, release_id, parallelism_limit, force_restart,
+            requested_env_id=requested_env_id,
         )
 
     def _resolve_compose_files(self, compose_files: str | None) -> str:
@@ -261,12 +268,13 @@ class SystemUberCompose:
         release_id: str | None,
         parallelism_limit: int,
         force_restart: bool = False,
+        requested_env_id: str | None = None,
     ) -> ReadyEnv:
         _for = f' {config_template.description}' if config_template.description else ''
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
         self.logger.stage_details(f'Use compose files: {compose_files}')
 
-        new_env_id = get_new_env_id()
+        new_env_id = requested_env_id or get_new_env_id()
         self.last_release_id = release_id
         if self.last_release_id is None:
             self.last_release_id = str(uuid4())
