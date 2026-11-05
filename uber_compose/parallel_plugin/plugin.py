@@ -1,3 +1,5 @@
+import json
+import sys
 from typing import Type
 
 from vedro.core import ConfigType
@@ -7,9 +9,11 @@ from vedro.core import PluginConfig
 from vedro.events import ArgParseEvent
 from vedro.events import ArgParsedEvent
 from vedro.events import ConfigLoadedEvent
+from vedro.events import ScenarioReportedEvent
 from vedro.events import StartupEvent
 
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
+from uber_compose.parallel_plugin.details import serialize_result_details
 from uber_compose.parallel_plugin.grouper import build_execution_plan_from_scheduler
 from uber_compose.parallel_plugin.grouper import build_replica_execution_plan
 from uber_compose.parallel_plugin.grouper import collect_group_counts
@@ -34,6 +38,8 @@ class VedroUberComposeParallelPlugin(Plugin):
         self._parallel = max(int(config.parallel or 1), 1)
         self._global_config: ConfigType | None = None
         self._runner_registered = False
+        self._capture_output = False
+        self._capture_limit = None
         self._refresh_worker_state()
 
     def _refresh_worker_state(self) -> None:
@@ -51,6 +57,9 @@ class VedroUberComposeParallelPlugin(Plugin):
             .listen(ArgParsedEvent, self.handle_arg_parsed, priority=-100) \
             .listen(StartupEvent, self.handle_prepare_scenarios, priority=-100)
 
+        if self._is_worker:
+            dispatcher.listen(ScenarioReportedEvent, self.emit_scenario_details, priority=-50)
+
     def on_config_loaded(self, event: ConfigLoadedEvent) -> None:
         self._global_config = event.config
 
@@ -65,7 +74,19 @@ class VedroUberComposeParallelPlugin(Plugin):
         parallel = getattr(event.args, 'uc_parallel', None)
         if parallel:
             self._parallel = max(int(parallel), 1)
+        self._capture_output = bool(getattr(event.args, 'capture_output', False))
+        self._capture_limit = getattr(event.args, 'capture_limit', None)
         self._refresh_worker_state()
+
+    def emit_scenario_details(self, event: ScenarioReportedEvent) -> None:
+        result = event.aggregated_result
+        payload = {
+            'event': 'uc_scenario_details',
+            'scenario': {'id': result.scenario.unique_id},
+            **serialize_result_details(result),
+        }
+        sys.stdout.write(json.dumps(payload) + '\n')
+        sys.stdout.flush()
 
     async def handle_prepare_scenarios(self, event: StartupEvent) -> None:
         self._refresh_worker_state()
@@ -130,6 +151,8 @@ class VedroUberComposeParallelPlugin(Plugin):
             resolver=lambda: ParallelScenarioRunner(
                 dispatcher=dispatcher,
                 grouping_key=self._grouping_key,
+                capture_output=self._capture_output,
+                capture_limit=self._capture_limit,
             ),
             registrant=self,
         )
