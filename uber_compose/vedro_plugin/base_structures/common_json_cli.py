@@ -12,6 +12,8 @@ from warnings import warn
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
+from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
+from uber_compose.helpers.current_env import get_current_env_id
 from uber_compose.uber_compose import SystemUberCompose
 from uber_compose.uber_compose import TheUberCompose
 
@@ -235,6 +237,7 @@ class CommonJsonCli(Generic[TCommandResult]):
                    command_result_extra: dict = None,
                    timeout: TimeOutCheck = None,
                    life_cycle_policy: ExecLifeCyclePolicy = None,
+                   env_id: str = None,
                    ) -> TCommandResult:
         if command_result_extra is None:
             command_result_extra = {}
@@ -252,14 +255,21 @@ class CommonJsonCli(Generic[TCommandResult]):
         if life_cycle_policy is None:
             life_cycle_policy = self._life_cycle_policy
 
-        result = await self._cli_client.exec(
-            container=container,
-            command=command,
-            extra_env=extra_env,
-            wait=wait,
-            timeout=timeout,
-            life_cycle_policy=life_cycle_policy,
-        )
+        if env_id is None:
+            env_id = get_current_env_id()
+
+        exec_kwargs = {
+            'container': container,
+            'command': command,
+            'extra_env': extra_env,
+            'wait': wait,
+            'timeout': timeout,
+            'life_cycle_policy': life_cycle_policy,
+        }
+        if env_id != DEFAULT_ENV_ID:
+            exec_kwargs['env_id'] = env_id
+
+        result = await self._cli_client.exec(**exec_kwargs)
 
         return self._make_result(
             cmd=command,

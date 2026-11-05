@@ -21,6 +21,7 @@ from uber_compose.core.constants import Constants
 from uber_compose.core.sequence_run_types import ComposeConfig
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import OverridenService
+from uber_compose.helpers.current_env import set_current_env_id
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
@@ -156,6 +157,7 @@ class VedroUberComposePlugin(Plugin):
             services_override=self._uc_external_services,
         )
 
+        set_current_env_id(ready_env.env_id)
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:

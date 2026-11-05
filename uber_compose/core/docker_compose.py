@@ -17,6 +17,7 @@ from uber_compose.env_description.env_types import EventStage
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
+from uber_compose.helpers.labels import Label
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
@@ -206,6 +207,7 @@ class ComposeInstance:
                 delay_s=self.health_policy.service_up_check_delay_s,
                 logger_func=self.logger.stage_details,
                 get_compose_state=self.compose_executor.dc_state,
+                service_filter=self._is_service_in_this_namespace,
             )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
@@ -220,6 +222,12 @@ class ComposeInstance:
             services,
             self.compose_instance_files.env_config_instance,
             migrations
+        )
+
+    def _is_service_in_this_namespace(self, service_state) -> bool:
+        return (
+            service_state.labels.get(Label.ENV_ID)
+            == self.compose_instance_files.env_config_instance.env_id
         )
 
     async def run(self):
@@ -268,6 +276,7 @@ class ComposeInstance:
                 delay_s=self.health_policy.service_up_check_delay_s,
                 logger_func=self.logger.stage,
                 get_compose_state=self.compose_executor.dc_state,
+                service_filter=self._is_service_in_this_namespace,
             )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()

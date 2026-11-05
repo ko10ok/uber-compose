@@ -23,9 +23,13 @@ def is_service_not_running_or_not_healthy(service_state: ServiceComposeState) ->
 
 
 async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_compose_state,
-                               is_service_in_bad_state=is_service_not_running_or_not_healthy) -> JobResult:
+                               is_service_in_bad_state=is_service_not_running_or_not_healthy,
+                               service_filter: Callable = None) -> JobResult:
     counter_keeper = CountdownCounterKeeper(attempts)
     state_keeper = StateKeeper()
+
+    if service_filter is None:
+        service_filter = lambda service_state: True
 
     async def check_once() -> JobResult:
         output_style = Style()
@@ -34,7 +38,7 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
             logger_func(Text('Starting services check up', style=output_style.info))
             state_keeper.update_state(ServicesState.DEFAULT_STATE)
 
-        services_state = await get_compose_state()
+        services_state = (await get_compose_state()).get_all_for(service_filter)
         non_ready_services = [
             service
             for service in services_state

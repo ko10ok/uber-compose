@@ -52,8 +52,13 @@ def get_new_env_id() -> str:
 
 def get_service_map(env: Environment, new_env_id: str):
     return {
-        service_name: make_env_service_name(service_name, new_env_id)
-        for service_name, service in env.get_services().items() if service.mode != ServiceMode.OFF
+        service_name: (
+            service_name
+            if service.mode in (ServiceMode.OFF, ServiceMode.SINGLETON)
+            else make_env_service_name(service_name, new_env_id)
+        )
+        for service_name, service in env.get_services().items()
+        if service.mode != ServiceMode.OFF
     }
 
 

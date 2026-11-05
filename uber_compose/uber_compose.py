@@ -20,6 +20,7 @@ from uber_compose.core.utils.state_waiting import is_service_not_running_or_not_
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import ServiceMode
+from uber_compose.errors.up import SingletonConfigChangedError
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
@@ -45,6 +46,22 @@ class ReadyEnv:
     release_id: str
 
 
+def _env_identity(config_template: Environment) -> tuple:
+    return tuple(sorted(
+        (service.name, service.mode.value)
+        for service in config_template.get_services().values()
+    ))
+
+
+def _service_config(service) -> tuple:
+    return (
+        service.name,
+        tuple(sorted(service.env.items())),
+        tuple(service.events_handlers),
+        service.mode,
+    )
+
+
 class SystemUberCompose:
     def __init__(self,
                  log_policy: LogPolicySet = None,
@@ -65,6 +82,7 @@ class SystemUberCompose:
         self.run_id = run_id
         self.last_release_id = None
         self._previous_release_id: str | None = None
+        self._previous_env_identity: tuple | None = None
         self._hooks = HooksRegistry()
 
     def on(self, event: UberComposeEvent, func: Callable, *args: Any, **kwargs: Any) -> None:
@@ -159,6 +177,7 @@ class SystemUberCompose:
         last_release_id = services_state.get_any().labels.get(Label.RELEASE_ID)
         self.last_release_id = last_release_id
         self._previous_release_id = last_release_id
+        self._previous_env_identity = _env_identity(config_template)
         return ReadyEnv(existing_env_id, env_config, last_release_id)
 
     def _log_inflight_and_restart_info(self, services_state: ServicesComposeState, force_restart: bool) -> None:
@@ -206,14 +225,28 @@ class SystemUberCompose:
                 continue
 
             declared_service = declared_services.get(service_state.name)
+            recorded_template = service_state.labels.get(Label.ENV_CONFIG_TEMPLATE)
+            recorded_service = (
+                debase64_pickled(recorded_template).get_services().get(service_state.name)
+                if recorded_template else None
+            )
+
+            if declared_service is not None and recorded_service is not None:
+                singleton_is_involved = (
+                    declared_service.mode == ServiceMode.SINGLETON
+                    or recorded_service.mode == ServiceMode.SINGLETON
+                )
+                if singleton_is_involved and _service_config(declared_service) != _service_config(recorded_service):
+                    raise SingletonConfigChangedError(
+                        f'Singleton service "{service_state.name}" configuration must not change while it is running. '
+                        f'Running config: {_service_config(recorded_service)!r}. '
+                        f'Requested config: {_service_config(declared_service)!r}. '
+                        f'Use force_restart if this change is intentional.'
+                    )
+
             if declared_service is not None:
                 service_mode = declared_service.mode
             else:
-                recorded_template = service_state.labels.get(Label.ENV_CONFIG_TEMPLATE)
-                recorded_service = (
-                    debase64_pickled(recorded_template).get_services().get(service_state.name)
-                    if recorded_template else None
-                )
                 service_mode = recorded_service.mode if recorded_service else None
 
             if service_mode == ServiceMode.SINGLETON:
@@ -238,20 +271,23 @@ class SystemUberCompose:
         if self.last_release_id is None:
             self.last_release_id = str(uuid4())
 
-        is_env_update = self._previous_release_id is not None
+        current_env_identity = _env_identity(config_template)
+        is_env_update = (
+            self._previous_release_id is not None
+            and self._previous_env_identity == current_env_identity
+        )
 
-        protected_singleton_services = []
+        protected_singleton_services = await self._compute_singleton_protected_services(
+            config_template, force_restart
+        )
+        if protected_singleton_services:
+            self.logger.stage_debug(
+                f'Protecting singleton services from restart: {protected_singleton_services}'
+            )
+
         if parallelism_limit == 1:
             self.logger.stage_debug(f'Using default service names with {parallelism_limit=}')
             new_env_id = DEFAULT_ENV_ID
-
-            protected_singleton_services = await self._compute_singleton_protected_services(
-                config_template, force_restart
-            )
-            if protected_singleton_services:
-                self.logger.stage_debug(
-                    f'Protecting singleton services from restart: {protected_singleton_services}'
-                )
 
             services = await self.system_docker_compose.get_running_services()
             services_to_down = list(
@@ -290,6 +326,7 @@ class SystemUberCompose:
         if is_env_update:
             await self._hooks.run(UberComposeEvent.AFTER_UPDATED_ENV_UP)
         self._previous_release_id = self.last_release_id
+        self._previous_env_identity = current_env_identity
 
         return ReadyEnv(
             new_env_id,
@@ -319,7 +356,16 @@ class SystemUberCompose:
             and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
         )
         if len(service_state.as_json()) != 1:
-            raise ValueError(f'Container {container} not found in environment {env_id}')
+            available_env_ids = sorted({
+                service.labels.get(Label.ENV_ID)
+                for service in dc_state
+                if service.check(Label.TEMPLATE_SERVICE_NAME, container)
+            })
+            raise ValueError(
+                f'Container {container} not found in environment {env_id}. '
+                f'Available environments for this container: {available_env_ids}. '
+                f'Pass env_id explicitly when multiple namespaces are running.'
+            )
 
         container = service_state.get_any().labels[Label.SERVICE_NAME]
 
