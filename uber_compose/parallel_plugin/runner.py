@@ -72,11 +72,16 @@ class ParallelScenarioRunner(ScenarioRunner):
         grouping_key: Callable[[VirtualScenario], str],
         capture_output: bool = False,
         capture_limit: int | None = None,
+        worker_timeout: float | None = None,
+        worker_concurrency: int | None = None,
     ) -> None:
         self._dispatcher = dispatcher
         self._grouping_key = grouping_key
         self._capture_output = capture_output
         self._capture_limit = capture_limit
+        self._worker_timeout = worker_timeout
+        self._worker_concurrency = worker_concurrency
+        self._processes: set = set()
 
     async def run(self, scheduler: ScenarioScheduler, **kwargs: Any) -> Report:
         plan = get_execution_plan()
@@ -90,20 +95,38 @@ class ParallelScenarioRunner(ScenarioRunner):
 
         aggregated: dict[str, AggregatedResult] = {}
         fire_lock = asyncio.Lock()
+        semaphore = (
+            asyncio.Semaphore(self._worker_concurrency)
+            if self._worker_concurrency else None
+        )
 
-        workers = [
-            self._run_worker(
-                assignment=assignment,
-                workers_total=plan.workers_total,
-                scenario_paths=scenario_paths,
-                scenarios=scenarios,
-                aggregated=aggregated,
-                fire_lock=fire_lock,
-            )
-            for assignment in plan.assignments
-            if assignment.groups
-        ]
-        await asyncio.gather(*workers)
+        async def run_assignment(assignment: WorkerAssignment):
+            if semaphore is None:
+                return await self._run_worker(
+                    assignment=assignment,
+                    workers_total=plan.workers_total,
+                    scenario_paths=scenario_paths,
+                    scenarios=scenarios,
+                    aggregated=aggregated,
+                    fire_lock=fire_lock,
+                )
+            async with semaphore:
+                return await self._run_worker(
+                    assignment=assignment,
+                    workers_total=plan.workers_total,
+                    scenario_paths=scenario_paths,
+                    scenarios=scenarios,
+                    aggregated=aggregated,
+                    fire_lock=fire_lock,
+                )
+
+        workers = [run_assignment(assignment) for assignment in plan.assignments if assignment.groups]
+        try:
+            worker_runs = await asyncio.gather(*workers)
+        except asyncio.CancelledError:
+            await self._kill_workers()
+            raise
+        await self._report_missing_scenarios(scheduler, scenarios, aggregated, worker_runs, fire_lock)
 
         report = Report()
         for scenario in scheduler.discovered:
@@ -127,7 +150,7 @@ class ParallelScenarioRunner(ScenarioRunner):
         scenarios: dict[str, VirtualScenario],
         aggregated: dict[str, AggregatedResult],
         fire_lock: asyncio.Lock,
-    ) -> None:
+    ) -> dict:
         env = os.environ.copy()
         env[WORKER_ID_ENV] = str(assignment.worker_id)
         env[WORKERS_TOTAL_ENV] = str(workers_total)
@@ -138,22 +161,81 @@ class ParallelScenarioRunner(ScenarioRunner):
         if assignment.replicas_total is not None:
             env[ENV_REPLICAS_TOTAL_ENV] = str(assignment.replicas_total)
 
-        command = [sys.executable, '-m', 'vedro', 'run', *scenario_paths, '--reporters', 'json']
-        if self._capture_output:
-            command.append('-C')
-            if self._capture_limit is not None:
-                command += ['--capture-limit', str(self._capture_limit)]
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
-        )
+        command = [sys.executable, '-m', 'vedro', 'run', *scenario_paths, '--reporters', 'json', '-C']
+        if self._capture_limit is not None:
+            command += ['--capture-limit', str(self._capture_limit)]
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+            )
+        except OSError as exc:
+            return {
+                'worker_id': assignment.worker_id,
+                'returncode': None,
+                'stderr': '',
+                'spawn_error': str(exc),
+                'timeout': False,
+            }
+
+        self._processes.add(process)
         stderr_task = asyncio.create_task(process.stderr.read())
         results: dict[str, ScenarioResult] = {}
         buffers: dict[str, list] = {}
         details: dict[str, dict] = {}
+        timed_out = False
 
+        try:
+            if self._worker_timeout:
+                try:
+                    stderr_bytes = await asyncio.wait_for(
+                        self._stream_process(
+                            process, stderr_task, scenarios, results,
+                            aggregated, buffers, details, fire_lock,
+                        ),
+                        timeout=self._worker_timeout,
+                    )
+                except asyncio.TimeoutError:
+                    timed_out = True
+                    process.kill()
+                    await process.wait()
+                    stderr_bytes = await stderr_task
+            else:
+                stderr_bytes = await self._stream_process(
+                    process, stderr_task, scenarios, results,
+                    aggregated, buffers, details, fire_lock,
+                )
+        finally:
+            self._processes.discard(process)
+            if process.returncode is None:
+                try:
+                    process.kill()
+                    await process.wait()
+                except (ProcessLookupError, RuntimeError):
+                    pass
+
+        return {
+            'worker_id': assignment.worker_id,
+            'returncode': process.returncode,
+            'stderr': stderr_bytes.decode('utf-8', errors='replace'),
+            'spawn_error': None,
+            'timeout': timed_out,
+        }
+
+    async def _stream_process(
+        self,
+        process,
+        stderr_task,
+        scenarios: dict[str, VirtualScenario],
+        results: dict[str, ScenarioResult],
+        aggregated: dict[str, AggregatedResult],
+        buffers: dict[str, list],
+        details: dict[str, dict],
+        fire_lock: asyncio.Lock,
+    ) -> bytes:
         while True:
             line = await process.stdout.readline()
             if not line:
@@ -169,10 +251,92 @@ class ParallelScenarioRunner(ScenarioRunner):
             )
 
         await process.wait()
-        await stderr_task
+        stderr_bytes = await stderr_task
 
         for scenario_id in list(buffers):
             await self._flush_block(scenario_id, buffers, fire_lock)
+
+        return stderr_bytes
+
+    async def _kill_workers(self) -> None:
+        for process in list(self._processes):
+            if process.returncode is None:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+        for process in list(self._processes):
+            try:
+                await process.wait()
+            except (ProcessLookupError, RuntimeError):
+                pass
+        self._processes.clear()
+
+    async def _report_missing_scenarios(
+        self,
+        scheduler: ScenarioScheduler,
+        scenarios: dict[str, VirtualScenario],
+        aggregated: dict[str, AggregatedResult],
+        worker_runs: list[dict],
+        fire_lock: asyncio.Lock,
+    ) -> None:
+        missing = {}
+        for scenario in scheduler.scheduled:
+            if scenario.is_skipped():
+                continue
+            if scenario.unique_id in aggregated:
+                continue
+            if scenario.unique_id not in scenarios:
+                continue
+            missing[scenario.unique_id] = scenario
+
+        if not missing:
+            return
+
+        message = self._worker_failure_message(worker_runs)
+        for scenario in missing.values():
+            result = self._build_worker_failure_result(scenario, message)
+            aggregated[scenario.unique_id] = AggregatedResult.from_existing(result, [result])
+            async with fire_lock:
+                await self._dispatcher.fire(ScenarioRunEvent(result))
+                await self._dispatcher.fire(ScenarioFailedEvent(result))
+                await self._dispatcher.fire(ScenarioReportedEvent(aggregated[scenario.unique_id]))
+
+    def _build_worker_failure_result(self, scenario: VirtualScenario, message: str) -> ScenarioResult:
+        result = ScenarioResult(scenario)
+        result.mark_failed()
+        self._apply_timing(result, {'scenario': {'elapsed': 0}})
+        result.add_extra_details(message)
+
+        step_result = StepResult(VirtualStep(self._make_step_callable('parallel worker')))
+        step_result.mark_failed()
+        step_result.set_exc_info(self._build_exc_info({
+            'type': 'RuntimeError',
+            'message': message,
+        }))
+        result.add_step_result(step_result)
+        return result
+
+    @staticmethod
+    def _worker_failure_message(worker_runs: list[dict]) -> str:
+        messages = []
+        for run in worker_runs:
+            if run.get('spawn_error'):
+                messages.append(
+                    f"Worker {run['worker_id']} failed to start: {run['spawn_error']}"
+                )
+            elif run.get('timeout'):
+                messages.append(f"Worker {run['worker_id']} timed out")
+            elif run.get('returncode') not in (0, None):
+                stderr_tail = (run.get('stderr') or '').strip().splitlines()[-5:]
+                tail = ' | '.join(stderr_tail)
+                messages.append(
+                    f"Worker {run['worker_id']} exited with code {run['returncode']}"
+                    + (f": {tail}" if tail else '')
+                )
+        if not messages:
+            return 'Parallel worker did not report the scenario result'
+        return '; '.join(messages)
 
     async def _consume_line(
         self,

@@ -40,6 +40,9 @@ class VedroUberComposeParallelPlugin(Plugin):
         self._runner_registered = False
         self._capture_output = False
         self._capture_limit = None
+        self._worker_timeout = config.worker_timeout
+        self._worker_concurrency = config.worker_concurrency
+        self._protocol_stdout = sys.stdout
         self._refresh_worker_state()
 
     def _refresh_worker_state(self) -> None:
@@ -85,8 +88,8 @@ class VedroUberComposeParallelPlugin(Plugin):
             'scenario': {'id': result.scenario.unique_id},
             **serialize_result_details(result),
         }
-        sys.stdout.write(json.dumps(payload) + '\n')
-        sys.stdout.flush()
+        self._protocol_stdout.write(json.dumps(payload) + '\n')
+        self._protocol_stdout.flush()
 
     async def handle_prepare_scenarios(self, event: StartupEvent) -> None:
         self._refresh_worker_state()
@@ -153,6 +156,8 @@ class VedroUberComposeParallelPlugin(Plugin):
                 grouping_key=self._grouping_key,
                 capture_output=self._capture_output,
                 capture_limit=self._capture_limit,
+                worker_timeout=self._worker_timeout,
+                worker_concurrency=self._worker_concurrency,
             ),
             registrant=self,
         )
@@ -165,6 +170,10 @@ class VedroUberComposeParallel(PluginConfig):
     enabled = False
 
     parallel: int = 1
+
+    worker_timeout: float | None = None
+
+    worker_concurrency: int | None = None
 
     grouping_key = env_group_key
 
