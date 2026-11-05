@@ -16,7 +16,9 @@ from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
+from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.core.utils.state_waiting import is_service_not_running_or_not_healthy
+from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import ServiceMode
@@ -119,6 +121,95 @@ class SystemUberCompose:
             config_template, compose_files, release_id, parallelism_limit, force_restart,
             requested_env_id=requested_env_id,
         )
+
+    async def prepare_parallel_environments(
+        self,
+        config_templates: list[Environment | None],
+        compose_files: str | None = None,
+        env_parallelism: dict[str, int] | None = None,
+        default_env_parallelism: int = 1,
+        force_restart: bool = False,
+        services_override: list[OverridenService] | None = None,
+    ) -> list[ReadyEnv]:
+        compose_files = self._resolve_compose_files(compose_files)
+
+        resolved = []
+        for config_template in config_templates:
+            resolved_template = self._resolve_config_template(
+                config_template, compose_files, services_override
+            )
+            replicas = self._env_replicas(config_template, env_parallelism, default_env_parallelism)
+            resolved.append((resolved_template, replicas))
+
+        total_replicas = sum(replicas for _, replicas in resolved)
+        if env_parallelism is None:
+            ready_envs = []
+            for resolved_template, _ in resolved:
+                ready_envs.append(await self.up(
+                    config_template=resolved_template,
+                    compose_files=compose_files,
+                    force_restart=force_restart,
+                    parallelism_limit=1,
+                ))
+            return ready_envs
+
+        parallelism_limit = max(total_replicas, 2)
+        ready_envs = []
+        for resolved_template, replicas in resolved:
+            desired_env_ids = [
+                get_stable_env_id(resolved_template, index)
+                for index in range(replicas)
+            ]
+            for env_id in desired_env_ids:
+                ready_envs.append(await self.up(
+                    config_template=resolved_template,
+                    compose_files=compose_files,
+                    force_restart=force_restart,
+                    parallelism_limit=parallelism_limit,
+                    env_id=env_id,
+                ))
+            await self._down_extra_replicas(resolved_template, compose_files, desired_env_ids)
+        return ready_envs
+
+    def _env_replicas(
+        self,
+        config_template: Environment | None,
+        env_parallelism: dict[str, int] | None,
+        default_env_parallelism: int,
+    ) -> int:
+        replicas = default_env_parallelism
+        if env_parallelism:
+            env_key = (
+                config_template.description
+                if config_template is not None
+                else DEFAULT_ENV_DESCRIPTION
+            )
+            replicas = env_parallelism.get(env_key, default_env_parallelism)
+        return max(int(replicas), 1)
+
+    async def _down_extra_replicas(
+        self,
+        config_template: Environment,
+        compose_files: str,
+        desired_env_ids: list[str],
+    ) -> None:
+        desired = set(desired_env_ids)
+        services_state = await self.system_docker_compose.get_state_for(config_template, compose_files)
+
+        extra_services = []
+        for service_state in services_state:
+            env_id = service_state.labels.get(Label.ENV_ID)
+            if env_id in desired:
+                continue
+            if service_state.name in self.cfg_constants.non_stop_containers:
+                continue
+            extra_services.append(service_state.name)
+
+        if extra_services:
+            self.logger.stage(Text(
+                'Downing extra env replicas: ', style=Style.info
+            ).append(Text(f'{extra_services}', style=Style.regular)))
+            await self.system_docker_compose.down_services(extra_services)
 
     def _resolve_compose_files(self, compose_files: str | None) -> str:
         if not compose_files:

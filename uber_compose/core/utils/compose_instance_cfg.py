@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 from uuid import uuid4
 
@@ -7,6 +8,7 @@ from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.env_description.env_types import ServiceMode
+from uber_compose.helpers.bytes_pickle import base64_pickled
 
 
 def make_env_service_name(service, env_id):
@@ -48,6 +50,15 @@ def prepare_services_env(env: Environment, services_map: dict) -> Environment:
 def get_new_env_id() -> str:
     env_id = str(uuid4())[:4]
     return env_id
+
+
+def get_template_hash(config_template: Environment | None, length: int = 4) -> str:
+    payload = base64_pickled(config_template)
+    return hashlib.sha1(payload.encode()).hexdigest()[:length]
+
+
+def get_stable_env_id(config_template: Environment | None, index: int) -> str:
+    return f'w{index}-{get_template_hash(config_template)}'
 
 
 def get_service_map(env: Environment, new_env_id: str):

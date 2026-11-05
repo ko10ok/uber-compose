@@ -12,6 +12,8 @@ class ComposeConfig(NamedTuple):
     compose_files: str
     overridden_services: list[OverridenService] = None
     parallel_env_limit: Union[int] = 1
+    env_parallelism: dict[str, int] | None = None
+    default_env_parallelism: int = 1
 
 
 class EnvInstanceConfig(NamedTuple):

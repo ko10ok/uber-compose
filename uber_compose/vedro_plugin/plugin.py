@@ -95,7 +95,16 @@ class VedroUberComposePlugin(Plugin):
 
         # Up all needed env simultaneously if parallelism allowed
         try:
-            if self._compose_choice.parallel_env_limit >= len(needed_configs):
+            if self._compose_choice.env_parallelism is not None:
+                await self._uber_compose_client.prepare_parallel_environments(
+                    config_templates=needed_configs,
+                    compose_files=self._compose_choice.compose_files,
+                    env_parallelism=self._compose_choice.env_parallelism,
+                    default_env_parallelism=self._compose_choice.default_env_parallelism,
+                    force_restart=self._force_restart,
+                    services_override=self._uc_external_services,
+                )
+            elif self._compose_choice.parallel_env_limit >= len(needed_configs):
                 for env_config in list(needed_configs):
                     if self._default_env is None and env_config is None:
                         self._logger.stage(
