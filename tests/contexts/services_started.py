@@ -7,9 +7,11 @@ async def services_started(config_template: Environment,
                            force_restart: bool = False,
                            release_id: str | None = None,
                            parallelism_limit: int = 1,
-                           run_id: str = ''
+                           run_id: str = '',
+                           constants=None,
                            ):
     response = await UberCompose(
+        cfg_constants=constants,
         run_id=run_id,
     ).up(
         config_template=config_template,

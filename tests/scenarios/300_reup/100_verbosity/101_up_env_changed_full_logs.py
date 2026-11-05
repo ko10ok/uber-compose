@@ -1,7 +1,8 @@
 from uuid import uuid4
 
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from contexts.services_started import services_started
@@ -23,8 +24,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_compose_files(self):
         compose_file(
@@ -47,6 +50,7 @@ services:
         self.start_release = str(uuid4())
         self.env_name = fake(EnvNameSchema)
         self.started_service = await services_started(
+            constants=self.constants,
             compose_files='docker-compose.yaml',
             config_template=Environment(
                 Service('s1'),
@@ -63,7 +67,7 @@ services:
         self.next_release = str(uuid4())
 
     async def when_user_up_env_without_params(self):
-        self.response = await UberCompose(log_policy=LogPolicy.DEBUG).up(
+        self.response = await UberCompose(cfg_constants=self.constants, log_policy=LogPolicy.DEBUG).up(
             compose_files='docker-compose.yaml',
             config_template=Environment(
                 Service('s1', Env({'A': '1'})),
@@ -84,7 +88,7 @@ services:
                     Label.RELEASE_ID: self.next_release,
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml',
+                        f'{self.instance_files_root}/default_env_id/docker-compose.yaml',
                 },
             },
             ...,
@@ -96,7 +100,7 @@ services:
                     Label.RELEASE_ID: self.next_release,
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml',
+                        f'{self.instance_files_root}/default_env_id/docker-compose.yaml',
                 },
             },
             ...,

@@ -1,6 +1,7 @@
 from config import Config
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
@@ -16,8 +17,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_compose_file_with_service_with_migration(self):
         self.compose_filename_1 = 'docker-compose.yaml'
@@ -62,7 +65,7 @@ services:
         )
 
     async def when_user_up_env_without_params(self):
-        self.response = await UberCompose().up(
+        self.response = await UberCompose(cfg_constants=self.constants, ).up(
             compose_files='docker-compose.yaml:tests/e2e/docker-compose.yaml',
         )
 
@@ -77,8 +80,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's1',
                     'com.docker.compose.project.config_files':
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}'
-                        f',/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}'
+                        f',{self.instance_files_root}/default_env_id/{self.compose_filename_2.replace("/", "-")}',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: AUTO_SCANNED,
@@ -86,8 +89,8 @@ services:
                     Label.COMPOSE_FILES: f'{self.compose_filename_1}'
                                          f':{self.compose_filename_2}',
                     Label.COMPOSE_FILES_INSTANCE:
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}'
-                        f':/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}'
+                        f':{self.instance_files_root}/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                 },
                 'Mounts': [
                     {
@@ -106,8 +109,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}'
-                        f',/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}'
+                        f',{self.instance_files_root}/default_env_id/{self.compose_filename_2.replace("/", "-")}',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: AUTO_SCANNED,
@@ -115,8 +118,8 @@ services:
                     Label.COMPOSE_FILES: f'{self.compose_filename_1}'
                                          f':{self.compose_filename_2}',
                     Label.COMPOSE_FILES_INSTANCE:
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}'
-                        f':/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}'
+                        f':{self.instance_files_root}/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                 },
                 'Mounts': [
                     {

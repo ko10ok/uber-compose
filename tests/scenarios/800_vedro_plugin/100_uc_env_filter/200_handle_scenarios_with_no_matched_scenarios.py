@@ -1,7 +1,8 @@
 from argparse import Namespace
 
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
@@ -26,8 +27,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_compose_files(self):
         self.compose_filename_1 = 'docker-compose.yaml'
@@ -57,7 +60,7 @@ services:
         )
 
     async def given_client(self):
-        self.uber_compose_client = UberCompose()
+        self.uber_compose_client = UberCompose(cfg_constants=self.constants, )
 
     # async def given_env_description(self):
     #     self.desc = fake(schema.str('') | schema.str('a a'))

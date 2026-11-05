@@ -1,8 +1,11 @@
 import docker
 from docker import APIClient
+from docker.errors import APIError
 from docker.models.containers import Container
 
 from uber_compose.helpers.labels import Label
+
+BUILTIN_NETWORKS = {'bridge', 'host', 'none'}
 
 
 def retrieve_all_docker_containers() -> list[dict]:
@@ -28,6 +31,14 @@ def no_docker_containers():
     for container in retrieve_all_docker_containers():
         d.stop(container['Id'])
         d.remove_container(container['Id'])
+
+    for network in d.networks():
+        if network.get('Name') in BUILTIN_NETWORKS:
+            continue
+        try:
+            d.remove_network(network['Id'])
+        except APIError:
+            pass
 
 
 def stopped_docker_container(name):

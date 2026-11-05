@@ -3,7 +3,8 @@ import json
 from unittest.mock import Mock
 
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from d42 import schema
 from helpers.vedro.scenario import make_scenario
@@ -33,8 +34,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_current_env_reset_for_this_scenario(self):
         vedro.defer(reset_current_env_id)
@@ -73,6 +76,7 @@ services:
         self.plugin = VedroUberComposePlugin(
             config=_VedroUberCompose,
             client=UberCompose(
+                cfg_constants=self.constants,
                 health_policy=UpHealthPolicy(
                     service_up_check_attempts=3,
                     service_up_check_delay_s=1,
@@ -119,14 +123,14 @@ services:
 
     async def when_first_scenario_starts_and_execs_via_json_cli(self):
         await self.plugin.handle_pre_run_scenario(self._scenario_run_event(self.scenarios[0]))
-        self.result_a = await CommonJsonCli(cli_client=UberCompose()).exec(
+        self.result_a = await CommonJsonCli(cli_client=UberCompose(cfg_constants=self.constants, )).exec(
             container='s1',
             command=self.cmd,
         )
 
     async def when_second_scenario_starts_and_execs_via_json_cli(self):
         await self.plugin.handle_pre_run_scenario(self._scenario_run_event(self.scenarios[1]))
-        self.result_b = await CommonJsonCli(cli_client=UberCompose()).exec(
+        self.result_b = await CommonJsonCli(cli_client=UberCompose(cfg_constants=self.constants, )).exec(
             container='s1',
             command=self.cmd,
         )

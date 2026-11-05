@@ -1,5 +1,6 @@
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from contexts.services_started import services_started
@@ -13,8 +14,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_compose_files(self):
         self.compose_files = 'docker-compose.yaml'
@@ -36,6 +39,7 @@ services:
 
     async def given_env_a_already_up_with_parallelism_limit(self):
         self.response_a = await services_started(
+            constants=self.constants,
             compose_files=self.compose_files,
             config_template=self.environment_a,
             parallelism_limit=2,
@@ -44,6 +48,7 @@ services:
 
     async def given_env_b_already_up_with_parallelism_limit(self):
         self.response_b = await services_started(
+            constants=self.constants,
             compose_files=self.compose_files,
             config_template=self.environment_b,
             parallelism_limit=2,
@@ -51,6 +56,7 @@ services:
 
     async def when_user_up_env_b_again_with_force_restart_and_parallelism_limit(self):
         self.response_b_restarted = await services_started(
+            constants=self.constants,
             compose_files=self.compose_files,
             config_template=self.environment_b,
             parallelism_limit=2,

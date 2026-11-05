@@ -2,6 +2,7 @@ import os
 
 import vedro
 from vedro.plugins.director import RichReporter
+import vedro.plugins.temp_keeper as temp_keeper
 from vedro_step_tracer import VedroStepTracer
 import vedro_valera_validator as valera_validator
 
@@ -9,6 +10,9 @@ import vedro_valera_validator as valera_validator
 class Config(vedro.Config):
     class Plugins(vedro.Config.Plugins):
         class ValeraValidator(valera_validator.ValeraValidator):
+            enabled = True
+
+        class TempKeeper(temp_keeper.TempKeeper):
             enabled = True
 
         class RichReporter(RichReporter):
