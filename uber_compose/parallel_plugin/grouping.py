@@ -5,7 +5,7 @@ from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.bytes_pickle import base64_pickled
 
 
-def _scenario_env(scenario: VirtualScenario) -> Environment | None:
+def scenario_env(scenario: VirtualScenario) -> Environment | None:
     original = getattr(scenario, '_orig_scenario', scenario)
     env = None
     if hasattr(original, 'tags'):
@@ -24,7 +24,7 @@ def env_group_key_for(env: Environment | None) -> str:
 
 
 def env_group_key(scenario: VirtualScenario) -> str:
-    return env_group_key_for(_scenario_env(scenario))
+    return env_group_key_for(scenario_env(scenario))
 
 
-__all__ = ("env_group_key", "env_group_key_for",)
+__all__ = ("env_group_key", "env_group_key_for", "scenario_env",)

@@ -4,6 +4,7 @@ from typing import Callable
 from vedro.core import ScenarioScheduler
 from vedro.core import VirtualScenario
 
+from uber_compose.helpers.env_id import get_stable_env_id
 from uber_compose.parallel_plugin.types import ExecutionPlan
 from uber_compose.parallel_plugin.types import WorkerAssignment
 
@@ -62,7 +63,35 @@ async def build_execution_plan_from_scheduler(
     return build_execution_plan(group_counts, workers_total, namespace_map)
 
 
+def build_replica_execution_plan(
+    group_counts: dict[str, int],
+    group_envs: dict[str, object],
+    namespace_counts: dict[str, int],
+    default_replicas: int = 1,
+) -> ExecutionPlan:
+    assignments = []
+    worker_id = 0
+    for group_key in sorted(group_envs):
+        env = group_envs[group_key]
+        replicas = max(int(namespace_counts.get(group_key, default_replicas)), 1)
+        replicas = min(replicas, max(group_counts.get(group_key, 1), 1))
+        for replica_index in range(replicas):
+            assignments.append(WorkerAssignment(
+                worker_id=worker_id,
+                groups=(group_key,),
+                namespace_map={group_key: get_stable_env_id(env, replica_index)},
+                replica_index=replica_index,
+                replicas_total=replicas,
+            ))
+            worker_id += 1
+    return ExecutionPlan(
+        workers_total=worker_id,
+        assignments=tuple(assignments),
+        env_templates=dict(group_envs),
+    )
+
+
 __all__ = (
     'assign_groups_to_workers', 'build_execution_plan', 'build_execution_plan_from_scheduler',
-    'collect_group_counts',
+    'build_replica_execution_plan', 'collect_group_counts',
 )

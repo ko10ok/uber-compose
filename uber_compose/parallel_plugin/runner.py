@@ -21,10 +21,12 @@ from vedro.events import ScenarioRunEvent
 from vedro.events import ScenarioSkippedEvent
 
 from uber_compose.parallel_plugin.types import WorkerAssignment
+from uber_compose.parallel_plugin.worker_api import ENV_REPLICAS_TOTAL_ENV
 from uber_compose.parallel_plugin.worker_api import NAMESPACE_MAP_ENV
 from uber_compose.parallel_plugin.worker_api import WORKERS_TOTAL_ENV
 from uber_compose.parallel_plugin.worker_api import WORKER_GROUPS_ENV
 from uber_compose.parallel_plugin.worker_api import WORKER_ID_ENV
+from uber_compose.parallel_plugin.worker_api import WORKER_REPLICA_INDEX_ENV
 from uber_compose.parallel_plugin.worker_api import get_execution_plan
 
 _TERMINAL_EVENTS = {
@@ -100,6 +102,10 @@ class ParallelScenarioRunner(ScenarioRunner):
         env[WORKERS_TOTAL_ENV] = str(workers_total)
         env[WORKER_GROUPS_ENV] = ','.join(assignment.groups)
         env[NAMESPACE_MAP_ENV] = json.dumps(assignment.namespace_map)
+        if assignment.replica_index is not None:
+            env[WORKER_REPLICA_INDEX_ENV] = str(assignment.replica_index)
+        if assignment.replicas_total is not None:
+            env[ENV_REPLICAS_TOTAL_ENV] = str(assignment.replicas_total)
 
         command = [sys.executable, '-m', 'vedro', 'run', *scenario_paths, '--reporters', 'json']
         process = await asyncio.create_subprocess_exec(

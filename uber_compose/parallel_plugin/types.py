@@ -7,6 +7,8 @@ class WorkerAssignment:
     worker_id: int
     groups: tuple[str, ...] = ()
     namespace_map: dict[str, str] = field(default_factory=dict)
+    replica_index: int | None = None
+    replicas_total: int | None = None
 
     def env_id_for(self, group_key: str) -> str | None:
         return self.namespace_map.get(group_key)
@@ -16,6 +18,7 @@ class WorkerAssignment:
 class ExecutionPlan:
     workers_total: int
     assignments: tuple[WorkerAssignment, ...] = ()
+    env_templates: dict[str, object] = field(default_factory=dict)
 
     def assignment_for(self, worker_id: int) -> WorkerAssignment | None:
         for assignment in self.assignments:
