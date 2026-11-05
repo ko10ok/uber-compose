@@ -91,6 +91,14 @@ class VedroUberComposePlugin(Plugin):
 
         needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:
+            if self._just_up:
+                self._logger.stage(
+                    Text(
+                        'No environments to start. Exiting as requested.',
+                        style=Style.good
+                    )
+                )
+                sys.exit(0)
             return
 
         # Up all needed env simultaneously if parallelism allowed

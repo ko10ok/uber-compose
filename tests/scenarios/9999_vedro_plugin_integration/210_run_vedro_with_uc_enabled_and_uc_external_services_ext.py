@@ -1,16 +1,21 @@
 from contexts.compose_file import compose_file
 from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
+from contexts.no_docker_containers import retrieve_all_docker_containers
 from contexts.vedro_subprocess_project import vedro_subprocess_project
+from d42 import schema
 from interfaces.vedro_cli import CliRunner
+from schemas.docker import ContainerSchema
 import vedro
+
+from uber_compose.helpers.labels import Label
 
 
 @vedro.skip(reason=(
     'Known bug: handle_arg_parsed filters specific --uc-external-services against '
     'self._uc_external_services, which is still None at that point, so selecting an '
-    'explicit external service raises TypeError. Fix is intentionally out of scope; '
-    'this test documents the expected behavior for when it is fixed.'
+    'explicit external service raises TypeError. This test captures the desired '
+    'behavior for when it is fixed.'
 ))
 class Scenario(vedro.Scenario):
     subject = 'run vedro with uc enabled and --uc-external-services ext'
@@ -96,3 +101,14 @@ class Scenario(vedro.Scenario):
 
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
+
+    async def and_it_should_not_start_the_selected_overridden_service(self):
+        self.containers = retrieve_all_docker_containers()
+        assert self.containers == schema.list([
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': 's1',
+                    Label.ENV_ID: 'default_env_id',
+                },
+            },
+        ])
