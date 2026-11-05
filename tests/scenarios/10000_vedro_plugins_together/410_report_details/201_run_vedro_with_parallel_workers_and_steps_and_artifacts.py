@@ -161,13 +161,30 @@ class Scenario(vedro.Scenario):
 
     def then_second_step(self):
         assert self.result == 'ok'
+""",
+                'test_env_b.py': """
+import vedro
+
+from uber_compose import Environment
+from uber_compose import Service
+
+
+class Scenario(vedro.Scenario):
+    subject = 'scenario in another env'
+    env = Environment(Service('s1'), description='env-b')
+
+    def when_nothing_special_happens(self):
+        self.result = 'ok'
+
+    def then_it_should_just_pass(self):
+        assert self.result == 'ok'
 """
             },
         )
 
     async def when_vedro_is_run(self):
         self.run_result = await CliRunner().run_vedro(
-            self.project_dir, args=['run', 'scenarios/', '--uc-parallel', '2']
+            self.project_dir, args=['run', 'scenarios/', '--uc-mt']
         )
 
     async def then_it_should_exit_with_code_zero(self):
@@ -178,6 +195,7 @@ class Scenario(vedro.Scenario):
             json.loads(line)
             for line in self.details_file.read_text().splitlines()
         ]
+        details = [detail for detail in details if detail['subject'] == 'scenario with steps and artifacts']
         assert len(details) == 1
         assert [step['name'] for step in details[0]['steps']] == [
             'when_first_step',
@@ -190,6 +208,8 @@ class Scenario(vedro.Scenario):
             json.loads(line)
             for line in self.details_file.read_text().splitlines()
         ]
+        details = [detail for detail in details if detail['subject'] == 'scenario with steps and artifacts']
+        assert len(details) == 1
         assert details[0]['artifacts'] == [{
             'kind': 'memory',
             'name': 'scenario-log',
@@ -202,6 +222,8 @@ class Scenario(vedro.Scenario):
             json.loads(line)
             for line in self.details_file.read_text().splitlines()
         ]
+        details = [detail for detail in details if detail['subject'] == 'scenario with steps and artifacts']
+        assert len(details) == 1
         step_artifacts = [
             artifact
             for step in details[0]['steps']

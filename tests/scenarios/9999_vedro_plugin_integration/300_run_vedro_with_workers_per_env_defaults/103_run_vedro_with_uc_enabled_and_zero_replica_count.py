@@ -6,11 +6,9 @@ from contexts.vedro_subprocess_project import vedro_subprocess_project
 from interfaces.vedro_cli import CliRunner
 import vedro
 
-from uber_compose.helpers.labels import Label
-
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro with uc enabled and env_parallelism replicas with a singleton service'
+    subject = 'run vedro with uc enabled and zero workers_per_env replica count'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -24,17 +22,13 @@ class Scenario(vedro.Scenario):
 version: "3"
 
 services:
-  db:
-    image: busybox:stable
-    command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
-
   s1:
     image: busybox:stable
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
 """
         )
 
-    async def given_vedro_project_with_singleton_and_two_replicas(self):
+    async def given_vedro_project_with_zero_replicas(self):
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
 import vedro
@@ -51,7 +45,7 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": 2}},
+                    workers_per_env={{"env-a": 0}},
                 ),
             }}
 """,
@@ -61,16 +55,11 @@ import vedro
 
 from uber_compose import Environment
 from uber_compose import Service
-from uber_compose.env_description.env_types import ServiceMode
 
 
 class Scenario(vedro.Scenario):
     subject = 'env-a scenario'
-    env = Environment(
-        Service('db', mode=ServiceMode.SINGLETON),
-        Service('s1'),
-        description='env-a',
-    )
+    env = Environment(Service('s1'), description='env-a')
 
     def when_nothing_special_happens(self):
         self.result = 'ok'
@@ -89,15 +78,8 @@ class Scenario(vedro.Scenario):
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
-    async def and_it_should_start_single_singleton_and_two_replicas_of_other_service(self):
+    async def and_it_should_start_at_least_one_replica(self):
         self.containers = retrieve_all_docker_containers()
-        singleton_containers = [
-            container for container in self.containers
-            if container.get('Labels', {}).get(Label.TEMPLATE_SERVICE_NAME) == 'db'
-        ]
-        replica_containers = [
-            container for container in self.containers
-            if container.get('Labels', {}).get(Label.TEMPLATE_SERVICE_NAME) == 's1'
-        ]
-        assert len(singleton_containers) == 1
-        assert len(replica_containers) == 2
+        assert len(self.containers) == 1
+        service_name = self.containers[0].get('Labels', {}).get('com.docker.compose.service')
+        assert service_name.startswith('s1-w0-')

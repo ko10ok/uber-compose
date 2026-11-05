@@ -37,7 +37,7 @@ from uber_compose.parallel_plugin.worker_api import get_worker_id
 from uber_compose.parallel_plugin.worker_api import get_worker_replica_index
 from uber_compose.parallel_plugin.worker_api import get_workers_total
 from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
-from uber_compose.parallel_plugin.worker_api import set_env_parallelism
+from uber_compose.parallel_plugin.worker_api import set_workers_per_env
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
 from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
 from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config
@@ -141,16 +141,16 @@ class VedroUberComposePlugin(Plugin):
 
         # Up all needed env simultaneously if parallelism allowed
         try:
-            if self._compose_choice.env_parallelism is not None:
+            if self._compose_choice.workers_per_env is not None:
                 await self._uber_compose_client.prepare_parallel_environments(
                     config_templates=needed_configs,
                     compose_files=self._compose_choice.compose_files,
-                    env_parallelism=self._compose_choice.env_parallelism,
-                    default_env_parallelism=self._compose_choice.default_env_parallelism,
+                    workers_per_env=self._compose_choice.workers_per_env,
+                    default_workers_per_env=self._compose_choice.default_workers_per_env,
                     force_restart=self._force_restart,
                     services_override=self._uc_external_services,
                 )
-            elif self._compose_choice.parallel_env_limit >= len(needed_configs):
+            elif self._compose_choice.max_concurrent_envs >= len(needed_configs):
                 for env_config in list(needed_configs):
                     if self._default_env is None and env_config is None:
                         self._logger.stage(
@@ -167,7 +167,7 @@ class VedroUberComposePlugin(Plugin):
                     await self._uber_compose_client.up(
                         config_template=env_config,
                         compose_files=self._compose_choice.compose_files,
-                        parallelism_limit=self._compose_choice.parallel_env_limit,
+                        parallelism_limit=self._compose_choice.max_concurrent_envs,
                         force_restart=self._force_restart,
                         services_override=self._uc_external_services,
                     )
@@ -227,7 +227,7 @@ class VedroUberComposePlugin(Plugin):
             parallelism_limit = max(get_workers_total(), 2)
         else:
             env_id = None
-            parallelism_limit = self._compose_choice.parallel_env_limit
+            parallelism_limit = self._compose_choice.max_concurrent_envs
 
         ready_env = await self._uber_compose_client.up(
             config_template=env_config,
@@ -341,10 +341,9 @@ class VedroUberComposePlugin(Plugin):
                     f"Available options: {', '.join(LogPolicy.presets().keys())}"
                 )
 
-        # TODO override parallelism
-        set_env_parallelism(
-            self._compose_choice.env_parallelism,
-            self._compose_choice.default_env_parallelism,
+        set_workers_per_env(
+            self._compose_choice.workers_per_env,
+            self._compose_choice.default_workers_per_env,
         )
 
 

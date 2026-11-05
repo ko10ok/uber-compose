@@ -3,14 +3,16 @@ from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from contexts.vedro_subprocess_project import vedro_subprocess_project
+from d42 import schema
 from interfaces.vedro_cli import CliRunner
+from schemas.docker import ContainerSchema
 import vedro
 
 from uber_compose.helpers.labels import Label
 
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro with uc enabled and env_parallelism for the default env key'
+    subject = 'run vedro with uc and parallel plugins enabled and workers_per_env override one'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -30,7 +32,7 @@ services:
 """
         )
 
-    async def given_vedro_project_with_default_env_parallelism(self):
+    async def given_vedro_project_with_both_plugins(self):
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
 import vedro
@@ -41,6 +43,7 @@ from uber_compose import DEFAULT_ENV_DESCRIPTION
 from uber_compose import Environment
 from uber_compose import Service
 from uber_compose import VedroUberCompose
+from uber_compose import VedroUberComposeParallel
 
 
 class Config(vedro.Config):
@@ -49,19 +52,19 @@ class Config(vedro.Config):
             enabled = True
             default_env = Environment(Service("s1"), description=DEFAULT_ENV_DESCRIPTION)
             compose_cfgs = {{
-                DEFAULT_COMPOSE: ComposeConfig(
-                    compose_files="{self.compose_filename}",
-                    env_parallelism={{"DEFAULT": 2}},
-                ),
+                DEFAULT_COMPOSE: ComposeConfig(compose_files="{self.compose_filename}"),
             }}
+
+        class UberComposeParallel(VedroUberComposeParallel):
+            enabled = True
 """,
             scenarios={
-                'test_default_env.py': """
+                'test_env_is_up.py': """
 import vedro
 
 
 class Scenario(vedro.Scenario):
-    subject = 'default env scenario'
+    subject = 'joint scenario runs with workers_per_env override equal to one'
 
     def when_nothing_special_happens(self):
         self.result = 'ok'
@@ -72,24 +75,24 @@ class Scenario(vedro.Scenario):
             },
         )
 
-    async def when_vedro_is_run_with_just_up(self):
+    async def when_vedro_is_run_with_workers_per_env_override_one(self):
         self.run_result = await CliRunner().run_vedro(
-            self.project_dir, args=['run', 'scenarios/', '--uc-ju']
+            self.project_dir, args=['run', 'scenarios/', '--uc-workers-per-env', '1']
         )
 
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
-    async def and_it_should_start_two_default_env_replicas(self):
+    async def and_it_should_run_the_scenario(self):
+        assert 'joint scenario runs with workers_per_env override equal to one' in self.run_result.stdout
+
+    async def and_it_should_start_the_environment(self):
         self.containers = retrieve_all_docker_containers()
-        assert len(self.containers) == 2
-        service_names = {
-            container.get('Labels', {}).get('com.docker.compose.service')
-            for container in self.containers
-        }
-        assert any(name.startswith('s1-w0-') for name in service_names)
-        assert any(name.startswith('s1-w1-') for name in service_names)
-        assert len({
-            container.get('Labels', {}).get(Label.ENV_ID)
-            for container in self.containers
-        }) == 2
+        assert self.containers == schema.list([
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': 's1',
+                    Label.ENV_ID: 'default_env_id',
+                },
+            },
+        ])

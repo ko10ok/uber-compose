@@ -36,6 +36,7 @@ from uber_compose.helpers.hooks import UberComposeEvent
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
 from uber_compose.helpers.singleton import SingletonMeta
+from uber_compose.helpers.workers_per_env import normalize_workers_per_env
 from uber_compose.output.console import LogPolicySet
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
@@ -172,7 +173,15 @@ class SystemUberCompose:
                 lambda service_state: service_state.check(Label.ENV_ID, requested_env_id)
             )
 
-        reusable_env = self._find_reusable_env(services_state, config_template, force_restart)
+        protected_singleton_services = await self._compute_singleton_protected_services(
+            config_template, force_restart
+        )
+        reusable_env = self._find_reusable_env(
+            services_state,
+            config_template,
+            force_restart,
+            protected_singleton_services,
+        )
         if reusable_env is not None:
             await self._hooks.run(UberComposeEvent.AFTER_UP)
             return reusable_env
@@ -182,29 +191,31 @@ class SystemUberCompose:
         return await self._start_new_environment(
             config_template, compose_files, release_id, parallelism_limit, force_restart,
             requested_env_id=requested_env_id,
+            protected_singleton_services=protected_singleton_services,
         )
 
     async def prepare_parallel_environments(
         self,
         config_templates: list[Environment | None],
         compose_files: str | None = None,
-        env_parallelism: dict[str, int] | None = None,
-        default_env_parallelism: int = 1,
+        workers_per_env: dict[str, int] | None = None,
+        default_workers_per_env: int = 1,
         force_restart: bool = False,
         services_override: list[OverridenService] | None = None,
     ) -> list[ReadyEnv]:
         compose_files = self._resolve_compose_files(compose_files)
+        workers_per_env = normalize_workers_per_env(workers_per_env)
 
         resolved = []
         for config_template in config_templates:
             resolved_template = self._resolve_config_template(
                 config_template, compose_files, services_override
             )
-            replicas = self._env_replicas(config_template, env_parallelism, default_env_parallelism)
+            replicas = self._env_replicas(config_template, workers_per_env, default_workers_per_env)
             resolved.append((resolved_template, replicas))
 
         total_replicas = sum(replicas for _, replicas in resolved)
-        if env_parallelism is None:
+        if workers_per_env is None:
             ready_envs = []
             for resolved_template, _ in resolved:
                 ready_envs.append(await self.up(
@@ -236,17 +247,17 @@ class SystemUberCompose:
     def _env_replicas(
         self,
         config_template: Environment | None,
-        env_parallelism: dict[str, int] | None,
-        default_env_parallelism: int,
+        workers_per_env: dict[str, int] | None,
+        default_workers_per_env: int,
     ) -> int:
-        replicas = default_env_parallelism
-        if env_parallelism:
+        replicas = default_workers_per_env
+        if workers_per_env:
             env_key = (
                 config_template.description
                 if config_template is not None
                 else DEFAULT_ENV_DESCRIPTION
             )
-            replicas = env_parallelism.get(env_key, default_env_parallelism)
+            replicas = workers_per_env.get(env_key, default_workers_per_env)
         return max(int(replicas), 1)
 
     async def _down_extra_replicas(
@@ -315,8 +326,10 @@ class SystemUberCompose:
         services_state: ServicesComposeState,
         config_template: Environment,
         force_restart: bool,
+        protected_singleton_services: list[str] | None = None,
     ) -> ReadyEnv | None:
-        broken_services = calc_broken_services(services_state, config_template, self.cfg_constants.non_stop_containers)
+        excluded_from_check = self.cfg_constants.non_stop_containers + list(protected_singleton_services or [])
+        broken_services = calc_broken_services(services_state, config_template, excluded_from_check)
         if broken_services:
             self.logger.stage(
                 Text(
@@ -422,6 +435,7 @@ class SystemUberCompose:
         parallelism_limit: int,
         force_restart: bool = False,
         requested_env_id: str | None = None,
+        protected_singleton_services: list[str] | None = None,
     ) -> ReadyEnv:
         _for = f' {config_template.description}' if config_template.description else ''
         self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
@@ -438,9 +452,10 @@ class SystemUberCompose:
             and self._previous_env_identity == current_env_identity
         )
 
-        protected_singleton_services = await self._compute_singleton_protected_services(
-            config_template, force_restart
-        )
+        if protected_singleton_services is None:
+            protected_singleton_services = await self._compute_singleton_protected_services(
+                config_template, force_restart
+            )
         if protected_singleton_services:
             self.logger.stage_debug(
                 f'Protecting singleton services from restart: {protected_singleton_services}'

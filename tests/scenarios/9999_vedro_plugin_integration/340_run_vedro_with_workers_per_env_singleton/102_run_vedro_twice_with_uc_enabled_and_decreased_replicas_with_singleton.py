@@ -10,7 +10,7 @@ from uber_compose.helpers.labels import Label
 
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro twice with uc enabled and decreased env_parallelism with a singleton service'
+    subject = 'run vedro twice with uc enabled and decreased workers_per_env with a singleton service'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -119,7 +119,7 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": {replicas}}},
+                    workers_per_env={{"env-a": {replicas}}},
                 ),
             }}
 """

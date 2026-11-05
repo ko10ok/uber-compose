@@ -1,6 +1,7 @@
 import json
 import os
 
+from uber_compose.helpers.workers_per_env import normalize_workers_per_env
 from uber_compose.parallel_plugin.types import ExecutionPlan
 
 WORKER_ID_ENV = 'UC_WORKER_ID'
@@ -14,7 +15,9 @@ DEFAULT_WORKER_ID = 0
 DEFAULT_WORKERS_TOTAL = 1
 
 _execution_plan: ExecutionPlan | None = None
-_env_parallelism: tuple[dict[str, int], int] | None = None
+_workers_per_env: tuple[dict[str, int], int] | None = None
+_default_workers_per_env: int = 1
+_workers_per_env_override: int | None = None
 
 
 def _read_int(name: str, default: int) -> int:
@@ -98,27 +101,44 @@ def reset_execution_plan() -> None:
     set_execution_plan(None)
 
 
-def set_env_parallelism(counts: dict[str, int] | None, default: int = 1) -> None:
-    global _env_parallelism
+def set_workers_per_env(counts: dict[str, int] | None, default: int = 1) -> None:
+    global _workers_per_env, _default_workers_per_env
+    _default_workers_per_env = max(int(default), 1)
     if counts is None:
-        _env_parallelism = None
+        _workers_per_env = None
     else:
-        _env_parallelism = ({str(key): int(value) for key, value in counts.items()}, int(default))
+        _workers_per_env = (normalize_workers_per_env(counts), _default_workers_per_env)
 
 
-def get_env_parallelism() -> tuple[dict[str, int], int] | None:
-    return _env_parallelism
+def get_workers_per_env() -> tuple[dict[str, int], int] | None:
+    return _workers_per_env
 
 
-def reset_env_parallelism() -> None:
-    set_env_parallelism(None)
+def get_default_workers_per_env() -> int:
+    return _default_workers_per_env
+
+
+def set_workers_per_env_override(value: int | None) -> None:
+    global _workers_per_env_override
+    _workers_per_env_override = None if value is None else max(int(value), 1)
+
+
+def get_workers_per_env_override() -> int | None:
+    return _workers_per_env_override
+
+
+def reset_workers_per_env() -> None:
+    set_workers_per_env(None)
+    set_workers_per_env_override(None)
 
 
 __all__ = (
     'DEFAULT_WORKER_ID', 'DEFAULT_WORKERS_TOTAL', 'ENV_REPLICAS_TOTAL_ENV',
     'NAMESPACE_MAP_ENV', 'WORKER_GROUPS_ENV', 'WORKER_ID_ENV', 'WORKER_REPLICA_INDEX_ENV', 'WORKERS_TOTAL_ENV',
-    'get_env_parallelism', 'get_env_replicas_total', 'get_execution_plan', 'get_namespace_map',
+    'get_default_workers_per_env', 'get_env_replicas_total', 'get_execution_plan',
+    'get_namespace_map', 'get_workers_per_env', 'get_workers_per_env_override',
     'get_worker_groups', 'get_worker_id', 'get_worker_replica_index', 'get_workers_total',
-    'is_parallel_worker', 'is_parallel_worker_process', 'reset_env_parallelism', 'reset_execution_plan',
-    'set_env_parallelism', 'set_execution_plan',
+    'is_parallel_worker', 'is_parallel_worker_process', 'reset_execution_plan',
+    'reset_workers_per_env', 'set_execution_plan', 'set_workers_per_env',
+    'set_workers_per_env_override',
 )

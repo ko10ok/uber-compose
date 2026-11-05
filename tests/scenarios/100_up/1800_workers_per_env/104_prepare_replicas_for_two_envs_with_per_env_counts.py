@@ -45,7 +45,7 @@ services:
         ).prepare_parallel_environments(
             config_templates=[self.environment_a, self.environment_b],
             compose_files=self.compose_files,
-            env_parallelism={'env-a': 2, 'env-b': 1},
+            workers_per_env={'env-a': 2, 'env-b': 1},
         )
 
     async def then_it_should_start_replicas_for_each_env(self):

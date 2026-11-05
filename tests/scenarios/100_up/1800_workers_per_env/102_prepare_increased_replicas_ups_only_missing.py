@@ -44,7 +44,7 @@ services:
         ).prepare_parallel_environments(
             config_templates=[self.environment],
             compose_files=self.compose_files,
-            env_parallelism={'env-a': 1},
+            workers_per_env={'env-a': 1},
         )
         self.first_container_id = retrieve_all_docker_containers()[0]['Id']
 
@@ -54,7 +54,7 @@ services:
         ).prepare_parallel_environments(
             config_templates=[self.environment],
             compose_files=self.compose_files,
-            env_parallelism={'env-a': 2},
+            workers_per_env={'env-a': 2},
         )
 
     async def then_it_should_keep_existing_replica_and_add_missing_one(self):

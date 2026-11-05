@@ -27,7 +27,7 @@ from uber_compose.vedro_plugin.plugin import VedroUberComposePlugin
 
 
 class Scenario(vedro.Scenario):
-    subject = 'up envs one by one when parallel_env_limit is less than needed env templates'
+    subject = 'up envs one by one when max_concurrent_envs is less than needed env templates'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -58,7 +58,7 @@ services:
 """
         )
 
-    async def given_plugin_initialized_with_parallel_env_limit_less_than_needed(self):
+    async def given_plugin_initialized_with_max_concurrent_envs_less_than_needed(self):
         self.default_env = Environment(Service('s3'), description=DEFAULT_ENV_DESCRIPTION)
 
         class _VedroUberCompose(VedroUberCompose):
@@ -67,7 +67,7 @@ services:
             compose_cfgs = {
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files='docker-compose.yaml',
-                    parallel_env_limit=2,
+                    max_concurrent_envs=2,
                 ),
             }
 

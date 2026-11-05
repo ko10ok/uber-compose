@@ -111,6 +111,11 @@ You can customize behavior dynamically:
 - --uc-ju — Bring up the environment without running any tests
 - --uc-default / --uc-dev — Choose between defined ComposeConfigs
 - --uc-env — Filter tests by environment name/description
+- --uc-mt — Enable parallel scenario execution (worker processes)
+- --uc-workers-per-env N / --uc-wpe N — Override workers per env for this run
+
+For parallel runs see **[Parallel Runs by Use Case](docs/PARALLELISM.md)** — it
+shows which config and which flag to use for each scenario.
 
 ---
 
@@ -199,7 +204,7 @@ This is particularly useful when:
 - **[CLI Usage Guide](docs/CLI_USAGE.md)** - Guide for using CommonJsonCli with JSON log parsing
 - **[X-Migration](docs/X_MIGRATION.md)** - Extended service initialization and migration commands
 - **[Lifecycle Hooks](docs/HOOKS.md)** - Register callbacks that run after the environment is up
-- **[Parallelism & Current Env API](docs/PARALLELISM.md)** - Parallel runs, worker/replica parameters and per-service env access
+- **[Parallel Runs by Use Case](docs/PARALLELISM.md)** - When to pass `--uc-mt`, which `ComposeConfig` to use, workers per env, env rotation and per-service env access
 
 ## 🛠️ Development Guide
 

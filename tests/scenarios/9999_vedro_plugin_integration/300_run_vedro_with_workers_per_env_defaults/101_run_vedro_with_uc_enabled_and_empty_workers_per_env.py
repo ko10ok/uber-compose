@@ -6,9 +6,11 @@ from contexts.vedro_subprocess_project import vedro_subprocess_project
 from interfaces.vedro_cli import CliRunner
 import vedro
 
+from uber_compose.helpers.labels import Label
+
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro with uc enabled and zero env_parallelism replica count'
+    subject = 'run vedro with uc enabled and empty workers_per_env and default_workers_per_env 2'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -28,7 +30,7 @@ services:
 """
         )
 
-    async def given_vedro_project_with_zero_replicas(self):
+    async def given_vedro_project_with_default_workers_per_env(self):
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
 import vedro
@@ -45,7 +47,8 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": 0}},
+                    workers_per_env={{}},
+                    default_workers_per_env=2,
                 ),
             }}
 """,
@@ -78,8 +81,17 @@ class Scenario(vedro.Scenario):
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
-    async def and_it_should_start_at_least_one_replica(self):
+    async def and_it_should_start_default_number_of_replicas(self):
         self.containers = retrieve_all_docker_containers()
-        assert len(self.containers) == 1
-        service_name = self.containers[0].get('Labels', {}).get('com.docker.compose.service')
-        assert service_name.startswith('s1-w0-')
+        assert len(self.containers) == 2
+        service_names = {
+            container.get('Labels', {}).get('com.docker.compose.service')
+            for container in self.containers
+        }
+        assert any(name.startswith('s1-w0-') for name in service_names)
+        assert any(name.startswith('s1-w1-') for name in service_names)
+        env_ids = {
+            container.get('Labels', {}).get(Label.ENV_ID)
+            for container in self.containers
+        }
+        assert len(env_ids) == 2

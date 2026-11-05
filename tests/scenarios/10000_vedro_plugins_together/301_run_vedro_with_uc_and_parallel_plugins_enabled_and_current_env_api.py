@@ -92,7 +92,7 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": 2}},
+                    workers_per_env={{"env-a": 2}},
                 ),
             }}
 
@@ -103,7 +103,7 @@ class Config(vedro.Config):
         )
 
     async def when_vedro_is_run(self):
-        self.run_result = await CliRunner().run_vedro(self.project_dir, args=['run', 'scenarios/'])
+        self.run_result = await CliRunner().run_vedro(self.project_dir, args=['run', 'scenarios/', '--uc-mt'])
 
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr

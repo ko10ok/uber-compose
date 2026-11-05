@@ -3,6 +3,8 @@ from contexts.isolated_project import isolated_constants
 from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
+from d42 import schema
+from schemas.docker import ContainerSchema
 import vedro
 
 from uber_compose import Environment
@@ -38,37 +40,34 @@ services:
     async def given_env_template(self):
         self.environment = Environment(Service('s1'), description='env-a')
 
-    async def given_two_replicas_of_env_are_prepared(self):
-        await UberCompose(
-            cfg_constants=self.constants,
-        ).prepare_parallel_environments(
-            config_templates=[self.environment],
-            compose_files=self.compose_files,
-            env_parallelism={'env-a': 2},
-        )
-        self.first_container_id = [
-            container['Id']
-            for container in retrieve_all_docker_containers()
-            if container.get('Labels', {}).get(Label.ENV_ID) == get_stable_env_id(self.environment, 0)
-        ][0]
-
-    async def when_user_prepares_one_replica_of_same_env(self):
+    async def when_user_prepares_two_replicas_of_env(self):
         self.ready_envs = await UberCompose(
             cfg_constants=self.constants,
         ).prepare_parallel_environments(
             config_templates=[self.environment],
             compose_files=self.compose_files,
-            env_parallelism={'env-a': 1},
+            workers_per_env={'env-a': 2},
         )
 
-    async def then_it_should_keep_only_the_first_replica(self):
-        first_env_id = get_stable_env_id(self.environment, 0)
-        assert [ready_env.env_id for ready_env in self.ready_envs] == [first_env_id]
+    async def then_it_should_start_two_replicas_with_stable_env_ids(self):
+        assert len(self.ready_envs) == 2
+        assert {ready_env.env_id for ready_env in self.ready_envs} == {
+            get_stable_env_id(self.environment, 0),
+            get_stable_env_id(self.environment, 1),
+        }
 
-        containers = retrieve_all_docker_containers()
-        assert len(containers) == 1
-        assert containers[0].get('Labels', {}).get(Label.ENV_ID) == first_env_id
-
-    async def and_it_should_not_recreate_the_kept_replica(self):
-        containers = retrieve_all_docker_containers()
-        assert containers[0]['Id'] == self.first_container_id
+    async def and_it_should_have_two_isolated_containers(self):
+        self.containers = retrieve_all_docker_containers()
+        assert len(self.containers) == 2
+        for index in range(2):
+            env_id = get_stable_env_id(self.environment, index)
+            assert self.containers == schema.list([
+                ...,
+                ContainerSchema % {
+                    'Labels': {
+                        'com.docker.compose.service': f's1-{env_id}',
+                        Label.ENV_ID: env_id,
+                    },
+                },
+                ...,
+            ])

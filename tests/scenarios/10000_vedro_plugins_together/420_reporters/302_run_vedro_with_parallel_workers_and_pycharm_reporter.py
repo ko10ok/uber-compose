@@ -90,7 +90,7 @@ class Scenario(vedro.Scenario):
     async def when_vedro_is_run_with_pycharm_reporter(self):
         self.run_result = await CliRunner().run_vedro(
             self.project_dir,
-            args=['run', 'scenarios/', '--uc-parallel', '2', '-r', 'pycharm'],
+            args=['run', 'scenarios/', '--uc-mt', '-r', 'pycharm'],
         )
 
     async def then_it_should_emit_teamcity_test_started_for_each_scenario(self):

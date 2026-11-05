@@ -75,7 +75,7 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": 1, "env-b": 1}},
+                    workers_per_env={{"env-a": 1, "env-b": 1}},
                 ),
             }}
 
@@ -87,7 +87,7 @@ class Config(vedro.Config):
 
     async def when_vedro_is_interrupted(self):
         self.process = await asyncio.create_subprocess_exec(
-            sys.executable, '-m', 'vedro', 'run', 'scenarios/',
+            sys.executable, '-m', 'vedro', 'run', 'scenarios/', '--uc-mt',
             cwd=str(self.project_dir),
             env=os.environ.copy(),
             stdout=asyncio.subprocess.PIPE,

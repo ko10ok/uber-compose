@@ -69,7 +69,7 @@ services:
             compose_cfgs = {
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files='docker-compose.yaml',
-                    parallel_env_limit=2,
+                    max_concurrent_envs=2,
                 ),
             }
 

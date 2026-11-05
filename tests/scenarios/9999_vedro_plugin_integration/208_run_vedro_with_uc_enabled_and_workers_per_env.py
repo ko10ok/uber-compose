@@ -6,11 +6,14 @@ from contexts.vedro_subprocess_project import vedro_subprocess_project
 from interfaces.vedro_cli import CliRunner
 import vedro
 
+from uber_compose import Environment
+from uber_compose import Service
+from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.helpers.labels import Label
 
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro with uc enabled and empty env_parallelism and default_env_parallelism 2'
+    subject = 'run vedro with uc enabled and workers_per_env'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -30,7 +33,10 @@ services:
 """
         )
 
-    async def given_vedro_project_with_default_env_parallelism(self):
+    async def given_env_template(self):
+        self.environment = Environment(Service('s1'), description='env-a')
+
+    async def given_vedro_project_with_workers_per_env(self):
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
 import vedro
@@ -47,8 +53,8 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{}},
-                    default_env_parallelism=2,
+                    workers_per_env={{"env-a": 2}},
+                    default_workers_per_env=1,
                 ),
             }}
 """,
@@ -81,17 +87,18 @@ class Scenario(vedro.Scenario):
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
-    async def and_it_should_start_default_number_of_replicas(self):
+    async def and_it_should_start_configured_number_of_replicas(self):
+        expected_env_ids = {
+            get_stable_env_id(self.environment, 0),
+            get_stable_env_id(self.environment, 1),
+        }
         self.containers = retrieve_all_docker_containers()
         assert len(self.containers) == 2
-        service_names = {
-            container.get('Labels', {}).get('com.docker.compose.service')
-            for container in self.containers
-        }
-        assert any(name.startswith('s1-w0-') for name in service_names)
-        assert any(name.startswith('s1-w1-') for name in service_names)
-        env_ids = {
+        assert {
             container.get('Labels', {}).get(Label.ENV_ID)
             for container in self.containers
-        }
-        assert len(env_ids) == 2
+        } == expected_env_ids
+        assert {
+            container.get('Labels', {}).get('com.docker.compose.service')
+            for container in self.containers
+        } == {f's1-{env_id}' for env_id in expected_env_ids}

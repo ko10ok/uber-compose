@@ -14,19 +14,21 @@ from vedro.events import StartupEvent
 
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.parallel_plugin.details import serialize_result_details
-from uber_compose.parallel_plugin.grouper import build_execution_plan_from_scheduler
 from uber_compose.parallel_plugin.grouper import build_replica_execution_plan
 from uber_compose.parallel_plugin.grouper import collect_group_counts
 from uber_compose.parallel_plugin.grouping import env_group_key
 from uber_compose.parallel_plugin.grouping import env_group_key_for
 from uber_compose.parallel_plugin.grouping import scenario_env
 from uber_compose.parallel_plugin.runner import ParallelScenarioRunner
-from uber_compose.parallel_plugin.worker_api import get_env_parallelism
+from uber_compose.parallel_plugin.worker_api import get_default_workers_per_env
 from uber_compose.parallel_plugin.worker_api import get_env_replicas_total
 from uber_compose.parallel_plugin.worker_api import get_worker_groups
 from uber_compose.parallel_plugin.worker_api import get_worker_replica_index
+from uber_compose.parallel_plugin.worker_api import get_workers_per_env
+from uber_compose.parallel_plugin.worker_api import get_workers_per_env_override
 from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
 from uber_compose.parallel_plugin.worker_api import set_execution_plan
+from uber_compose.parallel_plugin.worker_api import set_workers_per_env_override
 from uber_compose.parallel_plugin.worker_filter import ignore_foreign_scenarios
 
 
@@ -35,13 +37,12 @@ class VedroUberComposeParallelPlugin(Plugin):
         super().__init__(config)
         self._enabled = config.enabled
         self._grouping_key = config.grouping_key or env_group_key
-        self._parallel = max(int(config.parallel or 1), 1)
         self._global_config: ConfigType | None = None
         self._runner_registered = False
         self._capture_output = False
         self._capture_limit = None
         self._worker_timeout = config.worker_timeout
-        self._worker_concurrency = config.worker_concurrency
+        self._mt_enabled = bool(config.multi_thread)
         self._protocol_stdout = sys.stdout
         self._refresh_worker_state()
 
@@ -68,15 +69,19 @@ class VedroUberComposeParallelPlugin(Plugin):
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose Parallel")
-        group.add_argument("--uc-parallel",
+        group.add_argument("--uc-mt",
+                           action='store_true',
+                           default=False,
+                           help="Enable parallel (multi-threaded) scenario execution")
+        group.add_argument("--uc-workers-per-env", "--uc-wpe",
+                           dest="uc_workers_per_env",
                            type=int,
                            default=None,
-                           help="Number of parallel workers (1 keeps the sequential run)")
+                           help="Override workers per env for this run (requires --uc-mt)")
 
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
-        parallel = getattr(event.args, 'uc_parallel', None)
-        if parallel:
-            self._parallel = max(int(parallel), 1)
+        self._mt_enabled = bool(getattr(event.args, 'uc_mt', False)) or bool(self._config.multi_thread)
+        set_workers_per_env_override(getattr(event.args, 'uc_workers_per_env', None))
         self._capture_output = bool(getattr(event.args, 'capture_output', False))
         self._capture_limit = getattr(event.args, 'capture_limit', None)
         self._refresh_worker_state()
@@ -112,19 +117,20 @@ class VedroUberComposeParallelPlugin(Plugin):
         self._register_runner()
 
     async def _build_plan(self, event: StartupEvent):
-        env_parallelism = get_env_parallelism()
-        if env_parallelism is not None:
-            return await self._build_replica_plan(event, env_parallelism)
-        if self._parallel <= 1:
+        if not self._mt_enabled:
             return None
-        return await build_execution_plan_from_scheduler(
-            event.scheduler,
-            self._parallel,
-            self._grouping_key,
-        )
+        override = get_workers_per_env_override()
+        if override is not None:
+            return await self._build_replica_plan(event, ({}, override))
 
-    async def _build_replica_plan(self, event: StartupEvent, env_parallelism):
-        counts_by_description, default_replicas = env_parallelism
+        workers_per_env = get_workers_per_env()
+        if workers_per_env is not None and workers_per_env[0]:
+            return await self._build_replica_plan(event, workers_per_env)
+
+        return await self._build_replica_plan(event, ({}, get_default_workers_per_env()))
+
+    async def _build_replica_plan(self, event: StartupEvent, workers_per_env):
+        counts_by_description, default_replicas = workers_per_env
         group_counts = await collect_group_counts(event.scheduler, self._grouping_key)
         group_envs = {}
         namespace_counts = {}
@@ -157,7 +163,6 @@ class VedroUberComposeParallelPlugin(Plugin):
                 capture_output=self._capture_output,
                 capture_limit=self._capture_limit,
                 worker_timeout=self._worker_timeout,
-                worker_concurrency=self._worker_concurrency,
             ),
             registrant=self,
         )
@@ -169,11 +174,9 @@ class VedroUberComposeParallel(PluginConfig):
 
     enabled = False
 
-    parallel: int = 1
+    multi_thread: bool = False
 
     worker_timeout: float | None = None
-
-    worker_concurrency: int | None = None
 
     grouping_key = env_group_key
 

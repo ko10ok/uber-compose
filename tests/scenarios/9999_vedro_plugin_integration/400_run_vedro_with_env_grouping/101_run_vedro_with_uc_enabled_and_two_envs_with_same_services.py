@@ -47,7 +47,7 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": 1, "env-b": 1}},
+                    workers_per_env={{"env-a": 1, "env-b": 1}},
                 ),
             }}
 """,

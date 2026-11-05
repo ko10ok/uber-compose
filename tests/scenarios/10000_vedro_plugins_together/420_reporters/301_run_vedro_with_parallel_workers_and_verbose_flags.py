@@ -66,6 +66,23 @@ class Scenario(vedro.Scenario):
 
     def then_second_step(self):
         assert self.result == 'ok', 'expected ok result'
+""",
+                'test_env_b.py': """
+import vedro
+
+from uber_compose import Environment
+from uber_compose import Service
+
+
+class Scenario(vedro.Scenario):
+    subject = 'scenario in another env'
+    env = Environment(Service('s1'), description='env-b')
+
+    def when_nothing_special_happens(self):
+        self.result = 'ok'
+
+    def then_it_should_just_pass(self):
+        assert self.result == 'ok'
 """
             },
         )
@@ -73,7 +90,7 @@ class Scenario(vedro.Scenario):
     async def when_vedro_is_run_with_verbose_flags(self):
         self.run_result = await CliRunner().run_vedro(
             self.project_dir,
-            args=['run', 'scenarios/', '--uc-parallel', '2', '-vvv', '--show-steps'],
+            args=['run', 'scenarios/', '--uc-mt', '-vvv', '--show-steps'],
         )
 
     async def then_it_should_exit_with_failure_code(self):

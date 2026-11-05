@@ -14,13 +14,10 @@ from uber_compose.helpers.labels import Label
 
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro with uc and parallel plugins enabled and per env parallelism 2 5 1'
+    subject = 'run vedro with uc mt and one env group'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
-
-    async def given_env_replica_counts(self):
-        self.replicas = {'env-a': 2, 'env-b': 5, 'env-c': 1}
 
     async def given_isolated_project(self):
         self.project = isolated_project()
@@ -38,10 +35,10 @@ services:
         )
 
     async def given_observations_directory(self):
-        self.observations_dir = temp_keeper.create_tmp_dir(prefix='uc-parallel-observations-')
+        self.observations_dir = temp_keeper.create_tmp_dir(prefix='uc-one-env-group-')
         patch_env({'UC_TEST_OBSERVATIONS_DIR': str(self.observations_dir)})
 
-    async def given_vedro_project_with_per_env_parallelism(self):
+    async def given_vedro_project_with_both_plugins_and_one_env_group(self):
         scenario_template = """
 import json
 import os
@@ -53,26 +50,21 @@ from uber_compose import Service
 
 
 class Scenario(vedro.Scenario):
-    subject = 'scenario {name}'
-    env = Environment(Service('s1'), description='{env_description}')
+    subject = 'scenario {name} for env-a'
+    env = Environment(Service('s1'), description='env-a')
 
     def when_worker_identity_is_recorded(self):
         observations_dir = os.environ['UC_TEST_OBSERVATIONS_DIR']
         with open(os.path.join(observations_dir, '{name}.json'), 'w') as file:
             json.dump({{
-                'env': '{env_description}',
                 'worker_id': os.environ.get('UC_WORKER_ID'),
                 'pid': os.getpid(),
             }}, file)
 """
-        scenarios = {}
-        for env_description, replicas in self.replicas.items():
-            for index in range(replicas):
-                name = f"{env_description.replace('-', '_')}_{index}"
-                scenarios[f'test_{name}.py'] = scenario_template.format(
-                    env_description=env_description,
-                    name=name,
-                )
+        scenarios = {
+            f'test_{name}.py': scenario_template.format(name=name)
+            for name in ('env_a_1', 'env_a_2', 'env_a_3')
+        }
 
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
@@ -89,10 +81,7 @@ class Config(vedro.Config):
         class UberCompose(VedroUberCompose):
             enabled = True
             compose_cfgs = {{
-                DEFAULT_COMPOSE: ComposeConfig(
-                    compose_files="{self.compose_filename}",
-                    env_parallelism={self.replicas},
-                ),
+                DEFAULT_COMPOSE: ComposeConfig(compose_files="{self.compose_filename}"),
             }}
 
         class UberComposeParallel(VedroUberComposeParallel):
@@ -101,30 +90,32 @@ class Config(vedro.Config):
             scenarios=scenarios,
         )
 
-    async def when_vedro_is_run_with_per_env_parallelism(self):
-        self.run_result = await CliRunner().run_vedro(self.project_dir, args=['run', 'scenarios/'])
+    async def when_vedro_is_run_with_uc_mt(self):
+        self.run_result = await CliRunner().run_vedro(
+            self.project_dir, args=['run', 'scenarios/', '--uc-mt']
+        )
 
     async def then_it_should_exit_with_code_zero(self):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
-    async def and_it_should_start_configured_number_of_replicas_per_env(self):
-        containers = retrieve_all_docker_containers()
-        replicas_by_env = {}
-        for container in containers:
-            env_description = container.get('Labels', {}).get(Label.ENV_DESCRIPTION)
-            replicas_by_env[env_description] = replicas_by_env.get(env_description, 0) + 1
-        assert replicas_by_env == self.replicas
-
-    async def and_it_should_run_each_env_group_in_configured_number_of_workers(self):
+    async def and_it_should_not_spawn_a_worker_for_a_single_env_group(self):
         observations = {
             file.stem: json.loads(file.read_text())
             for file in self.observations_dir.glob('*.json')
         }
-        assert len(observations) == sum(self.replicas.values())
-        workers_by_env = {}
-        for observation in observations.values():
-            env_description = observation['env']
-            workers_by_env.setdefault(env_description, set()).add(observation['worker_id'])
-        for env_description, replicas in self.replicas.items():
-            assert len(workers_by_env[env_description]) == replicas
-            assert None not in workers_by_env[env_description]
+        assert set(observations) == {'env_a_1', 'env_a_2', 'env_a_3'}
+        worker_ids = {observation['worker_id'] for observation in observations.values()}
+        assert worker_ids == {None}
+
+    async def and_it_should_run_the_env_group_in_a_single_process(self):
+        observations = {
+            file.stem: json.loads(file.read_text())
+            for file in self.observations_dir.glob('*.json')
+        }
+        pids = {observation['pid'] for observation in observations.values()}
+        assert len(pids) == 1
+
+    async def and_it_should_start_only_one_container_for_the_env_group(self):
+        containers = retrieve_all_docker_containers()
+        assert len(containers) == 1
+        assert containers[0].get('Labels', {}).get(Label.TEMPLATE_SERVICE_NAME) == 's1'

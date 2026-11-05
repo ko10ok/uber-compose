@@ -8,7 +8,7 @@ import vedro
 
 
 class Scenario(vedro.Scenario):
-    subject = 'run vedro twice with uc enabled and increased env_parallelism replicas'
+    subject = 'run vedro twice with uc enabled and decreased workers_per_env replicas'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -28,9 +28,9 @@ services:
 """
         )
 
-    async def given_vedro_project_with_one_replica(self):
+    async def given_vedro_project_with_two_replicas(self):
         self.project_dir = vedro_subprocess_project(
-            vedro_cfg=self._vedro_cfg(replicas=1),
+            vedro_cfg=self._vedro_cfg(replicas=2),
             scenarios={
                 'test_env_a.py': """
 import vedro
@@ -52,17 +52,17 @@ class Scenario(vedro.Scenario):
             },
         )
 
-    async def given_one_replica_is_started(self):
+    async def given_two_replicas_are_started(self):
         self.first_run = await CliRunner().run_vedro(
             self.project_dir, args=['run', 'scenarios/', '--uc-ju']
         )
         assert self.first_run.returncode == 0, self.first_run.stdout + self.first_run.stderr
         self.first_containers = retrieve_all_docker_containers()
-        assert len(self.first_containers) == 1
-        self.first_replica_id = self.first_containers[0]['Id']
+        assert len(self.first_containers) == 2
+        self.first_replica_id = self._container_id_for_slot(self.first_containers, 'w0')
 
-    async def when_vedro_is_rerun_with_two_replicas(self):
-        (self.project_dir / 'vedro.cfg.py').write_text(self._vedro_cfg(replicas=2))
+    async def when_vedro_is_rerun_with_one_replica(self):
+        (self.project_dir / 'vedro.cfg.py').write_text(self._vedro_cfg(replicas=1))
         self.second_run = await CliRunner().run_vedro(
             self.project_dir, args=['run', 'scenarios/', '--uc-ju']
         )
@@ -70,23 +70,16 @@ class Scenario(vedro.Scenario):
     async def then_it_should_exit_with_code_zero(self):
         assert self.second_run.returncode == 0, self.second_run.stdout + self.second_run.stderr
 
-    async def and_it_should_add_the_second_replica(self):
+    async def and_it_should_keep_only_the_first_replica(self):
         self.second_containers = retrieve_all_docker_containers()
-        assert len(self.second_containers) == 2
-        service_names = {
-            container.get('Labels', {}).get('com.docker.compose.service')
-            for container in self.second_containers
-        }
-        assert any(name.startswith('s1-w0-') for name in service_names)
-        assert any(name.startswith('s1-w1-') for name in service_names)
+        assert len(self.second_containers) == 1
+        service_name = self.second_containers[0].get('Labels', {}).get('com.docker.compose.service')
+        assert service_name.startswith('s1-w0-')
 
-    async def and_it_should_not_recreate_the_existing_replica(self):
-        first_slot_ids = [
-            container['Id']
-            for container in self.second_containers
-            if container.get('Labels', {}).get('com.docker.compose.service', '').startswith('s1-w0-')
-        ]
-        assert first_slot_ids == [self.first_replica_id]
+    async def and_it_should_not_recreate_the_kept_replica(self):
+        service_name = self.second_containers[0].get('Labels', {}).get('com.docker.compose.service')
+        assert self.second_containers[0]['Id'] == self.first_replica_id
+        assert service_name == self._service_name_for_slot(self.first_containers, 'w0')
 
     def _vedro_cfg(self, replicas: int) -> str:
         return f"""
@@ -104,7 +97,22 @@ class Config(vedro.Config):
             compose_cfgs = {{
                 DEFAULT_COMPOSE: ComposeConfig(
                     compose_files="{self.compose_filename}",
-                    env_parallelism={{"env-a": {replicas}}},
+                    workers_per_env={{"env-a": {replicas}}},
                 ),
             }}
 """
+
+    @staticmethod
+    def _service_name_for_slot(containers, slot):
+        for container in containers:
+            service_name = container.get('Labels', {}).get('com.docker.compose.service', '')
+            if service_name.startswith(f's1-{slot}-'):
+                return service_name
+        raise AssertionError(f'No container for slot {slot}')
+
+    def _container_id_for_slot(self, containers, slot):
+        service_name = self._service_name_for_slot(containers, slot)
+        for container in containers:
+            if container.get('Labels', {}).get('com.docker.compose.service') == service_name:
+                return container['Id']
+        raise AssertionError(f'No container for slot {slot}')

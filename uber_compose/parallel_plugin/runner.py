@@ -73,14 +73,12 @@ class ParallelScenarioRunner(ScenarioRunner):
         capture_output: bool = False,
         capture_limit: int | None = None,
         worker_timeout: float | None = None,
-        worker_concurrency: int | None = None,
     ) -> None:
         self._dispatcher = dispatcher
         self._grouping_key = grouping_key
         self._capture_output = capture_output
         self._capture_limit = capture_limit
         self._worker_timeout = worker_timeout
-        self._worker_concurrency = worker_concurrency
         self._processes: set = set()
 
     async def run(self, scheduler: ScenarioScheduler, **kwargs: Any) -> Report:
@@ -95,30 +93,16 @@ class ParallelScenarioRunner(ScenarioRunner):
 
         aggregated: dict[str, AggregatedResult] = {}
         fire_lock = asyncio.Lock()
-        semaphore = (
-            asyncio.Semaphore(self._worker_concurrency)
-            if self._worker_concurrency else None
-        )
 
         async def run_assignment(assignment: WorkerAssignment):
-            if semaphore is None:
-                return await self._run_worker(
-                    assignment=assignment,
-                    workers_total=plan.workers_total,
-                    scenario_paths=scenario_paths,
-                    scenarios=scenarios,
-                    aggregated=aggregated,
-                    fire_lock=fire_lock,
-                )
-            async with semaphore:
-                return await self._run_worker(
-                    assignment=assignment,
-                    workers_total=plan.workers_total,
-                    scenario_paths=scenario_paths,
-                    scenarios=scenarios,
-                    aggregated=aggregated,
-                    fire_lock=fire_lock,
-                )
+            return await self._run_worker(
+                assignment=assignment,
+                workers_total=plan.workers_total,
+                scenario_paths=scenario_paths,
+                scenarios=scenarios,
+                aggregated=aggregated,
+                fire_lock=fire_lock,
+            )
 
         workers = [run_assignment(assignment) for assignment in plan.assignments if assignment.groups]
         try:
