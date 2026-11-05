@@ -39,6 +39,7 @@ from uber_compose.helpers.singleton import SingletonMeta
 from uber_compose.output.console import LogPolicySet
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
+from uber_compose.parallel_plugin.worker_api import get_worker_id
 from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
 from uber_compose.utils.services_construction import make_default_environment
 
@@ -474,6 +475,7 @@ class SystemUberCompose:
             logger=self.logger,
             health_policy=self.health_policy,
             run_id=self.run_id,
+            worker_id=get_worker_id(),
         )
 
         await compose_instance.run()

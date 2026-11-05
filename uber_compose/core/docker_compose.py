@@ -18,6 +18,8 @@ from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
+from uber_compose.helpers.parameterization import build_parameterization_placeholders
+from uber_compose.helpers.parameterization import substitute_parameterization_placeholders
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
@@ -41,8 +43,10 @@ class ComposeInstance:
                  release_id: str = None,
                  logger: Logger = None,
                  health_policy: UpHealthPolicy = UpHealthPolicy(),
+                 worker_id: int | None = None,
                  ):
         self.run_id = run_id
+        self.worker_id = worker_id
         self.logger = logger
         self.health_policy = health_policy
         self.compose_files = compose_files
@@ -73,6 +77,8 @@ class ComposeInstance:
                 env_template=self.config_template,
                 env_id=self.new_env_id,
                 name=self.name,
+                run_id=self.run_id,
+                worker_id=self.worker_id,
             )
         return self._env_instance_config
 
@@ -97,21 +103,26 @@ class ComposeInstance:
         return compose_instance_files
 
     async def run_migration(self, stages, services, env_config_instance, migrations):
+        placeholders = build_parameterization_placeholders(
+            env_config_instance.env_id,
+            services_map=env_config_instance.env_services_map,
+            run_id=self.run_id,
+            worker_id=self.worker_id,
+        )
         for service in env_config_instance.env:
             sys.stdout.flush()
-            if service not in services:
+            actual_service = env_config_instance.env_services_map.get(service, service)
+            if actual_service not in services:
                 continue
 
             for handler in migrations[service]:
                 if handler.stage not in stages:
                     continue
 
-                # TODO fix service map if default env
-                target_service = env_config_instance.env_services_map[handler.executor or service]
+                executor = handler.executor or service
+                target_service = env_config_instance.env_services_map.get(executor, executor)
 
-                # TODO check if need to template migrations
-                #   substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
-                substituted_cmd = handler.cmd
+                substituted_cmd = substitute_parameterization_placeholders(handler.cmd, placeholders)
                 migration_result = await self.compose_executor.dc_exec_until_state(
                     target_service, substituted_cmd,
                     kill_before=False,
@@ -240,11 +251,13 @@ class ComposeInstance:
         )
 
         migrations = {}
-        for service in self.compose_instance_files.env_config_instance.env:
+        env_instance = self.compose_instance_files.env_config_instance
+        for service in env_instance.env:
             if service not in migrations:
                 migrations[service] = []
-            migrations[service] += self.compose_instance_files.env_config_instance.env[service].events_handlers
-            migrations[service] += self.compose_instance_files.inline_migrations[service]
+            migrations[service] += env_instance.env[service].events_handlers
+            inline_service_name = env_instance.env_services_map.get(service, service)
+            migrations[service] += self.compose_instance_files.inline_migrations[inline_service_name]
 
         all_services = [
             service

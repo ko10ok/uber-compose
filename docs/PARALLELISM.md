@@ -119,33 +119,41 @@ per environment/worker.
 | `current_worker_groups()` | Env group keys assigned to this worker |
 | `current_run_id()` | Run id used for `[[test_run_id]]` substitution |
 
-## Placeholders in service env parameters
+## Parameterization placeholders
 
-Supported today:
+Placeholders are resolved both in service env parameters and in `x-migration`
+commands. They are the declarative counterpart of the `TheUberCompose`
+current-env API (see `uber_compose/helpers/parameterization.py`).
 
-- `[[test_run_id]]` — replaced with the current run id;
-- `[[<service>]]` — replaced with the actual (namespaced) service name,
-  e.g. `[[postgres]]` -> `postgres-w1-a1b2`.
+Supported placeholders:
+
+- `[[env_id]]` — current environment id (namespace);
+- `[[namespace]]` — current namespace key (same as `env_id` today);
+- `[[worker_id]]` — current worker index (`0` when a single worker runs);
+- `[[test_run_id]]` — current run id;
+- `[[<service>]]` — actual (namespaced) service name, e.g. `[[postgres]]` ->
+  `postgres-w1-a1b2`.
 
 ```python
 Environment(
     Service("api", env=Env({
         "DB_HOST": "[[postgres]]",
-        "DB_NAME": "app_[[test_run_id]]",
+        "DB_NAME": "app_[[env_id]]",
+        "WORKER": "w[[worker_id]]",
     })),
     Service("postgres"),
     description="env-a",
 )
 ```
 
-Not implemented yet (placeholders are reserved, see skipped tests in
-`tests/scenarios/003_parameterization_not_implemented/`):
+The same placeholders can be used in migrations:
 
-- `[[env_id]]`, `[[worker_id]]`, `[[namespace]]` in env parameters;
-- templating of `x-migration` commands.
-
-Until these are implemented, use `TheUberCompose.current_*()` methods and pass
-values to your clients/migrations explicitly.
+```yaml
+services:
+  api:
+    x-migration:
+      - after_start: sh -c 'echo "[[env_id]]:[[s1]]" >> /tmp/migration.log'
+```
 
 ## Notes and limitations
 
