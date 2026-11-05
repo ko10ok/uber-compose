@@ -19,6 +19,7 @@ from uber_compose import Environment
 from uber_compose import SystemUberCompose
 from uber_compose.core.constants import Constants
 from uber_compose.core.sequence_run_types import ComposeConfig
+from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.helpers.current_env import set_current_env_id
@@ -26,6 +27,12 @@ from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
+from uber_compose.parallel_plugin.grouping import env_group_key_for
+from uber_compose.parallel_plugin.worker_api import get_execution_plan
+from uber_compose.parallel_plugin.worker_api import get_namespace_map
+from uber_compose.parallel_plugin.worker_api import get_worker_id
+from uber_compose.parallel_plugin.worker_api import get_workers_total
+from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
 from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
 from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config
@@ -88,6 +95,9 @@ class VedroUberComposePlugin(Plugin):
 
         if self._uc_env:
             await ignore_unsuitable(event.scheduler, self._uc_env)
+
+        if is_parallel_worker_process() or get_execution_plan() is not None:
+            return
 
         needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:
@@ -167,15 +177,30 @@ class VedroUberComposePlugin(Plugin):
         if env_config is None:
             env_config = self._default_env
 
+        if is_parallel_worker_process():
+            env_id = self._resolve_worker_env_id(env_config)
+            parallelism_limit = max(get_workers_total(), 2)
+        else:
+            env_id = None
+            parallelism_limit = self._compose_choice.parallel_env_limit
+
         ready_env = await self._uber_compose_client.up(
             config_template=env_config,
             compose_files=self._compose_choice.compose_files,
-            parallelism_limit=self._compose_choice.parallel_env_limit,
+            parallelism_limit=parallelism_limit,
             services_override=self._uc_external_services,
+            env_id=env_id,
         )
 
         set_current_env_id(ready_env.env_id)
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
+
+    def _resolve_worker_env_id(self, env_config):
+        group_key = env_group_key_for(env_config)
+        namespace_map = get_namespace_map()
+        if group_key in namespace_map:
+            return namespace_map[group_key]
+        return get_stable_env_id(env_config, get_worker_id())
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose")
