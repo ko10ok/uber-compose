@@ -39,6 +39,33 @@ services:
         patch_env({'UC_TEST_OBSERVATIONS_DIR': str(self.observations_dir)})
 
     async def given_vedro_project_with_both_plugins_and_one_env_group(self):
+        scenario_template = """
+import json
+import os
+
+import vedro
+
+from uber_compose import Environment
+from uber_compose import Service
+
+
+class Scenario(vedro.Scenario):
+    subject = 'scenario {name} for env-a'
+    env = Environment(Service('s1'), description='env-a')
+
+    def when_worker_identity_is_recorded(self):
+        observations_dir = os.environ['UC_TEST_OBSERVATIONS_DIR']
+        with open(os.path.join(observations_dir, '{name}.json'), 'w') as file:
+            json.dump({{
+                'worker_id': os.environ.get('UC_WORKER_ID'),
+                'pid': os.getpid(),
+            }}, file)
+"""
+        scenarios = {
+            f'test_{name}.py': scenario_template.format(name=name)
+            for name in ('env_a_1', 'env_a_2', 'env_a_3')
+        }
+
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
 import vedro
@@ -60,11 +87,7 @@ class Config(vedro.Config):
         class UberComposeParallel(VedroUberComposeParallel):
             enabled = True
 """,
-            scenarios={
-                'test_env_a_1.py': self._scenario_source('env_a_1'),
-                'test_env_a_2.py': self._scenario_source('env_a_2'),
-                'test_env_a_3.py': self._scenario_source('env_a_3'),
-            },
+            scenarios=scenarios,
         )
 
     async def when_vedro_is_run_with_uc_parallel_two(self):
@@ -76,14 +99,20 @@ class Config(vedro.Config):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
     async def and_it_should_keep_the_env_group_in_a_single_worker(self):
-        observations = self._read_observations()
+        observations = {
+            file.stem: json.loads(file.read_text())
+            for file in self.observations_dir.glob('*.json')
+        }
         assert set(observations) == {'env_a_1', 'env_a_2', 'env_a_3'}
         worker_ids = {observation['worker_id'] for observation in observations.values()}
         assert len(worker_ids) == 1
         assert None not in worker_ids
 
     async def and_it_should_run_the_env_group_in_a_single_process(self):
-        observations = self._read_observations()
+        observations = {
+            file.stem: json.loads(file.read_text())
+            for file in self.observations_dir.glob('*.json')
+        }
         pids = {observation['pid'] for observation in observations.values()}
         assert len(pids) == 1
 
@@ -91,34 +120,3 @@ class Config(vedro.Config):
         containers = retrieve_all_docker_containers()
         assert len(containers) == 1
         assert containers[0].get('Labels', {}).get(Label.TEMPLATE_SERVICE_NAME) == 's1'
-
-    def _read_observations(self):
-        observations = {}
-        for file in self.observations_dir.glob('*.json'):
-            observations[file.stem] = json.loads(file.read_text())
-        return observations
-
-    @staticmethod
-    def _scenario_source(name: str) -> str:
-        return f"""
-import json
-import os
-
-import vedro
-
-from uber_compose import Environment
-from uber_compose import Service
-
-
-class Scenario(vedro.Scenario):
-    subject = 'scenario {name} for env-a'
-    env = Environment(Service('s1'), description='env-a')
-
-    def then_it_should_record_worker_identity(self):
-        observations_dir = os.environ['UC_TEST_OBSERVATIONS_DIR']
-        with open(os.path.join(observations_dir, '{name}.json'), 'w') as file:
-            json.dump({{
-                'worker_id': os.environ.get('UC_WORKER_ID'),
-                'pid': os.getpid(),
-            }}, file)
-"""

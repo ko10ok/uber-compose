@@ -42,11 +42,37 @@ services:
         patch_env({'UC_TEST_OBSERVATIONS_DIR': str(self.observations_dir)})
 
     async def given_vedro_project_with_per_env_parallelism(self):
+        scenario_template = """
+import json
+import os
+
+import vedro
+
+from uber_compose import Environment
+from uber_compose import Service
+
+
+class Scenario(vedro.Scenario):
+    subject = 'scenario {name}'
+    env = Environment(Service('s1'), description='{env_description}')
+
+    def when_worker_identity_is_recorded(self):
+        observations_dir = os.environ['UC_TEST_OBSERVATIONS_DIR']
+        with open(os.path.join(observations_dir, '{name}.json'), 'w') as file:
+            json.dump({{
+                'env': '{env_description}',
+                'worker_id': os.environ.get('UC_WORKER_ID'),
+                'pid': os.getpid(),
+            }}, file)
+"""
         scenarios = {}
         for env_description, replicas in self.replicas.items():
             for index in range(replicas):
                 name = f"{env_description.replace('-', '_')}_{index}"
-                scenarios[f'test_{name}.py'] = self._scenario_source(env_description, name)
+                scenarios[f'test_{name}.py'] = scenario_template.format(
+                    env_description=env_description,
+                    name=name,
+                )
 
         self.project_dir = vedro_subprocess_project(
             vedro_cfg=f"""
@@ -90,7 +116,10 @@ class Config(vedro.Config):
         assert replicas_by_env == self.replicas
 
     async def and_it_should_run_each_env_group_in_configured_number_of_workers(self):
-        observations = self._read_observations()
+        observations = {
+            file.stem: json.loads(file.read_text())
+            for file in self.observations_dir.glob('*.json')
+        }
         assert len(observations) == sum(self.replicas.values())
         workers_by_env = {}
         for observation in observations.values():
@@ -99,35 +128,3 @@ class Config(vedro.Config):
         for env_description, replicas in self.replicas.items():
             assert len(workers_by_env[env_description]) == replicas
             assert None not in workers_by_env[env_description]
-
-    def _read_observations(self):
-        observations = {}
-        for file in self.observations_dir.glob('*.json'):
-            observations[file.stem] = json.loads(file.read_text())
-        return observations
-
-    @staticmethod
-    def _scenario_source(env_description: str, name: str) -> str:
-        return f"""
-import json
-import os
-
-import vedro
-
-from uber_compose import Environment
-from uber_compose import Service
-
-
-class Scenario(vedro.Scenario):
-    subject = 'scenario {name}'
-    env = Environment(Service('s1'), description='{env_description}')
-
-    def then_it_should_record_worker_identity(self):
-        observations_dir = os.environ['UC_TEST_OBSERVATIONS_DIR']
-        with open(os.path.join(observations_dir, '{name}.json'), 'w') as file:
-            json.dump({{
-                'env': '{env_description}',
-                'worker_id': os.environ.get('UC_WORKER_ID'),
-                'pid': os.getpid(),
-            }}, file)
-"""

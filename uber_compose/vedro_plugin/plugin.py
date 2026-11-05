@@ -22,15 +22,19 @@ from uber_compose.core.sequence_run_types import ComposeConfig
 from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import OverridenService
-from uber_compose.helpers.current_env import set_current_env_id
+from uber_compose.helpers.current_env import CurrentEnvContext
+from uber_compose.helpers.current_env import set_current_env_context
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 from uber_compose.parallel_plugin.grouping import env_group_key_for
+from uber_compose.parallel_plugin.worker_api import get_env_replicas_total
 from uber_compose.parallel_plugin.worker_api import get_execution_plan
 from uber_compose.parallel_plugin.worker_api import get_namespace_map
+from uber_compose.parallel_plugin.worker_api import get_worker_groups
 from uber_compose.parallel_plugin.worker_api import get_worker_id
+from uber_compose.parallel_plugin.worker_api import get_worker_replica_index
 from uber_compose.parallel_plugin.worker_api import get_workers_total
 from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
 from uber_compose.parallel_plugin.worker_api import set_env_parallelism
@@ -233,7 +237,17 @@ class VedroUberComposePlugin(Plugin):
             env_id=env_id,
         )
 
-        set_current_env_id(ready_env.env_id)
+        set_current_env_context(CurrentEnvContext(
+            env_id=ready_env.env_id,
+            env=ready_env.env,
+            worker_id=get_worker_id(),
+            workers_total=get_workers_total(),
+            replica_index=get_worker_replica_index(),
+            replicas_total=get_env_replicas_total(),
+            namespace=ready_env.env_id,
+            groups=tuple(get_worker_groups() or ()),
+            run_id=self._uber_compose_client.run_id,
+        ))
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
 
     def _resolve_worker_env_id(self, env_config):

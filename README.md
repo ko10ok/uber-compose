@@ -199,6 +199,7 @@ This is particularly useful when:
 - **[CLI Usage Guide](docs/CLI_USAGE.md)** - Guide for using CommonJsonCli with JSON log parsing
 - **[X-Migration](docs/X_MIGRATION.md)** - Extended service initialization and migration commands
 - **[Lifecycle Hooks](docs/HOOKS.md)** - Register callbacks that run after the environment is up
+- **[Parallelism & Current Env API](docs/PARALLELISM.md)** - Parallel runs, worker/replica parameters and per-service env access
 
 ## 🛠️ Development Guide
 

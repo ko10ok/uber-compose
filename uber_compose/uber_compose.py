@@ -26,6 +26,8 @@ from uber_compose.errors.up import SingletonConfigChangedError
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
+from uber_compose.helpers.current_env import get_current_env_context
+from uber_compose.helpers.current_env import get_current_env_id
 from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
@@ -89,6 +91,65 @@ class SystemUberCompose:
 
     def on(self, event: UberComposeEvent, func: Callable, *args: Any, **kwargs: Any) -> None:
         self._hooks.on(event, func, *args, **kwargs)
+
+    @staticmethod
+    def current_env_id() -> str:
+        return get_current_env_id()
+
+    @staticmethod
+    def current_env_context():
+        return get_current_env_context()
+
+    @staticmethod
+    def current_env():
+        return get_current_env_context().env
+
+    @staticmethod
+    def current_service_env(service_name: str) -> dict[str, Any] | None:
+        env = get_current_env_context().env
+        if env is None or service_name not in env:
+            return None
+        return dict(env[service_name].env)
+
+    @staticmethod
+    def current_service_env_param(service_name: str, param: str, default=None):
+        service_env = SystemUberCompose.current_service_env(service_name)
+        if service_env is None:
+            return default
+        return service_env.get(param, default)
+
+    @staticmethod
+    def current_worker_id() -> int:
+        return get_current_env_context().worker_id
+
+    @staticmethod
+    def current_workers_total() -> int:
+        return get_current_env_context().workers_total
+
+    @staticmethod
+    def is_current_worker_parallel() -> bool:
+        return get_current_env_context().workers_total > 1
+
+    @staticmethod
+    def current_replica_index() -> int | None:
+        return get_current_env_context().replica_index
+
+    @staticmethod
+    def current_replicas_total() -> int | None:
+        return get_current_env_context().replicas_total
+
+    @staticmethod
+    def current_namespace() -> str:
+        context = get_current_env_context()
+        return context.namespace or context.env_id
+
+    @staticmethod
+    def current_worker_groups() -> list[str]:
+        return list(get_current_env_context().groups)
+
+    @staticmethod
+    def current_run_id() -> str | None:
+        return get_current_env_context().run_id
 
     async def up(self,
                  config_template: Environment | None = None,
