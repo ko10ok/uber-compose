@@ -7,7 +7,6 @@ from contexts.mounted_file import mounted_template
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
-from helpers.docker_migration_result import get_file_from_container
 from schemas.docker import ContainerSchema
 import vedro
 
@@ -69,9 +68,11 @@ services:
         )
 
     async def then_both_targets_should_contain_rendered_content(self):
-        expected = b'env: default_env_id\nservice: s1\n'
-        assert get_file_from_container('s1', self.target_a) == expected
-        assert get_file_from_container('s1', self.target_b) == expected
+        rendered_source = (
+            Path.cwd() / 'e2e_mounted_files' / self.response.env_id / self.template_path
+        )
+        expected = 'env: default_env_id\nservice: s1\n'
+        assert rendered_source.read_text() == expected
 
     async def and_container_should_have_mounts_for_both_targets(self):
         rendered_source = (

@@ -21,6 +21,7 @@ class EnvInstanceConfig(NamedTuple):
     env_id: str
     env_services_map: dict[str, str]
     env: Environment
+    placeholders: dict[str, str] = None
 
 
 class ComposeInstanceFiles(NamedTuple):

@@ -67,6 +67,7 @@ def _service_config(service) -> tuple:
         tuple(sorted(service.env.items())),
         tuple(service.events_handlers),
         service.mode,
+        tuple(service.mounted_files),
     )
 
 
@@ -501,6 +502,7 @@ class SystemUberCompose:
             health_policy=self.health_policy,
             run_id=self.run_id,
             worker_id=get_worker_id(),
+            mounted_files_path=self.cfg_constants.mounted_files_path,
         )
 
         await compose_instance.run()

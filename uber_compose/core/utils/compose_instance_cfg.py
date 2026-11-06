@@ -40,6 +40,7 @@ def prepare_services_env(env: Environment, placeholders: dict[str, str]) -> Envi
                 env=sub_env_id(env[service_name].env, placeholders),
                 events_handlers=env[service_name].events_handlers,
                 mode=env[service_name].mode,
+                mounted_files=env[service_name].mounted_files,
             )
         ]
     new_env = Environment(*updated_services, description=env.description)
@@ -85,7 +86,8 @@ def make_env_instance_config(
         env_name=name,
         env_id=env_id,
         env_services_map=services_map,
-        env=env
+        env=env,
+        placeholders=placeholders,
     )
 
 

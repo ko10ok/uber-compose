@@ -9,6 +9,7 @@ class Constants:
                  compose_project_name: str = None,
                  tmp_envs_path: str | Path = None,
                  in_docker_project_root_path: str | Path = None,
+                 mounted_files_path: str | Path = None,
                  ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
@@ -27,6 +28,12 @@ class Constants:
         )
         self.in_docker_project_root_path: Path = Path(
             in_docker_project_root_path or os.environ.get('PROJECT_ROOT_DIRECTORY', '/project')
+        )
+        self.mounted_files_path: Path = Path(
+            mounted_files_path or os.environ.get(
+                'MOUNTED_FILES_DIRECTORY',
+                Path.cwd() / 'e2e_mounted_files',
+            )
         )
 
         self.host_project_root_directory: Path = Path(

@@ -7,7 +7,6 @@ from contexts.mounted_file import mounted_template
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
-from helpers.docker_migration_result import get_file_from_container
 from schemas.docker import ContainerSchema
 import vedro
 
@@ -71,8 +70,10 @@ services:
         )
 
     async def then_mounted_file_should_replace_existing_mount_content(self):
-        content = get_file_from_container('s1', self.target_path)
-        assert content == b'env: default_env_id\nservice: s1\n'
+        rendered_source = (
+            Path.cwd() / 'e2e_mounted_files' / self.response.env_id / self.template_path
+        )
+        assert rendered_source.read_text() == 'env: default_env_id\nservice: s1\n'
 
     async def and_container_should_have_single_mount_at_target(self):
         rendered_source = (

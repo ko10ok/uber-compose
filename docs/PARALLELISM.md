@@ -422,6 +422,45 @@ services:
       - after_start: sh -c 'echo "[[env_id]]:[[s1]]" >> /tmp/migration.log'
 ```
 
+### Mounted config templates
+
+If a service needs a config file with namespaced values at startup, declare it
+on the service with `mounted_files`:
+
+```python
+Service(
+    "api",
+    mounted_files=(
+        "e2e-neo/data/config.yaml",
+        "e2e-neo/data/config-cache.yaml:/app/data/config-cache.yaml",
+    ),
+)
+```
+
+- `path` mounts to `/e2e_mounted_files/<path>` inside the container;
+- `path:/target/path` mounts to the explicit container path;
+- the same `path` may be repeated with different targets;
+- an existing mount at the same target is replaced.
+
+Template paths are resolved from the directory where `vedro run` was started.
+The rendered files are written to:
+
+```text
+<run_dir>/e2e_mounted_files/<env_id>/<path>
+```
+
+Only `[[...]]` placeholders are substituted, using the same values as
+`Service.env`: `[[env_id]]`, `[[namespace]]`, `[[worker_id]]`,
+`[[test_run_id]]`, and `[[<service>]]`.
+
+```yaml
+# e2e-neo/data/config.yaml
+redis:
+  host: "[[redis]]"
+cassandra:
+  host: "[[cassandra]]"
+```
+
 ## Reporting details
 
 Workers emit JSON events that the parent turns back into regular vedro events,

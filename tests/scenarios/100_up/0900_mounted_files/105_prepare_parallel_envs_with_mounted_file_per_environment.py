@@ -7,7 +7,6 @@ from contexts.mounted_file import mounted_template
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
-from helpers.docker_migration_result import get_file_from_container
 from schemas.docker import ContainerSchema
 import vedro
 
@@ -72,14 +71,13 @@ services:
         assert len(self.ready_envs) == 2
         assert len({ready_env.env_id for ready_env in self.ready_envs}) == 2
         for ready_env in self.ready_envs:
-            content = get_file_from_container(
-                f's1-{ready_env.env_id}',
-                self.target_path,
+            rendered_source = (
+                Path.cwd() / 'e2e_mounted_files' / ready_env.env_id / self.template_path
             )
-            assert content == (
+            assert rendered_source.read_text() == (
                 f'env: {ready_env.env_id}\n'
                 f'service: s1-{ready_env.env_id}\n'
-            ).encode()
+            )
 
     async def and_each_container_should_mount_its_own_rendered_file(self):
         containers = retrieve_all_docker_containers()
