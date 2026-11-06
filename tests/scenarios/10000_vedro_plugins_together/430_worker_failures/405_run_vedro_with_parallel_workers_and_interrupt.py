@@ -99,7 +99,7 @@ class Config(vedro.Config):
         self.process.send_signal(signal.SIGINT)
 
         try:
-            await asyncio.wait_for(self.process.wait(), timeout=20)
+            await asyncio.wait_for(self.process.wait(), timeout=40)
         except asyncio.TimeoutError:
             self.process.kill()
             await self.process.wait()

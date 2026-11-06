@@ -79,6 +79,16 @@ Run with workers:
 vedro run scenarios/ --uc-mt
 ```
 
+Preview the execution plan without starting containers or workers:
+
+```bash
+vedro run scenarios/ --uc-mt --uc-mt-plan
+```
+
+The plan shows environments, services, workers/namespaces, and the first test
+files assigned to each worker. Use `--uc-mt-plan=1` for namespaces and full test
+lists, or `--uc-mt-plan=2` for full test paths.
+
 ### General parameters
 
 | Parameter | Where | Meaning |
@@ -90,6 +100,7 @@ vedro run scenarios/ --uc-mt
 | `worker_timeout` | parallel plugin config | Kill a worker after N seconds |
 | `--uc-mt` | CLI | Enable parallel worker processes |
 | `--uc-workers-per-env=N`, `--uc-wpe=N` | CLI | Override `workers_per_env` for every env, for this run only |
+| `--uc-mt-plan[=LEVEL]` | CLI | Print the execution plan without starting containers or workers |
 
 `workers_per_env` keys are environment descriptions. You can use the
 `Environment` object or its description string:
@@ -324,6 +335,7 @@ tests cannot isolate.
 |---|---|---|
 | `--uc-mt` | Master switch: create parallel worker processes | Always, when you want any parallelism |
 | `--uc-workers-per-env=N`, `--uc-wpe=N` | Override `workers_per_env` for every env, for this run only | Temporary experiments or CI override |
+| `--uc-mt-plan[=LEVEL]` | Print the execution plan without starting anything | Preview workers, envs, and test assignment |
 | `--uc-ju` | Start environment(s) and exit without running tests | CI warm-up, debugging |
 | `--uc-fr` | Force restart of services | After changing compose/env config |
 | `--uc-env=<name>` | Run only scenarios of one environment | Focused runs |

@@ -18,6 +18,7 @@ _execution_plan: ExecutionPlan | None = None
 _workers_per_env: tuple[dict[str, int], int] | None = None
 _default_workers_per_env: int = 1
 _workers_per_env_override: int | None = None
+_mt_enabled: bool = False
 
 
 def _read_int(name: str, default: int) -> int:
@@ -101,6 +102,19 @@ def reset_execution_plan() -> None:
     set_execution_plan(None)
 
 
+def set_mt_enabled(value: bool) -> None:
+    global _mt_enabled
+    _mt_enabled = bool(value)
+
+
+def get_mt_enabled() -> bool:
+    return _mt_enabled
+
+
+def reset_mt_enabled() -> None:
+    set_mt_enabled(False)
+
+
 def set_workers_per_env(counts: dict[str, int] | None, default: int = 1) -> None:
     global _workers_per_env, _default_workers_per_env
     _default_workers_per_env = max(int(default), 1)
@@ -136,9 +150,9 @@ __all__ = (
     'DEFAULT_WORKER_ID', 'DEFAULT_WORKERS_TOTAL', 'ENV_REPLICAS_TOTAL_ENV',
     'NAMESPACE_MAP_ENV', 'WORKER_GROUPS_ENV', 'WORKER_ID_ENV', 'WORKER_REPLICA_INDEX_ENV', 'WORKERS_TOTAL_ENV',
     'get_default_workers_per_env', 'get_env_replicas_total', 'get_execution_plan',
-    'get_namespace_map', 'get_workers_per_env', 'get_workers_per_env_override',
+    'get_mt_enabled', 'get_namespace_map', 'get_workers_per_env', 'get_workers_per_env_override',
     'get_worker_groups', 'get_worker_id', 'get_worker_replica_index', 'get_workers_total',
     'is_parallel_worker', 'is_parallel_worker_process', 'reset_execution_plan',
-    'reset_workers_per_env', 'set_execution_plan', 'set_workers_per_env',
-    'set_workers_per_env_override',
+    'reset_mt_enabled', 'reset_workers_per_env', 'set_execution_plan',
+    'set_mt_enabled', 'set_workers_per_env', 'set_workers_per_env_override',
 )

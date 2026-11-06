@@ -28,6 +28,7 @@ from uber_compose.parallel_plugin.worker_api import get_workers_per_env
 from uber_compose.parallel_plugin.worker_api import get_workers_per_env_override
 from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
 from uber_compose.parallel_plugin.worker_api import set_execution_plan
+from uber_compose.parallel_plugin.worker_api import set_mt_enabled
 from uber_compose.parallel_plugin.worker_api import set_workers_per_env_override
 from uber_compose.parallel_plugin.worker_filter import ignore_foreign_scenarios
 
@@ -81,6 +82,7 @@ class VedroUberComposeParallelPlugin(Plugin):
 
     def handle_arg_parsed(self, event: ArgParsedEvent) -> None:
         self._mt_enabled = bool(getattr(event.args, 'uc_mt', False)) or bool(self._config.multi_thread)
+        set_mt_enabled(self._mt_enabled)
         set_workers_per_env_override(getattr(event.args, 'uc_workers_per_env', None))
         self._capture_output = bool(getattr(event.args, 'capture_output', False))
         self._capture_limit = getattr(event.args, 'capture_limit', None)
