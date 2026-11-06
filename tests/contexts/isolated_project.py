@@ -33,8 +33,9 @@ def isolated_project() -> IsolatedProject:
 
     project_root = temp_keeper.create_tmp_dir(prefix='uc-project-')
     tmp_envs_path = temp_keeper.create_tmp_dir(prefix='uc-envs-')
+    project_name = f'uc-test-{uuid4().hex}'
     applied_env = apply_test_env_vars({
-        'COMPOSE_PROJECT_NAME': f'uc-test-{uuid4().hex}',
+        'COMPOSE_PROJECT_NAME': project_name,
         'PROJECT_ROOT_DIRECTORY': str(project_root),
         'TMP_ENVS_DIRECTORY': str(tmp_envs_path),
     })
@@ -90,6 +91,40 @@ def rollback_isolated_project(project: IsolatedProject) -> None:
     rollback_test_env_vars(project.applied_env)
     if _current_project.get() is project:
         _current_project.set(None)
+    _remove_project_docker_resources(project.project_name)
+
+
+def _remove_project_docker_resources(project_name: str) -> None:
+    import docker
+    from docker.errors import APIError
+    from docker.errors import NotFound
+
+    client = docker.APIClient(base_url='http://test-docker-daemon:2375')
+    try:
+        containers = client.containers(
+            all=True,
+            filters={'label': f'com.docker.compose.project={project_name}'},
+        )
+        for container in containers:
+            try:
+                client.stop(container['Id'])
+            except (NotFound, APIError):
+                pass
+            try:
+                client.remove_container(container['Id'])
+            except (NotFound, APIError):
+                pass
+
+        for network in client.networks():
+            name = network.get('Name', '')
+            if not name.startswith(f'{project_name}_'):
+                continue
+            try:
+                client.remove_network(network['Id'])
+            except (NotFound, APIError):
+                pass
+    except Exception:
+        pass
 
 
 def _reset_singletons() -> None:

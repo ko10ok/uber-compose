@@ -1,3 +1,5 @@
+import os
+
 from docker import APIClient
 
 from uber_compose.helpers.labels import Label
@@ -9,10 +11,12 @@ def get_container_by_service(service_name: str, env_id: str | None = None) -> di
     client = APIClient(base_url=TEST_DOCKER_DAEMON_URL)
     containers = client.containers(all=True)
 
+    project_name = os.environ.get('COMPOSE_PROJECT_NAME')
     matching_containers = [
         container
         for container in containers
-        if _matches_service(container, service_name)
+        if container.get('Labels', {}).get('com.docker.compose.project') == project_name
+        and _matches_service(container, service_name)
         and (env_id is None or container.get('Labels', {}).get(Label.ENV_ID) == env_id)
     ]
 

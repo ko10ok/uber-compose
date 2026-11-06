@@ -37,8 +37,8 @@ services:
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
     x-migration:
       - after_start: sh -c 'sleep 3 && echo 1 >> /tmp/migration.log'
-      - after_start: sh -c 'sleep 10 && echo 13 >> /tmp/migration.log &'
-      - after_start: sh -c 'sleep 10 && echo 66 >> /tmp/migration.log & '
+      - after_start: sh -c 'sleep 600 && echo 13 >> /tmp/migration.log &'
+      - after_start: sh -c 'sleep 600 && echo 66 >> /tmp/migration.log & '
       - after_start: sh -c 'echo 2 >> /tmp/migration.log'
 """
         )

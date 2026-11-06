@@ -33,11 +33,12 @@ class Scenario(vedro.Scenario):
     )
 
     def when_singleton_identity_is_recorded(self):
-        client = docker.from_env()
+        client = docker.APIClient(base_url=os.environ['DOCKER_HOST'])
         db_containers = [
             container
-            for container in client.containers.list(all=True)
-            if container.labels.get('com.docker.compose.service') == 'db'
+            for container in client.containers(all=True)
+            if container.get('Labels', {{}}).get('com.docker.compose.service') == 'db'
+            and container.get('Labels', {{}}).get('com.docker.compose.project') == os.environ['COMPOSE_PROJECT_NAME']
         ]
         assert len(db_containers) == 1
 
@@ -45,7 +46,7 @@ class Scenario(vedro.Scenario):
         with open(os.path.join(observations_dir, '{name}.json'), 'w') as file:
             json.dump({{
                 'env': '{env_description}',
-                'singleton_id': db_containers[0].id,
+                'singleton_id': db_containers[0]['Id'],
             }}, file)
 """
 

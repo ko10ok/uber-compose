@@ -4,3 +4,4 @@ vedro-valera-validator
 httpx
 d42<3.0
 district42-exp-types
+uber-compose==3.0.0a2

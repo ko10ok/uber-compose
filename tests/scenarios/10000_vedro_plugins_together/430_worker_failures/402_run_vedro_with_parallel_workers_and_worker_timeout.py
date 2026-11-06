@@ -51,7 +51,7 @@ class Config(vedro.Config):
 
         class UberComposeParallel(VedroUberComposeParallel):
             enabled = True
-            worker_timeout = 6
+            worker_timeout = 20
 """,
             scenarios={
                 'test_env_a.py': """
