@@ -8,6 +8,8 @@ from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Service
+from uber_compose.helpers.current_env import get_run_depth
+from uber_compose.helpers.current_env import is_child_project
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import UberComposeEvent
@@ -47,6 +49,7 @@ __all__ = (
     'DEFAULT_ENV_ID', 'UberComposeEvent',
     'ExecutionPlan', 'WorkerAssignment', 'env_group_key', 'env_group_key_for',
     'get_execution_plan', 'get_namespace_map', 'get_worker_groups', 'get_worker_id', 'get_workers_total',
+    'get_run_depth', 'is_child_project',
     'is_parallel_worker', 'is_parallel_worker_process', 'reset_execution_plan', 'set_execution_plan',
     'VedroUberComposeParallel', 'build_execution_plan', 'build_execution_plan_from_scheduler',
 )

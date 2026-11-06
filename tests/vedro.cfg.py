@@ -11,6 +11,7 @@ import vedro_valera_validator as valera_validator
 
 from uber_compose import VedroUberComposeParallel
 from uber_compose.helpers.current_env import get_current_env_context
+from uber_compose.helpers.current_env import get_run_depth
 from uber_compose.helpers.current_env import reset_current_env_id
 from uber_compose.helpers.current_env import set_current_env_context
 
@@ -30,23 +31,39 @@ class ScenarioWorkerEnvGuardPlugin(Plugin):
         dispatcher.listen(ScenarioRunEvent, self.on_scenario_run)
 
     def on_scenario_run(self, event):
-        saved = {
-            name: os.environ.pop(name)
-            for name in UC_WORKER_ENV
-            if name in os.environ
-        }
-        saved_context = get_current_env_context()
-        reset_current_env_id()
+        if get_run_depth() != self.config.active_at_depth:
+            return
+
+        names = (*self.config.clear_env, *self.config.set_env)
+        saved = {name: os.environ.get(name) for name in names}
+        for name in self.config.clear_env:
+            os.environ.pop(name, None)
+        os.environ.update(self.config.set_env)
+
+        saved_context = None
+        if self.config.reset_current_env:
+            saved_context = get_current_env_context()
+            reset_current_env_id()
+
         vedro.defer(self._restore, saved, saved_context)
 
     def _restore(self, saved, saved_context):
-        os.environ.update(saved)
-        set_current_env_context(saved_context)
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        if saved_context is not None:
+            set_current_env_context(saved_context)
 
 
 class ScenarioWorkerEnvGuard(PluginConfig):
     plugin = ScenarioWorkerEnvGuardPlugin
     enabled = True
+    active_at_depth = 0
+    clear_env = ()
+    set_env = {}
+    reset_current_env = False
 
 
 class Config(vedro.Config):
@@ -59,6 +76,10 @@ class Config(vedro.Config):
 
         class ScenarioWorkerEnvGuard(ScenarioWorkerEnvGuard):
             enabled = True
+            active_at_depth = 0
+            clear_env = UC_WORKER_ENV
+            set_env = {}
+            reset_current_env = True
 
         class UberComposeParallel(VedroUberComposeParallel):
             enabled = True

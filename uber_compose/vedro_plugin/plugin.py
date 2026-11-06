@@ -23,6 +23,7 @@ from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.helpers.current_env import CurrentEnvContext
+from uber_compose.helpers.current_env import get_run_depth
 from uber_compose.helpers.current_env import set_current_env_context
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
@@ -247,6 +248,7 @@ class VedroUberComposePlugin(Plugin):
             namespace=ready_env.env_id,
             groups=tuple(get_worker_groups() or ()),
             run_id=self._uber_compose_client.run_id,
+            run_depth=get_run_depth(),
         ))
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
 

@@ -29,6 +29,7 @@ class Scenario(vedro.Scenario):
             namespace='w1-a1b2',
             groups=('hash-a',),
             run_id='run-123',
+            run_depth=1,
         ))
 
     async def when_current_env_api_is_read(self):
@@ -47,6 +48,8 @@ class Scenario(vedro.Scenario):
         self.groups = client.current_worker_groups()
         self.namespace = client.current_namespace()
         self.run_id = client.current_run_id()
+        self.run_depth = client.current_run_depth()
+        self.is_child_project = client.is_child_project()
 
     async def then_it_should_return_current_env_id(self):
         assert self.env_id == 'w1-a1b2'
@@ -69,3 +72,5 @@ class Scenario(vedro.Scenario):
         assert self.groups == ['hash-a']
         assert self.namespace == 'w1-a1b2'
         assert self.run_id == 'run-123'
+        assert self.run_depth == 1
+        assert self.is_child_project is True

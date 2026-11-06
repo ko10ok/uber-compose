@@ -369,7 +369,12 @@ TheUberCompose.current_replicas_total()
 TheUberCompose.current_namespace()
 TheUberCompose.current_worker_groups()
 TheUberCompose.current_run_id()
+TheUberCompose.current_run_depth()
+TheUberCompose.is_child_project()
 ```
+
+`current_run_depth()` is `0` for a normal run and increases for nested
+`vedro run` projects launched from scenarios.
 
 `current_env_id()` is a `ContextVar`: it is available in the scenario and in
 async tasks of the same worker process, but not in arbitrary child processes or

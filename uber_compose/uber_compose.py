@@ -28,6 +28,8 @@ from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
 from uber_compose.helpers.current_env import get_current_env_context
 from uber_compose.helpers.current_env import get_current_env_id
+from uber_compose.helpers.current_env import get_run_depth
+from uber_compose.helpers.current_env import is_child_project as _is_child_project
 from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
@@ -152,6 +154,14 @@ class SystemUberCompose:
     @staticmethod
     def current_run_id() -> str | None:
         return get_current_env_context().run_id
+
+    @staticmethod
+    def current_run_depth() -> int:
+        return get_run_depth()
+
+    @staticmethod
+    def is_child_project() -> bool:
+        return _is_child_project()
 
     async def up(self,
                  config_template: Environment | None = None,

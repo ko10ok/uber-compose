@@ -67,6 +67,8 @@ class Scenario(vedro.Scenario):
                 'replica_index': client.current_replica_index(),
                 'replicas_total': client.current_replicas_total(),
                 'namespace': client.current_namespace(),
+                'run_depth': client.current_run_depth(),
+                'is_child_project': client.is_child_project(),
                 'service_env': client.current_service_env('s1'),
             }}, file)
 """
@@ -123,6 +125,8 @@ class Config(vedro.Config):
             assert observation['namespace'] == observation['env_id']
             assert observation['workers_total'] == 2
             assert observation['worker_id'] in (0, 1)
+            assert observation['run_depth'] == 1
+            assert observation['is_child_project'] is True
             assert observation['service_env'] == {'PARAM': 'value'}
 
     async def and_it_should_pass_the_same_env_id_to_both_api_sources(self):

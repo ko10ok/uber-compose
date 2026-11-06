@@ -24,6 +24,8 @@ class Scenario(vedro.Scenario):
         self.groups = client.current_worker_groups()
         self.run_id = client.current_run_id()
         self.namespace = client.current_namespace()
+        self.run_depth = client.current_run_depth()
+        self.is_child_project = client.is_child_project()
 
     async def then_it_should_return_default_env_id(self):
         assert self.env_id == 'default_env_id'
@@ -41,3 +43,5 @@ class Scenario(vedro.Scenario):
         assert self.groups == []
         assert self.run_id is None
         assert self.namespace == 'default_env_id'
+        assert self.run_depth == 0
+        assert self.is_child_project is False
