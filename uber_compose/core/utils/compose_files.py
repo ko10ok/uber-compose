@@ -59,7 +59,7 @@ def patch_network(dc_cfg: dict, network_name) -> dict:
     # }
 
     for service in new_dc_cfg['services']:
-        if 'network' not in new_dc_cfg['services'][service]:
+        if 'networks' not in new_dc_cfg['services'][service]:
             new_dc_cfg['services'][service]['networks'] = []
         # new_dc_cfg['services'][service]['networks'] += ['e2e_back_network']
     return new_dc_cfg
@@ -169,6 +169,30 @@ def patch_envs(
     return new_dc_cfg
 
 
+def _rename_link(link: str, services_map: dict[str, str]) -> str:
+    service_name, separator, alias = str(link).partition(':')
+    renamed = services_map.get(service_name, service_name)
+    if separator:
+        return f'{renamed}{separator}{alias}'
+    return renamed
+
+
+def _rename_links(links, services_map: dict[str, str], overridden_services: list):
+    if isinstance(links, list):
+        return [
+            _rename_link(link, services_map)
+            for link in links
+            if str(link).split(':', 1)[0] not in overridden_services
+        ]
+    if isinstance(links, dict):
+        return {
+            services_map.get(service_name, service_name): alias
+            for service_name, alias in links.items()
+            if service_name not in overridden_services
+        }
+    return links
+
+
 def patch_services_names(
     dc_cfg: dict,
     services_map: dict[str, str],
@@ -189,7 +213,6 @@ def patch_services_names(
         result_service_name = services_map[service]
 
         srv_cfg['labels'][Label.SERVICE_NAME] = result_service_name
-        new_service_dc_cfg['services'][result_service_name] = srv_cfg
 
         if 'depends_on' in srv_cfg:
             if isinstance(srv_cfg['depends_on'], list):
@@ -197,18 +220,21 @@ def patch_services_names(
                     services_map[item] for item in srv_cfg['depends_on']
                     if item not in overridden_services
                 ]
-                new_service_dc_cfg['services'][result_service_name] = srv_cfg | {
-                    'depends_on': new_deps
-                }
+                srv_cfg = srv_cfg | {'depends_on': new_deps}
             if isinstance(srv_cfg['depends_on'], dict):
                 new_deps = {
                     services_map[service_name]: condition
                     for service_name, condition in srv_cfg['depends_on'].items()
                     if service_name not in overridden_services
                 }
-                new_service_dc_cfg['services'][result_service_name] = srv_cfg | {
-                    'depends_on': new_deps
-                }
+                srv_cfg = srv_cfg | {'depends_on': new_deps}
+
+        if 'links' in srv_cfg:
+            srv_cfg = srv_cfg | {
+                'links': _rename_links(srv_cfg['links'], services_map, overridden_services)
+            }
+
+        new_service_dc_cfg['services'][result_service_name] = srv_cfg
     return new_service_dc_cfg
 
 
