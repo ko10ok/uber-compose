@@ -1,6 +1,7 @@
 from config import Config
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
@@ -8,7 +9,6 @@ from libs.env_const import AUTO_SCANNED
 from schemas.docker import ContainerSchema
 import vedro
 
-from uber_compose.core.constants import Constants
 from uber_compose.helpers.labels import Label
 from uber_compose.uber_compose import UberCompose
 
@@ -17,8 +17,12 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+
+    async def given_uber_compose_constants(self):
+        self.constants = isolated_constants(self.project, docker_compose_files_scan_depth=3)
 
     async def given_compose_file_with_service_with_migration(self):
         self.compose_filename_1 = 'docker-compose.yaml'
@@ -64,9 +68,7 @@ services:
 
     async def when_user_up_env_without_params(self):
         self.response = await UberCompose(
-            cfg_constants=Constants(
-                docker_compose_files_scan_depth=3
-            )
+            cfg_constants=self.constants,
         ).up()
 
     async def then_it_should_return_successful_code(self):
@@ -88,8 +90,8 @@ services:
                         f'{self.compose_filename_2}',
                     ])),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                     ])),
                 },
                 'Mounts': [
@@ -117,8 +119,8 @@ services:
                         f'{self.compose_filename_2}',
                     ])),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join(sorted([
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2.replace("/", "-")}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_2.replace("/", "-")}',
                     ])),
                 },
                 'Mounts': [

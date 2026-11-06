@@ -21,7 +21,7 @@ deps: up
 	docker compose exec ${CI_DC_DISABLE_TTY} e2e python3 -m venv /venv
 	docker compose exec ${CI_DC_DISABLE_TTY} e2e /venv/bin/python3 -m pip install --upgrade pip
 	docker compose exec ${CI_DC_DISABLE_TTY} e2e /venv/bin/python3 -m pip install -r requirements.txt
-	docker compose exec ${CI_DC_DISABLE_TTY} e2e /venv/bin/python3 -m pip install /uber-compose
+	docker compose exec ${CI_DC_DISABLE_TTY} e2e /venv/bin/python3 -m pip install --force-reinstall /uber-compose
 	echo "" > deps
 
 load-images: up

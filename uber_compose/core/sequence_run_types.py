@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import NamedTuple
-from typing import Union
 
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
@@ -11,7 +10,9 @@ DEFAULT_ENV_ID = 'default_env_id'
 class ComposeConfig(NamedTuple):
     compose_files: str
     overridden_services: list[OverridenService] = None
-    parallel_env_limit: Union[int] = 1
+    workers_per_env: dict[str | Environment, int] | None = None
+    default_workers_per_env: int = 1
+    max_concurrent_envs: int = 1
 
 
 class EnvInstanceConfig(NamedTuple):

@@ -19,13 +19,33 @@ from uber_compose import Environment
 from uber_compose import SystemUberCompose
 from uber_compose.core.constants import Constants
 from uber_compose.core.sequence_run_types import ComposeConfig
+from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import OverridenService
+from uber_compose.helpers.current_env import CurrentEnvContext
+from uber_compose.helpers.current_env import get_run_depth
+from uber_compose.helpers.current_env import set_current_env_context
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
+from uber_compose.parallel_plugin.grouping import env_group_key_for
+from uber_compose.parallel_plugin.planner import build_run_plan
+from uber_compose.parallel_plugin.planner import render_plan
+from uber_compose.parallel_plugin.worker_api import get_env_replicas_total
+from uber_compose.parallel_plugin.worker_api import get_execution_plan
+from uber_compose.parallel_plugin.worker_api import get_mt_enabled
+from uber_compose.parallel_plugin.worker_api import get_namespace_map
+from uber_compose.parallel_plugin.worker_api import get_worker_groups
+from uber_compose.parallel_plugin.worker_api import get_worker_id
+from uber_compose.parallel_plugin.worker_api import get_worker_replica_index
+from uber_compose.parallel_plugin.worker_api import get_workers_per_env_override
+from uber_compose.parallel_plugin.worker_api import get_workers_total
+from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
+from uber_compose.parallel_plugin.worker_api import set_workers_per_env
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
+from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
+from uber_compose.utils.services_construction import make_default_environment
 from uber_compose.vedro_plugin.helpers.scenario_ordering import EnvTagsOrderer
 from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenario_config
 from uber_compose.vedro_plugin.helpers.scenario_tag_processing import extract_scenarios_configs_set
@@ -50,6 +70,7 @@ class VedroUberComposePlugin(Plugin):
         assert DEFAULT_COMPOSE in self._compose_configs, \
             'Need to set up at least compose_cfgs = {DEFAULT_COMPOSE: ComposeConfig(...)} config'
         self._compose_choice: Union[ComposeConfig, None] = self._compose_configs[DEFAULT_COMPOSE]
+        self._compose_choice_name = DEFAULT_COMPOSE
 
         self._force_restart = False
         self._just_up = False
@@ -59,6 +80,7 @@ class VedroUberComposePlugin(Plugin):
 
         self._uc_external_services: list[OverridenService] = None
         self._uc_env: str = None
+        self._plan_level = None
         self._uber_compose_client = client
 
         self.run_id = str(uuid4())[:8]
@@ -78,6 +100,24 @@ class VedroUberComposePlugin(Plugin):
         self._global_config.Registry.ScenarioOrderer.register(EnvTagsOrderer, self)
 
     async def handle_prepare_scenarios(self, event: StartupEvent) -> None:
+        if self._uc_env:
+            await ignore_unsuitable(event.scheduler, self._uc_env)
+
+        if self._plan_level is not None:
+            plan = await build_run_plan(
+                event.scheduler,
+                compose_config=self._compose_config_name(),
+                compose_files=self._compose_choice.compose_files,
+                default_env=self._resolve_plan_default_env(),
+                workers_per_env=self._compose_choice.workers_per_env,
+                default_workers_per_env=self._compose_choice.default_workers_per_env,
+                max_concurrent_envs=self._compose_choice.max_concurrent_envs,
+                uc_mt_enabled=get_mt_enabled(),
+                workers_per_env_override=get_workers_per_env_override(),
+            )
+            print(render_plan(plan, level=self._plan_level), flush=True)
+            sys.exit(0)
+
         if self._uber_compose_client is None:
             self._uber_compose_client = TheUberCompose(
                 log_policy=self._logging_policy,
@@ -85,16 +125,56 @@ class VedroUberComposePlugin(Plugin):
                 run_id=self.run_id,
             )
 
-        if self._uc_env:
-            await ignore_unsuitable(event.scheduler, self._uc_env)
+        if is_parallel_worker_process():
+            return
+
+        plan = get_execution_plan()
+        if plan is not None:
+            try:
+                await self._up_plan_environments(plan)
+            except Exception as e:
+                self._logger.stage(
+                    Text(
+                        f'Error while starting environment: {e}\nExiting test environment preparation.',
+                        style=Style.bad
+                    )
+                )
+                sys.exit(75)
+
+            if self._just_up:
+                self._logger.stage(
+                    Text(
+                        'Environment has been started successfully. Exiting as requested.',
+                        style=Style.good
+                    )
+                )
+                sys.exit(0)
+            return
 
         needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:
+            if self._just_up:
+                self._logger.stage(
+                    Text(
+                        'No environments to start. Exiting as requested.',
+                        style=Style.good
+                    )
+                )
+                sys.exit(0)
             return
 
         # Up all needed env simultaneously if parallelism allowed
         try:
-            if self._compose_choice.parallel_env_limit >= len(needed_configs):
+            if self._compose_choice.workers_per_env is not None:
+                await self._uber_compose_client.prepare_parallel_environments(
+                    config_templates=needed_configs,
+                    compose_files=self._compose_choice.compose_files,
+                    workers_per_env=self._compose_choice.workers_per_env,
+                    default_workers_per_env=self._compose_choice.default_workers_per_env,
+                    force_restart=self._force_restart,
+                    services_override=self._uc_external_services,
+                )
+            elif self._compose_choice.max_concurrent_envs >= len(needed_configs):
                 for env_config in list(needed_configs):
                     if self._default_env is None and env_config is None:
                         self._logger.stage(
@@ -111,7 +191,7 @@ class VedroUberComposePlugin(Plugin):
                     await self._uber_compose_client.up(
                         config_template=env_config,
                         compose_files=self._compose_choice.compose_files,
-                        parallelism_limit=self._compose_choice.parallel_env_limit,
+                        parallelism_limit=self._compose_choice.max_concurrent_envs,
                         force_restart=self._force_restart,
                         services_override=self._uc_external_services,
                     )
@@ -133,6 +213,40 @@ class VedroUberComposePlugin(Plugin):
             )
             sys.exit(0)
 
+    def _compose_config_name(self) -> str:
+        return self._compose_choice_name
+
+    def _resolve_plan_default_env(self) -> Environment | None:
+        if self._default_env is not None:
+            return self._default_env
+        compose_files = self._compose_choice.compose_files
+        if not compose_files:
+            return None
+        constants = Constants()
+        return make_default_environment(
+            compose_files=get_absolute_compose_files(
+                compose_files,
+                constants.in_docker_project_root_path,
+            ),
+        )
+
+    async def _up_plan_environments(self, plan) -> None:
+        parallelism_limit = max(plan.workers_total, 2)
+        started_env_ids = set()
+        for assignment in plan.assignments:
+            for group_key, env_id in assignment.namespace_map.items():
+                if env_id in started_env_ids:
+                    continue
+                started_env_ids.add(env_id)
+                await self._uber_compose_client.up(
+                    config_template=plan.env_templates.get(group_key),
+                    compose_files=self._compose_choice.compose_files,
+                    parallelism_limit=parallelism_limit,
+                    force_restart=self._force_restart,
+                    services_override=self._uc_external_services,
+                    env_id=env_id,
+                )
+
     async def handle_pre_run_scenario(self, event: ScenarioRunEvent):
         scenario = event.scenario_result.scenario
         env_config = await extract_scenario_config(scenario)
@@ -149,14 +263,41 @@ class VedroUberComposePlugin(Plugin):
         if env_config is None:
             env_config = self._default_env
 
+        if is_parallel_worker_process():
+            env_id = self._resolve_worker_env_id(env_config)
+            parallelism_limit = max(get_workers_total(), 2)
+        else:
+            env_id = None
+            parallelism_limit = self._compose_choice.max_concurrent_envs
+
         ready_env = await self._uber_compose_client.up(
             config_template=env_config,
             compose_files=self._compose_choice.compose_files,
-            parallelism_limit=self._compose_choice.parallel_env_limit,
+            parallelism_limit=parallelism_limit,
             services_override=self._uc_external_services,
+            env_id=env_id,
         )
 
+        set_current_env_context(CurrentEnvContext(
+            env_id=ready_env.env_id,
+            env=ready_env.env,
+            worker_id=get_worker_id(),
+            workers_total=get_workers_total(),
+            replica_index=get_worker_replica_index(),
+            replicas_total=get_env_replicas_total(),
+            namespace=ready_env.env_id,
+            groups=tuple(get_worker_groups() or ()),
+            run_id=self._uber_compose_client.run_id,
+            run_depth=get_run_depth(),
+        ))
         setup_env_for_tests(ready_env.env, self._uc_external_services, self._uber_compose_client.run_id)
+
+    def _resolve_worker_env_id(self, env_config):
+        group_key = env_group_key_for(env_config)
+        namespace_map = get_namespace_map()
+        if group_key in namespace_map:
+            return namespace_map[group_key]
+        return get_stable_env_id(env_config, get_worker_id())
 
     def handle_arg_parse(self, event: ArgParseEvent) -> None:
         group = event.arg_parser.add_argument_group("Uber Compose")
@@ -178,6 +319,14 @@ class VedroUberComposePlugin(Plugin):
         group.add_argument("--uc-env",
                            type=str,
                            help="Filter by environment name/description")
+
+        group.add_argument("--uc-mt-plan",
+                           type=int,
+                           nargs='?',
+                           const=0,
+                           choices=(0, 1, 2),
+                           default=None,
+                           help="Print the execution plan without starting anything")
 
         group.add_argument("--uc-v",
                            type=str,
@@ -209,6 +358,7 @@ class VedroUberComposePlugin(Plugin):
         for choice_name, config in self._compose_configs.items():
             if getattr(event.args, f'uc_{choice_name}'):
                 self._compose_choice = config
+                self._compose_choice_name = choice_name
 
         if event.args.uc_fr:
             self._force_restart = event.args.uc_fr
@@ -218,6 +368,8 @@ class VedroUberComposePlugin(Plugin):
 
         if event.args.uc_env:
             self._uc_env = event.args.uc_env
+
+        self._plan_level = getattr(event.args, 'uc_mt_plan', None)
 
         if event.args.uc_external_services:
             if event.args.uc_external_services == 'ALL':
@@ -242,7 +394,10 @@ class VedroUberComposePlugin(Plugin):
                     f"Available options: {', '.join(LogPolicy.presets().keys())}"
                 )
 
-        # TODO override parallelism
+        set_workers_per_env(
+            self._compose_choice.workers_per_env,
+            self._compose_choice.default_workers_per_env,
+        )
 
 
 class VedroUberCompose(PluginConfig):

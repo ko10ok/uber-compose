@@ -1,4 +1,5 @@
 import io
+import os
 import tarfile
 
 import docker
@@ -9,9 +10,16 @@ def get_file_from_container(container_name: str, file_path: str) -> bytes:
     client = DockerClient(base_url="http://test-docker-daemon:2375")
 
     # Получаем ссылку на контейнер
-    containers = client.containers.list(filters={
-        'label': f'com.docker.compose.service={container_name}'
-    })
+    project_name = os.environ.get('COMPOSE_PROJECT_NAME')
+    containers = client.containers.list(
+        filters={
+            'label': [
+                f'com.docker.compose.service={container_name}',
+                f'com.docker.compose.project={project_name}',
+            ],
+        },
+        ignore_removed=True,
+    )
     assert len(containers) == 1
     container = containers[0]
 

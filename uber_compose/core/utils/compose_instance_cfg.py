@@ -7,6 +7,10 @@ from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.env_description.env_types import ServiceMode
+from uber_compose.helpers.env_id import get_stable_env_id as get_stable_env_id  # noqa: F401
+from uber_compose.helpers.env_id import get_template_hash as get_template_hash  # noqa: F401
+from uber_compose.helpers.parameterization import build_parameterization_placeholders
+from uber_compose.helpers.parameterization import substitute_parameterization_placeholders
 
 
 def make_env_service_name(service, env_id):
@@ -15,18 +19,15 @@ def make_env_service_name(service, env_id):
     return f'{service}-{env_id}'
 
 
-def sub_env_id(env: Env, services_for_env: dict) -> Env:
+def sub_env_id(env: Env, placeholders: dict[str, str]) -> Env:
     result_env = Env()
-    for k, v in env.items():
-        for service_replace_from, service_replace_to in services_for_env.items():
-            if f'[[{service_replace_from}]]' in v:
-                v = v.replace(f'[[{service_replace_from}]]', service_replace_to)
-        result_env.update({k: v})
+    for key, value in env.items():
+        result_env.update({key: substitute_parameterization_placeholders(value, placeholders)})
 
     return result_env
 
 
-def prepare_services_env(env: Environment, services_map: dict) -> Environment:
+def prepare_services_env(env: Environment, placeholders: dict[str, str]) -> Environment:
     updated_services = []
     for service_name in env:
         if service_name in env.get_overridden_services_names():
@@ -36,7 +37,7 @@ def prepare_services_env(env: Environment, services_map: dict) -> Environment:
         updated_services += [
             Service(
                 name=env[service_name].name,
-                env=sub_env_id(env[service_name].env, services_map),
+                env=sub_env_id(env[service_name].env, placeholders),
                 events_handlers=env[service_name].events_handlers,
                 mode=env[service_name].mode,
             )
@@ -52,15 +53,32 @@ def get_new_env_id() -> str:
 
 def get_service_map(env: Environment, new_env_id: str):
     return {
-        service_name: make_env_service_name(service_name, new_env_id)
-        for service_name, service in env.get_services().items() if service.mode != ServiceMode.OFF
+        service_name: (
+            service_name
+            if service.mode in (ServiceMode.OFF, ServiceMode.SINGLETON)
+            else make_env_service_name(service_name, new_env_id)
+        )
+        for service_name, service in env.get_services().items()
+        if service.mode != ServiceMode.OFF
     }
 
 
-def make_env_instance_config(env_template: Environment, env_id, name=None) -> EnvInstanceConfig:
-    services_map = get_service_map(env_template, env_id)
-    env = prepare_services_env(env_template, services_map)
+def make_env_instance_config(
+    env_template: Environment,
+    env_id,
+    name=None,
+    run_id: str | None = None,
+    worker_id: int | None = None,
+) -> EnvInstanceConfig:
     assert env_template, 'Env template is empty somehow!'
+    services_map = get_service_map(env_template, env_id)
+    placeholders = build_parameterization_placeholders(
+        env_id,
+        services_map=services_map,
+        run_id=run_id,
+        worker_id=worker_id,
+    )
+    env = prepare_services_env(env_template, placeholders)
 
     return EnvInstanceConfig(
         env_source=env_template,

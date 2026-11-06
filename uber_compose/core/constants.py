@@ -6,11 +6,14 @@ class Constants:
     def __init__(self,
                  docker_compose_files_scan_depth: int = 2,
                  cli_compose_util_override: str = None,
+                 compose_project_name: str = None,
+                 tmp_envs_path: str | Path = None,
+                 in_docker_project_root_path: str | Path = None,
                  ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
-        self.project: str = os.environ.get('COMPOSE_PROJECT_NAME')
-        self.compose_project_name = os.environ.get('COMPOSE_PROJECT_NAME')
+        self.project: str = compose_project_name or os.environ.get('COMPOSE_PROJECT_NAME')
+        self.compose_project_name = self.project
         assert self.compose_project_name, (
             'COMPOSE_PROJECT_NAME environment variable is not set: - COMPOSE_PROJECT_NAME=${PWD##*/}'
         )
@@ -19,8 +22,12 @@ class Constants:
 
         # inner directories
         self.non_stop_containers: list[str] = os.environ.get('NON_STOP_CONTAINERS', 'e2e,dockersock').split(',')
-        self.tmp_envs_path: Path = Path(os.environ.get('TMP_ENVS_DIRECTORY', '/tmp/uc-envs'))
-        self.in_docker_project_root_path: Path = Path(os.environ.get('PROJECT_ROOT_DIRECTORY', '/project'))
+        self.tmp_envs_path: Path = Path(
+            tmp_envs_path or os.environ.get('TMP_ENVS_DIRECTORY', '/tmp/uc-envs')
+        )
+        self.in_docker_project_root_path: Path = Path(
+            in_docker_project_root_path or os.environ.get('PROJECT_ROOT_DIRECTORY', '/project')
+        )
 
         self.host_project_root_directory: Path = Path(
             os.environ.get('HOST_PROJECT_ROOT_DIRECTORY', '__host_project_root__')

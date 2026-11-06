@@ -107,5 +107,8 @@ class SystemDockerCompose:
         services_state = await self.dc_shell.dc_state()
         return [service.name for service in services_state.get_all_for()]
 
+    async def get_all_services_state(self) -> ServicesComposeState:
+        return await self.dc_shell.dc_state()
+
     async def down_services(self, services: list[str] | None = None) -> None:
         await self.dc_shell.dc_down(services=services)

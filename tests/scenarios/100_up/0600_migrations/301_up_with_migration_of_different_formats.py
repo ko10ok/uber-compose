@@ -1,5 +1,6 @@
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import schema
@@ -17,8 +18,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_compose_file_with_service_with_migration(self):
         self.compose_filename = 'docker-compose.basic.yaml'
@@ -60,12 +63,14 @@ services:
         )
 
     async def when_user_up_env_without_params(self):
-        self.response = await UberCompose().up(compose_files=self.compose_filename,
-                                               config_template=Environment(
-                                                   Service('s1'),
-                                                   Service('s2'),
-                                                   Service('s3'),
-                                                   ),)
+        self.response = await UberCompose(cfg_constants=self.constants).up(
+            compose_files=self.compose_filename,
+            config_template=Environment(
+                Service('s1'),
+                Service('s2'),
+                Service('s3'),
+            ),
+        )
 
     async def then_it_should_return_successful_code(self):
         assert self.response.env_id == schema.str
@@ -78,7 +83,10 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's1',
-                    'com.docker.compose.project.config_files': f'/tmp/uc-envs/default_env_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': (
+                        f'{self.instance_files_root}/default_env_id/'
+                        f'{self.compose_filename}'
+                    ),
                 },
             },
             ...
@@ -88,7 +96,10 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's2',
-                    'com.docker.compose.project.config_files': f'/tmp/uc-envs/default_env_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': (
+                        f'{self.instance_files_root}/default_env_id/'
+                        f'{self.compose_filename}'
+                    ),
                 },
             },
             ...
@@ -98,7 +109,10 @@ services:
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': 's3',
-                    'com.docker.compose.project.config_files': f'/tmp/uc-envs/default_env_id/{self.compose_filename}',
+                    'com.docker.compose.project.config_files': (
+                        f'{self.instance_files_root}/default_env_id/'
+                        f'{self.compose_filename}'
+                    ),
                 },
             },
             ...
