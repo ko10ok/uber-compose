@@ -127,7 +127,7 @@ class Config(vedro.Config):
         }
         assert set(observations) == {'env_a', 'env_b'}
         for observation in observations.values():
-            assert 'error' not in observation, observation['error']
+            assert 'error' not in observation, observation.get('error')
             assert observation['stdout'] == observation['env_id']
 
         containers = retrieve_all_docker_containers()

@@ -526,10 +526,13 @@ class SystemUberCompose:
                    command: str,
                    extra_env: dict[str, str] = None,
                    wait: Callable[..., bool] | ProcessExit | None = ProcessExit(),
-                   env_id: str = DEFAULT_ENV_ID,
+                   env_id: str | None = None,
                    timeout: TimeOutCheck = None,
                    life_cycle_policy: ExecLifeCyclePolicy = ExecLifeCyclePolicy()
                    ) -> ExecResult | ExecTimeout:
+        if env_id is None:
+            env_id = get_current_env_id()
+
         uid = str(uuid4())
         log_file = f'{uid}.log'
 
