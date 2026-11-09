@@ -31,6 +31,8 @@ from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 from uber_compose.parallel_plugin.grouping import env_group_key_for
 from uber_compose.parallel_plugin.planner import build_run_plan
+from uber_compose.parallel_plugin.types import ExecutionPlan
+from uber_compose.parallel_plugin.types import WorkerAssignment
 from uber_compose.parallel_plugin.planner import render_plan
 from uber_compose.parallel_plugin.worker_api import get_env_replicas_total
 from uber_compose.parallel_plugin.worker_api import get_execution_plan
@@ -42,6 +44,7 @@ from uber_compose.parallel_plugin.worker_api import get_worker_replica_index
 from uber_compose.parallel_plugin.worker_api import get_workers_per_env_override
 from uber_compose.parallel_plugin.worker_api import get_workers_total
 from uber_compose.parallel_plugin.worker_api import is_parallel_worker_process
+from uber_compose.parallel_plugin.worker_api import set_execution_plan
 from uber_compose.parallel_plugin.worker_api import set_workers_per_env
 from uber_compose.uber_compose import TheUberCompose as TheUberCompose
 from uber_compose.utils.docker_compose_files_path import get_absolute_compose_files
@@ -137,6 +140,8 @@ class VedroUberComposePlugin(Plugin):
 
         plan = get_execution_plan()
         if plan is not None:
+            plan = self._filter_execution_plan(plan, needed_group_keys)
+            set_execution_plan(plan)
             try:
                 await self._up_plan_environments(plan, needed_group_keys)
                 if self._melt_down:
@@ -236,6 +241,39 @@ class VedroUberComposePlugin(Plugin):
                 compose_files,
                 constants.in_docker_project_root_path,
             ),
+        )
+
+    def _filter_execution_plan(self, plan, allowed_group_keys: set[str]) -> ExecutionPlan:
+        assignments = []
+        for assignment in plan.assignments:
+            groups = tuple(
+                group_key
+                for group_key in assignment.groups
+                if group_key in allowed_group_keys
+            )
+            if not groups:
+                continue
+
+            assignments.append(WorkerAssignment(
+                worker_id=len(assignments),
+                groups=groups,
+                namespace_map={
+                    group_key: env_id
+                    for group_key, env_id in assignment.namespace_map.items()
+                    if group_key in allowed_group_keys
+                },
+                replica_index=assignment.replica_index,
+                replicas_total=assignment.replicas_total,
+            ))
+
+        return ExecutionPlan(
+            workers_total=max(len(assignments), 1),
+            assignments=tuple(assignments),
+            env_templates={
+                group_key: config_template
+                for group_key, config_template in plan.env_templates.items()
+                if group_key in allowed_group_keys
+            },
         )
 
     async def _up_plan_environments(self, plan, allowed_group_keys: set[str] | None = None) -> None:
