@@ -319,8 +319,8 @@ Environment(
 - namespaced services reach it via `[[postgres]]`.
 
 Use placeholders to isolate logical resources inside the shared service, for
-example `DB_NAME=app_[[env_id]]` or `KAFKA_TOPIC_PREFIX=w[[worker_id]]_`. Without
-logical isolation parallel tests can see each other's data.
+example `DB_NAME=app_[[env_id]]` or `KAFKA_TOPIC_PREFIX=[[worker_id_alpha_numeric]]_`.
+Without logical isolation parallel tests can see each other's data.
 
 Singletons fit infrastructure that supports namespacing by
 database/schema/topic/prefix. They do not fit stateful services whose state
@@ -401,15 +401,32 @@ Resolved in service env parameters **and** `x-migration` commands:
 - `[[env_id]]` — current environment id / namespace;
 - `[[namespace]]` — namespace key (same as `env_id` today);
 - `[[worker_id]]` — worker index (`0` for a single worker);
+- `[[worker_id_alpha_numeric]]` — worker id as letters and digits (`w0`, `w1`,
+  ...);
+- `[[namespace_alpha_numeric]]` — namespace reduced to ASCII letters and digits,
+  starting with a letter (`w1-a1b2` → `w1a1b2`, `2-bad.id` → `k2badid`);
+- `[[worker_id_alpha_numeric_6]]` — deterministic 6-character alpha-numeric key
+  derived from the worker id;
+- `[[namespace_alpha_numeric_6]]` — deterministic 6-character alpha-numeric key
+  derived from the namespace;
 - `[[test_run_id]]` — run id;
 - `[[<service>]]` — actual namespaced service name (`[[postgres]]` →
   `postgres-w1-a1b2`).
+
+Use an alpha-numeric alias when a service rejects a raw worker id or namespace.
+For example, Cassandra keyspaces cannot start with a digit and do not allow `-`,
+so `w1-a1b2` must be passed as `[[namespace_alpha_numeric]]` (`w1a1b2`).
+If a service requires a compact keyspace, use the fixed-length variant.
 
 ```python
 Environment(
     Service("api", env=Env({
         "DB_HOST": "[[postgres]]",
         "DB_NAME": "app_[[env_id]]",
+        "CASSANDRA_KEYSPACE": "test_[[namespace_alpha_numeric]]",
+        "KAFKA_TOPIC_PREFIX": "[[worker_id_alpha_numeric]]_",
+        "SHORT_KEYSPACE": "ks_[[namespace_alpha_numeric_6]]",
+        "SHORT_WORKER_KEYSPACE": "ks_[[worker_id_alpha_numeric_6]]",
         "WORKER": "w[[worker_id]]",
     })),
     Service("postgres"),
@@ -453,6 +470,8 @@ The rendered files are written to:
 
 Only `[[...]]` placeholders are substituted, using the same values as
 `Service.env`: `[[env_id]]`, `[[namespace]]`, `[[worker_id]]`,
+`[[worker_id_alpha_numeric]]`, `[[namespace_alpha_numeric]]`,
+`[[worker_id_alpha_numeric_6]]`, `[[namespace_alpha_numeric_6]]`,
 `[[test_run_id]]`, and `[[<service>]]`.
 
 ```yaml

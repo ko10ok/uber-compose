@@ -47,6 +47,10 @@ services:
             Service('s1', env=Env({
                 'WORKER': 'w[[worker_id]]',
                 'NAMESPACE': 'n_[[namespace]]',
+                'WORKER_ALPHA_NUMERIC': '[[worker_id_alpha_numeric]]',
+                'NAMESPACE_ALPHA_NUMERIC': '[[namespace_alpha_numeric]]',
+                'WORKER_ALPHA_NUMERIC_6': '[[worker_id_alpha_numeric_6]]',
+                'NAMESPACE_ALPHA_NUMERIC_6': '[[namespace_alpha_numeric_6]]',
                 'RUN': 'r_[[test_run_id]]',
             })),
             description='env-a',
@@ -70,3 +74,10 @@ services:
         assert service_env['WORKER'] == 'w2'
         assert service_env['NAMESPACE'] == 'n_w2-abc'
         assert service_env['RUN'] == 'r_run-xyz'
+
+    async def and_alpha_numeric_placeholders_should_be_substituted(self):
+        service_env = dict(self.response.env['s1'].env)
+        assert service_env['WORKER_ALPHA_NUMERIC'] == 'w2'
+        assert service_env['NAMESPACE_ALPHA_NUMERIC'] == 'w2abc'
+        assert service_env['WORKER_ALPHA_NUMERIC_6'] == 'qsl2oo'
+        assert service_env['NAMESPACE_ALPHA_NUMERIC_6'] == 'epi014'

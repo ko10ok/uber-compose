@@ -37,7 +37,8 @@ services:
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
     x-migration:
       - after_start: >
-          sh -c 'echo "[[env_id]]|[[worker_id]]|[[namespace]]|[[s1]]|[[test_run_id]]"
+          sh -c 'echo
+          "[[env_id]]|[[worker_id]]|[[namespace]]|[[s1]]|[[test_run_id]]|[[worker_id_alpha_numeric]]|[[namespace_alpha_numeric]]|[[worker_id_alpha_numeric_6]]|[[namespace_alpha_numeric_6]]"
           > /tmp/placeholders.log'
 """
         )
@@ -64,4 +65,4 @@ services:
     @retry(attempts=3, delay=1)
     async def then_migration_placeholders_should_be_substituted(self):
         content = get_file_from_container('s1-w1-mig', self.migration_result_file)
-        assert content == b'w1-mig|1|w1-mig|s1-w1-mig|run-mig\n'
+        assert content == b'w1-mig|1|w1-mig|s1-w1-mig|run-mig|w1|w1mig|pzsttk|kuntur\n'
