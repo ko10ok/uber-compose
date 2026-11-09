@@ -241,8 +241,11 @@ class VedroUberComposePlugin(Plugin):
                 if env_id in started_env_ids:
                     continue
                 started_env_ids.add(env_id)
+                config_template = plan.env_templates.get(group_key)
+                if config_template is None:
+                    config_template = self._default_env
                 await self._uber_compose_client.up(
-                    config_template=plan.env_templates.get(group_key),
+                    config_template=config_template,
                     compose_files=self._compose_choice.compose_files,
                     parallelism_limit=parallelism_limit,
                     force_restart=self._force_restart,
@@ -257,8 +260,11 @@ class VedroUberComposePlugin(Plugin):
                 desired_by_group.setdefault(group_key, set()).add(env_id)
 
         for group_key, desired_env_ids in desired_by_group.items():
+            config_template = plan.env_templates.get(group_key)
+            if config_template is None:
+                config_template = self._default_env
             await self._uber_compose_client.melt_down_extra_replicas(
-                config_template=plan.env_templates.get(group_key),
+                config_template=config_template,
                 compose_files=self._compose_choice.compose_files,
                 desired_env_ids=sorted(desired_env_ids),
                 services_override=self._uc_external_services,

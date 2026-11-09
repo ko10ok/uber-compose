@@ -75,7 +75,7 @@ async def build_run_plan(
     if uc_mt_enabled:
         replica_plan = build_replica_execution_plan(
             group_counts={key: len(item.scenarios) for key, item in grouped.items()},
-            group_envs={key: item.template for key, item in grouped.items()},
+            group_envs={key: item.display_env for key, item in grouped.items()},
             namespace_counts={
                 key: _replicas_for_env(
                     item,
