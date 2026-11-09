@@ -61,3 +61,38 @@ def stopped_docker_container(name):
         if container.get('Labels', {}).get(Label.SERVICE_NAME) == name:
             d.stop(container['Id'])
             d.remove_container(container['Id'])
+
+
+def created_docker_container(name):
+    d = APIClient(
+        base_url="http://test-docker-daemon:2375",
+    )
+    for container in retrieve_all_docker_containers():
+        if container.get('Labels', {}).get(Label.SERVICE_NAME) != name:
+            continue
+
+        d.stop(container['Id'])
+        d.remove_container(container['Id'])
+        d.create_container(
+            image=container['Image'],
+            command=container['Command'],
+            name=container['Names'][0].lstrip('/'),
+            labels=container['Labels'],
+        )
+        return
+
+    raise AssertionError(f'Container with service name "{name}" not found')
+
+
+def paused_docker_container(name):
+    d = APIClient(
+        base_url="http://test-docker-daemon:2375",
+    )
+    for container in retrieve_all_docker_containers():
+        if container.get('Labels', {}).get(Label.SERVICE_NAME) != name:
+            continue
+
+        d.pause(container['Id'])
+        return
+
+    raise AssertionError(f'Container with service name "{name}" not found')

@@ -14,12 +14,13 @@ from uber_compose.output.styles import Style
 
 
 def is_service_not_running_or_not_healthy(service_state: ServiceComposeState) -> bool:
-    is_fault_exit = (service_state.state != ComposeState.RUNNING
-                     and (service_state.state == ComposeState.EXITED and service_state.exit_code != 0))
-    is_not_healthy = (service_state.state == ComposeState.RUNNING
-                      and service_state.health not in (ComposeHealth.EMPTY, ComposeHealth.HEALTHY))
+    if service_state.state == ComposeState.RUNNING:
+        return service_state.health not in (ComposeHealth.EMPTY, ComposeHealth.HEALTHY)
 
-    return is_fault_exit or is_not_healthy
+    if service_state.state == ComposeState.EXITED:
+        return service_state.exit_code != 0
+
+    return True
 
 
 async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_compose_state,
