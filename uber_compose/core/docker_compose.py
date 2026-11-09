@@ -45,6 +45,7 @@ class ComposeInstance:
                  health_policy: UpHealthPolicy = UpHealthPolicy(),
                  worker_id: int | None = None,
                  mounted_files_path: Path | None = None,
+                 mounted_files_host_path: Path | None = None,
                  ):
         self.run_id = run_id
         self.worker_id = worker_id
@@ -56,6 +57,7 @@ class ComposeInstance:
         self.except_containers = except_containers
         self.tmp_envs_path = tmp_envs_path
         self.mounted_files_path = mounted_files_path or (Path.cwd() / 'e2e_mounted_files')
+        self.mounted_files_host_path = mounted_files_host_path or self.mounted_files_path
 
         self.project = project
         if execution_envs is None:
@@ -94,6 +96,7 @@ class ComposeInstance:
             compose_files_path=self.in_docker_project_root,
             tmp_env_path=self.tmp_envs_path,
             mounted_files_path=self.mounted_files_path,
+            mounted_files_host_path=self.mounted_files_host_path,
             release_id=self.release_id,
             run_id=self.run_id,
         )

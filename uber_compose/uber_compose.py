@@ -523,6 +523,7 @@ class SystemUberCompose:
             run_id=self.run_id,
             worker_id=get_worker_id(),
             mounted_files_path=self.cfg_constants.mounted_files_path,
+            mounted_files_host_path=self.cfg_constants.mounted_files_host_path,
         )
 
         await compose_instance.run()

@@ -10,6 +10,7 @@ class Constants:
                  tmp_envs_path: str | Path = None,
                  in_docker_project_root_path: str | Path = None,
                  mounted_files_path: str | Path = None,
+                 mounted_files_host_path: str | Path = None,
                  ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
@@ -29,16 +30,35 @@ class Constants:
         self.in_docker_project_root_path: Path = Path(
             in_docker_project_root_path or os.environ.get('PROJECT_ROOT_DIRECTORY', '/project')
         )
-        self.mounted_files_path: Path = Path(
-            mounted_files_path or os.environ.get(
-                'MOUNTED_FILES_DIRECTORY',
-                Path.cwd() / 'e2e_mounted_files',
-            )
-        )
 
         self.host_project_root_directory: Path = Path(
             os.environ.get('HOST_PROJECT_ROOT_DIRECTORY', '__host_project_root__')
         )
+
+        mounted_files_directory = mounted_files_path or os.environ.get('MOUNTED_FILES_DIRECTORY')
+        if mounted_files_directory is None:
+            self.mounted_files_path = Path.cwd() / 'e2e_mounted_files'
+            self.mounted_files_host_path = (
+                Path(mounted_files_host_path)
+                if mounted_files_host_path is not None
+                else self.mounted_files_path
+            )
+        else:
+            mounted_files_path = Path(mounted_files_directory)
+            if mounted_files_path.is_absolute():
+                self.mounted_files_path = mounted_files_path
+                self.mounted_files_host_path = (
+                    Path(mounted_files_host_path)
+                    if mounted_files_host_path is not None
+                    else mounted_files_path
+                )
+            else:
+                self.mounted_files_path = self.in_docker_project_root_path / mounted_files_path
+                self.mounted_files_host_path = (
+                    Path(mounted_files_host_path)
+                    if mounted_files_host_path is not None
+                    else self.host_project_root_directory / mounted_files_path
+                )
 
         self.docker_compose_extra_exec_params = os.environ.get('DOCKER_COMPOSE_EXTRA_EXEC_PARAMS', '-T')
 

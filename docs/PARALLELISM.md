@@ -468,6 +468,20 @@ The rendered files are written to:
 <run_dir>/e2e_mounted_files/<env_id>/<path>
 ```
 
+`MOUNTED_FILES_DIRECTORY` is a path inside the project by default. Set it
+together with `HOST_PROJECT_ROOT_DIRECTORY` when services use `mounted_files`:
+
+```yaml
+environment:
+  - HOST_PROJECT_ROOT_DIRECTORY=${PWD}  # project root on the host
+  - PROJECT_ROOT_DIRECTORY=/project     # project root inside the container
+  - MOUNTED_FILES_DIRECTORY=e2e-neo/e2e_mounted_files  # inside the project
+```
+
+Uber-Compose writes to `${PROJECT_ROOT_DIRECTORY}/${MOUNTED_FILES_DIRECTORY}` and
+mounts from `${HOST_PROJECT_ROOT_DIRECTORY}/${MOUNTED_FILES_DIRECTORY}`.
+An absolute `MOUNTED_FILES_DIRECTORY` is used as-is for both writing and mounting.
+
 Only `[[...]]` placeholders are substituted, using the same values as
 `Service.env`: `[[env_id]]`, `[[namespace]]`, `[[worker_id]]`,
 `[[worker_id_alpha_numeric]]`, `[[namespace_alpha_numeric]]`,

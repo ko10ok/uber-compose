@@ -124,10 +124,12 @@ def _relative_mounted_template_path(template_path: str) -> Path:
 def render_mounted_files(
     env_config_instance: EnvInstanceConfig,
     mounted_files_path: str | Path,
+    mounted_files_host_path: str | Path | None = None,
 ) -> dict[str, list[tuple[Path, str, bool]]]:
-    rendered_by_template: dict[str, Path] = {}
+    rendered_by_template: dict[str, tuple[Path, Path]] = {}
     mounts_by_service: dict[str, list[tuple[Path, str, bool]]] = {}
     placeholders = env_config_instance.placeholders or {}
+    mounted_files_host_path = mounted_files_host_path or mounted_files_path
 
     for service_name, service in env_config_instance.env_source.get_services().items():
         for spec in service.mounted_files:
@@ -144,17 +146,24 @@ def render_mounted_files(
                 content = source_path.read_text()
                 content = substitute_parameterization_placeholders(content, placeholders)
 
+                relative_template_path = _relative_mounted_template_path(template_path)
                 rendered_path = (
                     Path(mounted_files_path)
                     / env_config_instance.env_id
-                    / _relative_mounted_template_path(template_path)
+                    / relative_template_path
+                )
+                host_path = (
+                    Path(mounted_files_host_path)
+                    / env_config_instance.env_id
+                    / relative_template_path
                 )
                 rendered_path.parent.mkdir(parents=True, exist_ok=True)
                 rendered_path.write_text(content)
-                rendered_by_template[template_path] = rendered_path
+                rendered_by_template[template_path] = (rendered_path, host_path)
 
+            _, host_path = rendered_by_template[template_path]
             mounts_by_service.setdefault(service_name, []).append((
-                rendered_by_template[template_path],
+                host_path,
                 target_path,
                 True,
             ))
@@ -526,6 +535,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
                                     mounted_files_path: Path,
                                     run_id: str,
                                     release_id: str = None,
+                                    mounted_files_host_path: Path | None = None,
                                     ) -> ComposeInstanceFiles:
     dst = tmp_env_path / env_config_instance.env_id
 
@@ -534,7 +544,11 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
         if file.is_file():
             file.unlink()
 
-    mounted_files = render_mounted_files(env_config_instance, mounted_files_path)
+    mounted_files = render_mounted_files(
+        env_config_instance,
+        mounted_files_path,
+        mounted_files_host_path,
+    )
     new_compose_files_list = made_up_instance_compose_files(compose_files, dst)
 
     labels = {
