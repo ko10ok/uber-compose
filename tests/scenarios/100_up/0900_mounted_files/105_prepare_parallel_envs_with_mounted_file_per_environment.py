@@ -70,33 +70,52 @@ services:
     async def then_each_env_should_have_its_own_rendered_file(self):
         assert len(self.ready_envs) == 2
         assert len({ready_env.env_id for ready_env in self.ready_envs}) == 2
-        for ready_env in self.ready_envs:
-            rendered_source = (
-                Path.cwd() / 'e2e_mounted_files' / ready_env.env_id / self.template_path
-            )
-            assert rendered_source.read_text() == (
-                f'env: {ready_env.env_id}\n'
-                f'service: s1-{ready_env.env_id}\n'
-            )
+        env_a_ready = self.ready_envs[0]
+        env_b_ready = self.ready_envs[1]
+        env_a_source = Path.cwd() / 'e2e_mounted_files' / env_a_ready.env_id / self.template_path
+        env_b_source = Path.cwd() / 'e2e_mounted_files' / env_b_ready.env_id / self.template_path
+        assert env_a_source.read_text() == (
+            f'env: {env_a_ready.env_id}\n'
+            f'service: s1-{env_a_ready.env_id}\n'
+        )
+        assert env_b_source.read_text() == (
+            f'env: {env_b_ready.env_id}\n'
+            f'service: s1-{env_b_ready.env_id}\n'
+        )
 
     async def and_each_container_should_mount_its_own_rendered_file(self):
+        env_a_ready = self.ready_envs[0]
+        env_b_ready = self.ready_envs[1]
+        env_a_source = Path.cwd() / 'e2e_mounted_files' / env_a_ready.env_id / self.template_path
+        env_b_source = Path.cwd() / 'e2e_mounted_files' / env_b_ready.env_id / self.template_path
         containers = retrieve_all_docker_containers()
-        for ready_env in self.ready_envs:
-            rendered_source = (
-                Path.cwd() / 'e2e_mounted_files' / ready_env.env_id / self.template_path
-            )
-            assert containers == schema.list([
-                ...,
-                ContainerSchema % {
-                    'Labels': {
-                        'com.docker.compose.service': f's1-{ready_env.env_id}',
-                    },
-                    'Mounts': [
-                        {
-                            'Source': str(rendered_source),
-                            'Destination': self.target_path,
-                        },
-                    ],
+        assert containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_ready.env_id}',
                 },
-                ...,
-            ])
+                'Mounts': [
+                    {
+                        'Source': str(env_a_source),
+                        'Destination': self.target_path,
+                    },
+                ],
+            },
+            ...,
+        ])
+        assert containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_b_ready.env_id}',
+                },
+                'Mounts': [
+                    {
+                        'Source': str(env_b_source),
+                        'Destination': self.target_path,
+                    },
+                ],
+            },
+            ...,
+        ])

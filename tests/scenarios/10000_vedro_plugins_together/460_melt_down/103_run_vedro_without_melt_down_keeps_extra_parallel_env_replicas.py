@@ -115,14 +115,33 @@ class Config(vedro.Config):
         )
         self.containers = retrieve_all_docker_containers()
         assert self.containers == schema.list.len(3)
-        for env_id in (env_a_0_id, self.extra_env_a_id, env_b_id):
-            assert self.containers == schema.list([
-                ...,
-                ContainerSchema % {
-                    'Labels': {
-                        'com.docker.compose.service': f's1-{env_id}',
-                        Label.ENV_ID: env_id,
-                    },
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_0_id}',
+                    Label.ENV_ID: env_a_0_id,
                 },
-                ...,
-            ])
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{self.extra_env_a_id}',
+                    Label.ENV_ID: self.extra_env_a_id,
+                },
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_b_id}',
+                    Label.ENV_ID: env_b_id,
+                },
+            },
+            ...,
+        ])

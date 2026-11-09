@@ -108,22 +108,49 @@ class Config(vedro.Config):
 
     async def and_env_a_replicas_should_stay_untouched(self):
         env_b = Environment(Service('s1'), description='env-b')
-        env_ids = [
-            get_stable_env_id(self.env_a, 0),
-            get_stable_env_id(self.env_a, 1),
-            get_stable_env_id(env_b, 0),
-            get_stable_env_id(env_b, 1),
-        ]
+        env_a_0_id = get_stable_env_id(self.env_a, 0)
+        env_a_1_id = get_stable_env_id(self.env_a, 1)
+        env_b_0_id = get_stable_env_id(env_b, 0)
+        env_b_1_id = get_stable_env_id(env_b, 1)
         self.containers = retrieve_all_docker_containers()
         assert self.containers == schema.list.len(4)
-        for env_id in env_ids:
-            assert self.containers == schema.list([
-                ...,
-                ContainerSchema % {
-                    'Labels': {
-                        'com.docker.compose.service': f's1-{env_id}',
-                        Label.ENV_ID: env_id,
-                    },
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_0_id}',
+                    Label.ENV_ID: env_a_0_id,
                 },
-                ...,
-            ])
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_1_id}',
+                    Label.ENV_ID: env_a_1_id,
+                },
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_b_0_id}',
+                    Label.ENV_ID: env_b_0_id,
+                },
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_b_1_id}',
+                    Label.ENV_ID: env_b_1_id,
+                },
+            },
+            ...,
+        ])

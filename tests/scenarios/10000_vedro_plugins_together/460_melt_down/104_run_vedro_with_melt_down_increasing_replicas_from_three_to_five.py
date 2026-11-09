@@ -111,26 +111,63 @@ class Config(vedro.Config):
         assert self.run_result.returncode == 0, self.run_result.stdout + self.run_result.stderr
 
     async def and_all_five_replicas_should_be_running(self):
+        env_a_0_id = get_stable_env_id(self.env_a, 0)
+        env_a_1_id = get_stable_env_id(self.env_a, 1)
+        env_a_2_id = get_stable_env_id(self.env_a, 2)
+        env_a_3_id = get_stable_env_id(self.env_a, 3)
+        env_a_4_id = get_stable_env_id(self.env_a, 4)
         self.containers = retrieve_all_docker_containers()
         assert self.containers == schema.list.len(5)
-        for index in range(5):
-            env_id = get_stable_env_id(self.env_a, index)
-            expected = ContainerSchema % {
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Id': self.initial_container_ids[env_a_0_id],
                 'Labels': {
-                    'com.docker.compose.service': f's1-{env_id}',
-                    Label.ENV_ID: env_id,
+                    'com.docker.compose.service': f's1-{env_a_0_id}',
+                    Label.ENV_ID: env_a_0_id,
                 },
-            }
-            if env_id in self.initial_container_ids:
-                expected = ContainerSchema % {
-                    'Id': self.initial_container_ids[env_id],
-                    'Labels': {
-                        'com.docker.compose.service': f's1-{env_id}',
-                        Label.ENV_ID: env_id,
-                    },
-                }
-            assert self.containers == schema.list([
-                ...,
-                expected,
-                ...,
-            ])
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Id': self.initial_container_ids[env_a_1_id],
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_1_id}',
+                    Label.ENV_ID: env_a_1_id,
+                },
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Id': self.initial_container_ids[env_a_2_id],
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_2_id}',
+                    Label.ENV_ID: env_a_2_id,
+                },
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_3_id}',
+                    Label.ENV_ID: env_a_3_id,
+                },
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Labels': {
+                    'com.docker.compose.service': f's1-{env_a_4_id}',
+                    Label.ENV_ID: env_a_4_id,
+                },
+            },
+            ...,
+        ])
