@@ -458,6 +458,23 @@ class SystemUberCompose:
 
         return protected_services
 
+    async def _down_existing_env_containers(self, env_id: str, except_containers: list[str]) -> None:
+        services_state = await self.system_docker_compose.get_all_services_state()
+        services_to_down = [
+            service_state.name
+            for service_state in services_state
+            if service_state.labels.get(Label.ENV_ID) == env_id
+            and service_state.name not in except_containers
+        ]
+        if not services_to_down:
+            return
+
+        self.logger.stage(
+            Text('Downing existing env containers: ', style=Style.info)
+            .append(Text(f'{services_to_down}', style=Style.regular))
+        )
+        await self.system_docker_compose.down_services(services_to_down)
+
     async def _start_new_environment(
         self,
         config_template: Environment,
@@ -504,6 +521,11 @@ class SystemUberCompose:
             )
             if services_to_down:
                 await self.system_docker_compose.down_services(services_to_down)
+        else:
+            await self._down_existing_env_containers(
+                new_env_id,
+                self.cfg_constants.non_stop_containers + protected_singleton_services,
+            )
 
         compose_instance = ComposeInstance(
             project=self.cfg_constants.project,
