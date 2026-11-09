@@ -83,14 +83,26 @@ services:
             ...,
             ContainerSchema % {
                 'Mounts': [
+                    ...,
                     {
                         'Source': str(rendered_source),
                         'Destination': self.target_a,
                     },
+                    ...,
+                ],
+            },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
+            ContainerSchema % {
+                'Mounts': [
+                    ...,
                     {
                         'Source': str(rendered_source),
                         'Destination': self.target_b,
                     },
+                    ...,
                 ],
             },
             ...,
