@@ -431,13 +431,19 @@ class SystemUberCompose:
                 debase64_pickled(recorded_template).get_services().get(service_state.name)
                 if recorded_template else None
             )
+            declared_mode = declared_service.mode if declared_service is not None else None
+            recorded_mode = recorded_service.mode if recorded_service is not None else None
 
             if declared_service is not None and recorded_service is not None:
                 singleton_is_involved = (
-                    declared_service.mode == ServiceMode.SINGLETON
-                    or recorded_service.mode == ServiceMode.SINGLETON
+                    declared_mode == ServiceMode.SINGLETON
+                    or recorded_mode == ServiceMode.SINGLETON
                 )
-                if singleton_is_involved and _service_config(declared_service) != _service_config(recorded_service):
+                if (
+                    singleton_is_involved
+                    and declared_mode == ServiceMode.SINGLETON
+                    and _service_config(declared_service) != _service_config(recorded_service)
+                ):
                     raise SingletonConfigChangedError(
                         f'Singleton service "{service_state.name}" configuration must not change while it is running. '
                         f'Running config: {_service_config(recorded_service)!r}. '
@@ -445,12 +451,9 @@ class SystemUberCompose:
                         f'Use force_restart if this change is intentional.'
                     )
 
-            if declared_service is not None:
-                service_mode = declared_service.mode
-            else:
-                service_mode = recorded_service.mode if recorded_service else None
+            service_mode = declared_mode if declared_service is not None else recorded_mode
 
-            if service_mode == ServiceMode.SINGLETON:
+            if service_mode == ServiceMode.SINGLETON or recorded_mode == ServiceMode.SINGLETON:
                 protected_services.append(service_state.name)
 
         return protected_services
