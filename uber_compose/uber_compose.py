@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import lru_cache
 import shlex
 from typing import Any
 from typing import Callable
@@ -69,6 +70,17 @@ def _service_config(service) -> tuple:
         service.mode,
         tuple(service.mounted_files),
     )
+
+
+@lru_cache(maxsize=512)
+def _service_mode_from_recorded_template(recorded_template: str, container: str) -> ServiceMode | None:
+    try:
+        recorded_env = debase64_pickled(recorded_template)
+    except Exception:
+        return None
+
+    recorded_service = recorded_env.get_services().get(container)
+    return recorded_service.mode if recorded_service is not None else None
 
 
 class SystemUberCompose:
@@ -569,6 +581,57 @@ class SystemUberCompose:
             self.last_release_id,
         )
 
+    def _service_mode_for_state(self, service_state, container: str) -> ServiceMode | None:
+        recorded_template = service_state.labels.get(Label.ENV_CONFIG_TEMPLATE)
+        if not recorded_template:
+            recorded_template = service_state.labels.get(Label.ENV_CONFIG)
+        if not recorded_template:
+            return None
+
+        return _service_mode_from_recorded_template(recorded_template, container)
+
+    def _resolve_exec_service_state(
+        self,
+        dc_state: ServicesComposeState,
+        container: str,
+        env_id: str,
+    ):
+        service_states = dc_state.get_all_for(
+            lambda service_state: service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
+        )
+
+        exact_service_states = service_states.get_all_for(
+            lambda service_state: service_state.check(Label.ENV_ID, env_id)
+        )
+        if len(exact_service_states.as_json()) == 1:
+            return exact_service_states.get_any()
+
+        singleton_service_states = service_states.get_all_for(
+            lambda service_state: self._service_mode_for_state(service_state, container)
+            == ServiceMode.SINGLETON
+        )
+        if len(singleton_service_states.as_json()) == 1:
+            return singleton_service_states.get_any()
+
+        available_env_ids = sorted({
+            service.labels.get(Label.ENV_ID)
+            for service in service_states
+        })
+        singleton_details = ''
+        if len(singleton_service_states.as_json()) > 1:
+            singleton_env_ids = sorted({
+                service.labels.get(Label.ENV_ID)
+                for service in singleton_service_states
+            })
+            singleton_details = f' Multiple singleton environments: {singleton_env_ids}.'
+
+        raise ValueError(
+            f'Container {container} not found in environment {env_id}. '
+            f'Available environments for this container: {available_env_ids}.'
+            f'{singleton_details} '
+            f'Pass env_id explicitly when multiple namespaces are running.'
+        )
+
     async def exec(self,
                    container: str,
                    command: str,
@@ -589,23 +652,8 @@ class SystemUberCompose:
         dc_state = await dc_shell.dc_state()
         assert isinstance(dc_state, ServicesComposeState), f'Got error: {dc_state}'
 
-        service_state = dc_state.get_all_for(
-            lambda service_state: service_state.check(Label.ENV_ID, env_id)
-            and service_state.check(Label.TEMPLATE_SERVICE_NAME, container)
-        )
-        if len(service_state.as_json()) != 1:
-            available_env_ids = sorted({
-                service.labels.get(Label.ENV_ID)
-                for service in dc_state
-                if service.check(Label.TEMPLATE_SERVICE_NAME, container)
-            })
-            raise ValueError(
-                f'Container {container} not found in environment {env_id}. '
-                f'Available environments for this container: {available_env_ids}. '
-                f'Pass env_id explicitly when multiple namespaces are running.'
-            )
-
-        container = service_state.get_any().labels[Label.SERVICE_NAME]
+        service_state = self._resolve_exec_service_state(dc_state, container, env_id)
+        container = service_state.labels[Label.SERVICE_NAME]
 
         cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
         res = await dc_shell.dc_exec_until_state(
