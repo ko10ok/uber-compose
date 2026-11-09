@@ -74,6 +74,7 @@ class VedroUberComposePlugin(Plugin):
 
         self._force_restart = False
         self._just_up = False
+        self._melt_down = False
         self._logging_policy = None
         self._health_policy = config.health_policy
         self._logger = Logger(self._logging_policy, Constants())
@@ -132,6 +133,8 @@ class VedroUberComposePlugin(Plugin):
         if plan is not None:
             try:
                 await self._up_plan_environments(plan)
+                if self._melt_down:
+                    await self._melt_down_plan_environments(plan)
             except Exception as e:
                 self._logger.stage(
                     Text(
@@ -247,6 +250,20 @@ class VedroUberComposePlugin(Plugin):
                     env_id=env_id,
                 )
 
+    async def _melt_down_plan_environments(self, plan) -> None:
+        desired_by_group: dict[str, set[str]] = {}
+        for assignment in plan.assignments:
+            for group_key, env_id in assignment.namespace_map.items():
+                desired_by_group.setdefault(group_key, set()).add(env_id)
+
+        for group_key, desired_env_ids in desired_by_group.items():
+            await self._uber_compose_client.melt_down_extra_replicas(
+                config_template=plan.env_templates.get(group_key),
+                compose_files=self._compose_choice.compose_files,
+                desired_env_ids=sorted(desired_env_ids),
+                services_override=self._uc_external_services,
+            )
+
     async def handle_pre_run_scenario(self, event: ScenarioRunEvent):
         scenario = event.scenario_result.scenario
         env_config = await extract_scenario_config(scenario)
@@ -320,6 +337,12 @@ class VedroUberComposePlugin(Plugin):
                            type=str,
                            help="Filter by environment name/description")
 
+        group.add_argument("--uc-melt-down", "--uc-mt-md",
+                           dest="uc_melt_down",
+                           action='store_true',
+                           default=False,
+                           help="Down extra parallel env replicas above the required count")
+
         group.add_argument("--uc-mt-plan",
                            type=int,
                            nargs='?',
@@ -365,6 +388,8 @@ class VedroUberComposePlugin(Plugin):
 
         if event.args.uc_ju:
             self._just_up = event.args.uc_ju
+
+        self._melt_down = bool(getattr(event.args, 'uc_melt_down', False))
 
         if event.args.uc_env:
             self._uc_env = event.args.uc_env

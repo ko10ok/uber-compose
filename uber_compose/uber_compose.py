@@ -255,6 +255,23 @@ class SystemUberCompose:
             await self._down_extra_replicas(resolved_template, compose_files, desired_env_ids)
         return ready_envs
 
+    async def melt_down_extra_replicas(
+        self,
+        config_template: Environment | None,
+        compose_files: str | None = None,
+        desired_env_ids: list[str] | None = None,
+        services_override: list[OverridenService] | None = None,
+    ) -> None:
+        compose_files = self._resolve_compose_files(compose_files)
+        resolved_template = self._resolve_config_template(
+            config_template, compose_files, services_override
+        )
+        await self._down_extra_replicas(
+            resolved_template,
+            compose_files,
+            list(desired_env_ids or []),
+        )
+
     def _env_replicas(
         self,
         config_template: Environment | None,

@@ -100,6 +100,7 @@ lists, or `--uc-mt-plan=2` for full test paths.
 | `worker_timeout` | parallel plugin config | Kill a worker after N seconds |
 | `--uc-mt` | CLI | Enable parallel worker processes |
 | `--uc-workers-per-env=N`, `--uc-wpe=N` | CLI | Override `workers_per_env` for every env, for this run only |
+| `--uc-melt-down`, `--uc-mt-md` | CLI | Down extra replicas of planned envs above the required worker count |
 | `--uc-mt-plan[=LEVEL]` | CLI | Print the execution plan without starting containers or workers |
 
 `workers_per_env` keys are environment descriptions. You can use the
@@ -335,6 +336,7 @@ tests cannot isolate.
 |---|---|---|
 | `--uc-mt` | Master switch: create parallel worker processes | Always, when you want any parallelism |
 | `--uc-workers-per-env=N`, `--uc-wpe=N` | Override `workers_per_env` for every env, for this run only | Temporary experiments or CI override |
+| `--uc-melt-down`, `--uc-mt-md` | Down extra replicas above the required worker count | Clean up after reducing workers per env |
 | `--uc-mt-plan[=LEVEL]` | Print the execution plan without starting anything | Preview workers, envs, and test assignment |
 | `--uc-ju` | Start environment(s) and exit without running tests | CI warm-up, debugging |
 | `--uc-fr` | Force restart of services | After changing compose/env config |
