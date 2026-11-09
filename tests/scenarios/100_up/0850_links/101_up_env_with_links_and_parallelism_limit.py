@@ -80,6 +80,10 @@ services:
                     Label.ENV_DESCRIPTION: str(self.environment),
                 },
             },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': f'redis-{self.env_id}',
@@ -87,6 +91,10 @@ services:
                     Label.ENV_DESCRIPTION: str(self.environment),
                 },
             },
+            ...,
+        ])
+        assert self.containers == schema.list([
+            ...,
             ContainerSchema % {
                 'Labels': {
                     'com.docker.compose.service': f'db-{self.env_id}',
