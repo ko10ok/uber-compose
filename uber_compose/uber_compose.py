@@ -414,6 +414,9 @@ class SystemUberCompose:
 
         An explicit force_restart bypasses this protection entirely.
         """
+        # TODO: force_restart of a shared singleton should eventually cascade to all
+        # dependent services/environments instead of silently restarting a singleton that
+        # another parallel environment may still rely on.
         if force_restart:
             return []
 
