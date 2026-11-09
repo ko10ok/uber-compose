@@ -129,12 +129,18 @@ class VedroUberComposePlugin(Plugin):
         if is_parallel_worker_process():
             return
 
+        needed_configs = await extract_scenarios_configs_set(event.scheduler)
+        needed_group_keys = {
+            env_group_key_for(config_template)
+            for config_template in needed_configs
+        }
+
         plan = get_execution_plan()
         if plan is not None:
             try:
-                await self._up_plan_environments(plan)
+                await self._up_plan_environments(plan, needed_group_keys)
                 if self._melt_down:
-                    await self._melt_down_plan_environments(plan)
+                    await self._melt_down_plan_environments(plan, needed_group_keys)
             except Exception as e:
                 self._logger.stage(
                     Text(
@@ -154,7 +160,6 @@ class VedroUberComposePlugin(Plugin):
                 sys.exit(0)
             return
 
-        needed_configs = await extract_scenarios_configs_set(event.scheduler)
         if not needed_configs:
             if self._just_up:
                 self._logger.stage(
@@ -233,11 +238,13 @@ class VedroUberComposePlugin(Plugin):
             ),
         )
 
-    async def _up_plan_environments(self, plan) -> None:
+    async def _up_plan_environments(self, plan, allowed_group_keys: set[str] | None = None) -> None:
         parallelism_limit = max(plan.workers_total, 2)
         started_env_ids = set()
         for assignment in plan.assignments:
             for group_key, env_id in assignment.namespace_map.items():
+                if allowed_group_keys is not None and group_key not in allowed_group_keys:
+                    continue
                 if env_id in started_env_ids:
                     continue
                 started_env_ids.add(env_id)
@@ -253,10 +260,12 @@ class VedroUberComposePlugin(Plugin):
                     env_id=env_id,
                 )
 
-    async def _melt_down_plan_environments(self, plan) -> None:
+    async def _melt_down_plan_environments(self, plan, allowed_group_keys: set[str] | None = None) -> None:
         desired_by_group: dict[str, set[str]] = {}
         for assignment in plan.assignments:
             for group_key, env_id in assignment.namespace_map.items():
+                if allowed_group_keys is not None and group_key not in allowed_group_keys:
+                    continue
                 desired_by_group.setdefault(group_key, set()).add(env_id)
 
         for group_key, desired_env_ids in desired_by_group.items():
