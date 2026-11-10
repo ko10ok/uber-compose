@@ -31,9 +31,9 @@ from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 from uber_compose.parallel_plugin.grouping import env_group_key_for
 from uber_compose.parallel_plugin.planner import build_run_plan
+from uber_compose.parallel_plugin.planner import render_plan
 from uber_compose.parallel_plugin.types import ExecutionPlan
 from uber_compose.parallel_plugin.types import WorkerAssignment
-from uber_compose.parallel_plugin.planner import render_plan
 from uber_compose.parallel_plugin.worker_api import get_env_replicas_total
 from uber_compose.parallel_plugin.worker_api import get_execution_plan
 from uber_compose.parallel_plugin.worker_api import get_mt_enabled
