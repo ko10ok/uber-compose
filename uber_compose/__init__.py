@@ -8,6 +8,7 @@ from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Service
+from uber_compose.errors.mounted_files import MountedFileNotFoundError
 from uber_compose.helpers.current_env import get_run_depth
 from uber_compose.helpers.current_env import is_child_project
 from uber_compose.helpers.exec_result import ExecTimeout
@@ -46,7 +47,7 @@ __all__ = (
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
     'ExecLifeCyclePolicy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
-    'DEFAULT_ENV_ID', 'UberComposeEvent',
+    'DEFAULT_ENV_ID', 'UberComposeEvent', 'MountedFileNotFoundError',
     'ExecutionPlan', 'WorkerAssignment', 'env_group_key', 'env_group_key_for',
     'get_execution_plan', 'get_namespace_map', 'get_worker_groups', 'get_worker_id', 'get_workers_total',
     'get_run_depth', 'is_child_project',

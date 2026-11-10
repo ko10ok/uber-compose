@@ -492,6 +492,11 @@ client.mounted_files_dir()  # <mounted_files_path>
 client.mounted_file_path("config.yaml")  # <mounted_files_path>/<current_env_id>/config.yaml
 ```
 
+Paths are container-side. A relative `MOUNTED_FILES_DIRECTORY` is resolved from
+`PROJECT_ROOT_DIRECTORY`. `mounted_file_path()` accepts only relative paths and raises
+`MountedFileNotFoundError` with the env id, searched path in the test container,
+mounted files root, and container project root.
+
 Only `[[...]]` placeholders are substituted, using the same values as
 `Service.env`: `[[env_id]]`, `[[namespace]]`, `[[worker_id]]`,
 `[[worker_id_alpha_numeric]]`, `[[namespace_alpha_numeric]]`,

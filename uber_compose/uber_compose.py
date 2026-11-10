@@ -24,6 +24,7 @@ from uber_compose.env_description.env_types import DEFAULT_ENV_DESCRIPTION
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import ServiceMode
+from uber_compose.errors.mounted_files import MountedFileNotFoundError
 from uber_compose.errors.up import SingletonConfigChangedError
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import base64_pickled
@@ -118,7 +119,25 @@ class SystemUberCompose:
         return self.cfg_constants.mounted_files_path
 
     def mounted_file_path(self, relative_path: str | Path) -> Path:
-        return self.mounted_files_dir() / get_current_env_id() / Path(relative_path)
+        relative_path = Path(relative_path)
+        if relative_path.is_absolute():
+            raise ValueError(
+                f'mounted_file_path expects a relative path, got absolute path: {relative_path}'
+            )
+
+        env_id = get_current_env_id()
+        mounted_files_dir = self.mounted_files_dir()
+        searched_path = mounted_files_dir / env_id / relative_path
+        if not searched_path.is_file():
+            raise MountedFileNotFoundError(
+                relative_path,
+                env_id,
+                searched_path,
+                mounted_files_dir,
+                self.cfg_constants.in_docker_project_root_path,
+            )
+
+        return searched_path
 
     @staticmethod
     def current_env_context():
