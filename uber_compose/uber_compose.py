@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 import shlex
 from typing import Any
 from typing import Callable
@@ -112,6 +113,12 @@ class SystemUberCompose:
     @staticmethod
     def current_env_id() -> str:
         return get_current_env_id()
+
+    def mounted_files_dir(self) -> Path:
+        return self.cfg_constants.mounted_files_path
+
+    def mounted_file_path(self, relative_path: str | Path) -> Path:
+        return self.mounted_files_dir() / get_current_env_id() / Path(relative_path)
 
     @staticmethod
     def current_env_context():

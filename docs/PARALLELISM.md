@@ -482,6 +482,16 @@ Uber-Compose writes to `${PROJECT_ROOT_DIRECTORY}/${MOUNTED_FILES_DIRECTORY}` an
 mounts from `${HOST_PROJECT_ROOT_DIRECTORY}/${MOUNTED_FILES_DIRECTORY}`.
 An absolute `MOUNTED_FILES_DIRECTORY` is used as-is for both writing and mounting.
 
+Resolve container-side paths from a test:
+
+```python
+from uber_compose import TheUberCompose
+
+client = TheUberCompose()
+client.mounted_files_dir()  # <mounted_files_path>
+client.mounted_file_path("config.yaml")  # <mounted_files_path>/<current_env_id>/config.yaml
+```
+
 Only `[[...]]` placeholders are substituted, using the same values as
 `Service.env`: `[[env_id]]`, `[[namespace]]`, `[[worker_id]]`,
 `[[worker_id_alpha_numeric]]`, `[[namespace_alpha_numeric]]`,
