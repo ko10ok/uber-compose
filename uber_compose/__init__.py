@@ -14,6 +14,9 @@ from uber_compose.helpers.current_env import is_child_project
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import UberComposeEvent
+from uber_compose.output.console import LogEvents
+from uber_compose.output.console import LogPolicy
+from uber_compose.output.console import LogPolicySet
 from uber_compose.parallel_plugin import ExecutionPlan
 from uber_compose.parallel_plugin import VedroUberComposeParallel
 from uber_compose.parallel_plugin import WorkerAssignment
@@ -47,6 +50,7 @@ __all__ = (
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
     'ExecLifeCyclePolicy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
+    'LogEvents', 'LogPolicy', 'LogPolicySet',
     'DEFAULT_ENV_ID', 'UberComposeEvent', 'MountedFileNotFoundError',
     'ExecutionPlan', 'WorkerAssignment', 'env_group_key', 'env_group_key_for',
     'get_execution_plan', 'get_namespace_map', 'get_worker_groups', 'get_worker_id', 'get_workers_total',

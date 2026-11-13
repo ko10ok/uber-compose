@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 import sys
 from typing import Type
 from typing import Union
@@ -27,6 +29,7 @@ from uber_compose.helpers.current_env import get_run_depth
 from uber_compose.helpers.current_env import set_current_env_context
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.output.console import LogPolicy
+from uber_compose.output.console import LogPolicySet
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 from uber_compose.parallel_plugin.grouping import env_group_key_for
@@ -80,7 +83,13 @@ class VedroUberComposePlugin(Plugin):
         self._melt_down = False
         self._logging_policy = None
         self._health_policy = config.health_policy
-        self._logger = Logger(self._logging_policy, Constants())
+        self._file_log_policy = config.file_log_policy
+        self._constants = Constants(log_file_path=config.log_file_path)
+        self._logger = Logger(
+            self._logging_policy,
+            self._constants,
+            file_log_policy=self._file_log_policy,
+        )
 
         self._uc_external_services: list[OverridenService] = None
         self._uc_env: str = None
@@ -126,7 +135,9 @@ class VedroUberComposePlugin(Plugin):
             self._uber_compose_client = TheUberCompose(
                 log_policy=self._logging_policy,
                 health_policy=self._health_policy,
+                cfg_constants=self._constants,
                 run_id=self.run_id,
+                file_log_policy=self._file_log_policy,
             )
 
         if is_parallel_worker_process():
@@ -489,6 +500,12 @@ class VedroUberCompose(PluginConfig):
 
     # ComposeConfig set of compose files and default parallelism restrictions
     compose_cfgs: dict[str, ComposeConfig] = None
+
+    # Log levels for the file. None disables file logging
+    file_log_policy: LogPolicySet | str | None = LogPolicy.DEFAULT_FILE
+
+    # Path to the uber-compose log file (default is sortable by run time)
+    log_file_path: str = f'logs/startup/uber-compose-{datetime.now():%Y%m%d_%H%M%S_%f}-{os.getpid()}.log'
 
     # Retries for health
     health_policy: UpHealthPolicy = UpHealthPolicy(

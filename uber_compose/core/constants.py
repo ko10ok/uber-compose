@@ -1,5 +1,11 @@
+from datetime import datetime
 import os
 from pathlib import Path
+
+
+def default_log_file_path() -> Path:
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    return Path.cwd() / 'logs' / 'startup' / f'uber-compose-{timestamp}-{os.getpid()}.log'
 
 
 class Constants:
@@ -11,6 +17,7 @@ class Constants:
                  in_docker_project_root_path: str | Path = None,
                  mounted_files_path: str | Path = None,
                  mounted_files_host_path: str | Path = None,
+                 log_file_path: str | Path = None,
                  ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
@@ -27,6 +34,8 @@ class Constants:
         self.tmp_envs_path: Path = Path(
             tmp_envs_path or os.environ.get('TMP_ENVS_DIRECTORY', '/tmp/uc-envs')
         )
+        self.log_file_path: Path = Path(log_file_path or default_log_file_path())
+
         self.in_docker_project_root_path: Path = Path(
             in_docker_project_root_path or os.environ.get('PROJECT_ROOT_DIRECTORY', '/project')
         )

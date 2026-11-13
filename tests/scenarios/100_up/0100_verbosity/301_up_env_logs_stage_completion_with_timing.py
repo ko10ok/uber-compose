@@ -1,3 +1,4 @@
+from contextlib import redirect_stdout
 from io import StringIO
 import re
 
@@ -5,7 +6,6 @@ from contexts.compose_file import compose_file
 from contexts.isolated_project import isolated_constants
 from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
-from rich.console import Console
 import vedro
 
 from uber_compose.env_description.env_types import Environment
@@ -40,27 +40,24 @@ services:
 
     async def when_user_up_env_with_log_capture(self):
         self.log_stream = StringIO()
-        self.uber_compose = UberCompose(cfg_constants=self.constants, log_policy=LogPolicy.VERBOSE)
-        self.uber_compose.logger.stream = Console(
-            file=self.log_stream,
-            force_terminal=False,
-            soft_wrap=True,
-        )
-        self.response = await self.uber_compose.up(
-            compose_files=self.compose_files,
-            config_template=Environment(Service('s1'), description='env-a'),
-        )
-        self.manual_stage = self.uber_compose.logger.stage('Manual stage')
-        self.manual_stage.done()
-        self.manual_stage.done()
+        with redirect_stdout(self.log_stream):
+            self.uber_compose = UberCompose(cfg_constants=self.constants, log_policy=LogPolicy.VERBOSE)
+            self.response = await self.uber_compose.up(
+                compose_files=self.compose_files,
+                config_template=Environment(Service('s1'), description='env-a'),
+            )
+            self.manual_stage = self.uber_compose.logger.stage('Manual stage')
+            self.manual_stage.done()
+            self.manual_stage.done()
         self.logs = self.log_stream.getvalue()
 
     async def when_manual_stage_levels_are_finished(self):
-        self.uber_compose.logger.log_policy = LogPolicy.DEBUG
-        self.info_stage = self.uber_compose.logger.stage_info('Info stage')
-        self.info_stage.done()
-        self.debug_stage = self.uber_compose.logger.stage_debug('Debug stage')
-        self.debug_stage.done()
+        with redirect_stdout(self.log_stream):
+            self.uber_compose.logger.log_policy = LogPolicy.DEBUG
+            self.info_stage = self.uber_compose.logger.stage_info('Info stage')
+            self.info_stage.done()
+            self.debug_stage = self.uber_compose.logger.stage_debug('Debug stage')
+            self.debug_stage.done()
         self.leveled_logs = self.log_stream.getvalue()
 
     async def then_manual_stage_done_should_log_once_with_timing(self):

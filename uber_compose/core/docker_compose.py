@@ -6,6 +6,8 @@ import sys
 from rich.text import Text
 
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
+from uber_compose.core.docker_compose_shell.types import ComposeState
+from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
 from uber_compose.core.utils.compose_files import get_compose_services_dependency_tree
@@ -206,6 +208,7 @@ class ComposeInstance:
             up_result = await self.compose_executor.dc_up(services)
         if up_result != JobResult.GOOD:
             services_status = await self.compose_executor.dc_state()
+            await self._write_failed_services_logs(services_status)
             raise ServicesUpError(
                 f"Can't up services {services} for "
                 f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
@@ -239,6 +242,7 @@ class ComposeInstance:
                 )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
+                await self._write_failed_services_logs(services_status)
                 raise ServicesUpError(
                     f"Can't check up services {services} for "
                     f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
@@ -263,6 +267,21 @@ class ComposeInstance:
         compose_config = self.compose_instance_files.compose_config or {}
         service_config = compose_config.get('services', {}).get(service_state.name, {})
         return is_restart_policy_enabled(service_config.get('restart'))
+
+    async def _write_failed_services_logs(self, services_status: ServicesComposeState) -> None:
+        failed_services = [
+            service_state
+            for service_state in services_status
+            if service_state.state == ComposeState.EXITED and service_state.exit_code != 0
+        ]
+        for service_state in failed_services:
+            service_logs = await self.logs([service_state.name])
+            self.logger.write_file_log(
+                f'\n===== Logs for failed service {service_state.name} '
+                f'(exit code {service_state.exit_code}) ====='
+            )
+            self.logger.write_file_log(service_logs.rstrip() or '<no service logs>')
+            self.logger.write_file_log(f'===== End of logs for failed service {service_state.name} =====\n')
 
     async def run(self):
         with self.logger.stage_details(Text('Generating compose environment files', style=Style.info)):
@@ -325,6 +344,7 @@ class ComposeInstance:
                 )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
+                await self._write_failed_services_logs(services_status)
                 raise ServicesUpError(
                     f"Can't up services {all_services} all together for "
                     f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"

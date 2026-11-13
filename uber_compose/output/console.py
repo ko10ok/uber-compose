@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 from time import perf_counter
 
 from rich.console import Console
@@ -39,6 +40,9 @@ class LogPolicySet:
 
 class LogPolicy:
     DEFAULT = LogPolicySet(LogEvents.STAGE, LogEvents.ERROR)
+    DEFAULT_FILE = LogPolicySet(
+        LogEvents.STAGE, LogEvents.STAGE_INFO, LogEvents.STAGE_DETAILS, LogEvents.ERROR,
+    )
     VERBOSE = LogPolicySet(
         LogEvents.STAGE, LogEvents.STAGE_INFO, LogEvents.STAGE_DETAILS,
         LogEvents.ERROR, LogEvents.COMMANDS, LogEvents.COMMAND_OUTPUT,
@@ -93,9 +97,12 @@ class StageTimer:
         return False
 
 
-# TODO collect all into file and on level in stdout
 class Logger:
-    def __init__(self, log_policy: LogPolicySet = None, cfg_constants=None):
+    def __init__(self,
+                 log_policy: LogPolicySet = None,
+                 cfg_constants=None,
+                 file_log_policy: LogPolicySet | str | None = LogPolicy.DEFAULT_FILE,
+                 ):
         if cfg_constants is None:
             cfg_constants = Constants()
         if log_policy is None:
@@ -104,7 +111,54 @@ class Logger:
         self.stream = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
         self.debug = True
 
+        if isinstance(file_log_policy, str):
+            file_log_policy = LogPolicy.presets()[file_log_policy.upper()]
+        self.file_log_policy = file_log_policy
+
+        self.log_file_path = Path(
+            getattr(cfg_constants, 'log_file_path', None)
+            or 'uber-compose.log'
+        )
+        self.file_stream = None
+        if self.file_log_policy is not None:
+            self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            self.file_stream = open(self.log_file_path, 'w', encoding='utf-8')
+
+    def _file_log_enabled(self, level: LogEvents) -> bool:
+        if self.file_stream is None:
+            return False
+        if LogEvents.GLOBAL_DEBUG in self.file_log_policy:
+            return True
+        return level in self.file_log_policy
+
+    def _write_file_log_raw(self, text: str | Text) -> None:
+        if self.file_stream is None:
+            return
+        plain_text = text.plain if isinstance(text, Text) else str(text)
+        self.file_stream.write(f'{plain_text}\n')
+        self.file_stream.flush()
+
+    def _write_file_log(self, text: str | Text, level: LogEvents) -> None:
+        if not self._file_log_enabled(level):
+            return
+        self._write_file_log_raw(text)
+
+    def write_file_log(self, text: str | Text, level: LogEvents | None = None) -> None:
+        """Write to the log file directly.
+
+        Without a level the record bypasses the file log policy. It is used for
+        diagnostics that must be kept whenever file logging is enabled, such as
+        logs of services that failed to start.
+        """
+        if self.file_stream is None:
+            return
+        if level is not None and not self._file_log_enabled(level):
+            return
+        self._write_file_log_raw(text)
+
     def log(self, text: str | Text, level: LogEvents = LogEvents.GLOBAL_DEBUG, line_no=0):
+        self._write_file_log(text, level)
+
         if LogEvents.GLOBAL_DEBUG in self.log_policy:
             if line_no == 0:
                 self.stream.print(f'{level}:', style='bold grey15 on green', end='')

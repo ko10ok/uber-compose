@@ -1,10 +1,10 @@
+from contextlib import redirect_stdout
 from io import StringIO
 
 from contexts.compose_file import compose_file
 from contexts.isolated_project import isolated_constants
 from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
-from rich.console import Console
 import vedro
 
 from uber_compose.env_description.env_types import Environment
@@ -38,16 +38,12 @@ services:
 
     async def when_user_up_env_with_default_log_policy(self):
         self.log_stream = StringIO()
-        self.uber_compose = UberCompose(cfg_constants=self.constants)
-        self.uber_compose.logger.stream = Console(
-            file=self.log_stream,
-            force_terminal=False,
-            soft_wrap=True,
-        )
-        self.response = await self.uber_compose.up(
-            compose_files=self.compose_files,
-            config_template=Environment(Service('s1'), description='env-a'),
-        )
+        with redirect_stdout(self.log_stream):
+            self.uber_compose = UberCompose(cfg_constants=self.constants)
+            self.response = await self.uber_compose.up(
+                compose_files=self.compose_files,
+                config_template=Environment(Service('s1'), description='env-a'),
+            )
         self.logs = self.log_stream.getvalue()
 
     async def then_high_level_stages_should_be_visible(self):

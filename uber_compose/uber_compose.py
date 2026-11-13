@@ -42,6 +42,7 @@ from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
 from uber_compose.helpers.singleton import SingletonMeta
 from uber_compose.helpers.workers_per_env import normalize_workers_per_env
+from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import LogPolicySet
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
@@ -91,10 +92,15 @@ class SystemUberCompose:
                  health_policy=UpHealthPolicy(),
                  cfg_constants: Constants = None,
                  run_id: str = '',
+                 file_log_policy: LogPolicySet | str | None = LogPolicy.DEFAULT_FILE,
                  ) -> None:
         self.cfg_constants = cfg_constants if cfg_constants else Constants()
 
-        self.logger = Logger(log_policy, self.cfg_constants)
+        self.logger = Logger(
+            log_policy,
+            self.cfg_constants,
+            file_log_policy=file_log_policy,
+        )
 
         self.system_docker_compose = SystemDockerCompose(
             self.cfg_constants.in_docker_project_root_path,

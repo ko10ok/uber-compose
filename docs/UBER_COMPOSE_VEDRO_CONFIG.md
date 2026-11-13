@@ -29,6 +29,17 @@ class Config(vedro.Config):
             }
 ```
 
+# File Logging
+
+Startup and migration logs are kept on disk independently of stdout filtering.
+
+```python
+class UberCompose(VedroUberCompose):
+    ...
+    file_log_policy = LogPolicy.DEFAULT_FILE  # STAGE + STAGE_INFO + STAGE_DETAILS + ERROR; None disables
+    log_file_path = 'logs/startup/uber-compose-<timestamp>-<pid>.log'
+```
+
 # Setup Uber-Compose Startup Services HealthCheck Params
 
 Fine-tune health check parameters to ensure that your services are up and running before tests start executing. This can help avoid flaky tests due to services not being ready yet.
