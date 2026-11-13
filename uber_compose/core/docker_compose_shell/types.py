@@ -19,6 +19,7 @@ class ExecLifeCyclePolicy:
 class ComposeState:
     RUNNING = 'running'
     EXITED = 'exited'
+    RESTARTING = 'restarting'
 
 
 class ComposeHealth:

@@ -9,6 +9,7 @@ from uber_compose.core.docker_compose_shell.interface import ComposeShellInterfa
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
 from uber_compose.core.utils.compose_files import get_compose_services_dependency_tree
+from uber_compose.core.utils.compose_files import is_restart_policy_enabled
 from uber_compose.core.utils.compose_files import make_env_compose_instance_files
 from uber_compose.core.utils.compose_instance_cfg import make_env_instance_config
 from uber_compose.core.utils.state_waiting import wait_all_services_up
@@ -234,6 +235,7 @@ class ComposeInstance:
                     logger_func=self.logger.stage_details,
                     get_compose_state=self.compose_executor.dc_state,
                     service_filter=self._is_service_in_this_namespace,
+                    has_restart_policy=self._has_restart_policy,
                 )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
@@ -256,6 +258,11 @@ class ComposeInstance:
             service_state.labels.get(Label.ENV_ID)
             == self.compose_instance_files.env_config_instance.env_id
         )
+
+    def _has_restart_policy(self, service_state) -> bool:
+        compose_config = self.compose_instance_files.compose_config or {}
+        service_config = compose_config.get('services', {}).get(service_state.name, {})
+        return is_restart_policy_enabled(service_config.get('restart'))
 
     async def run(self):
         with self.logger.stage_details(Text('Generating compose environment files', style=Style.info)):
@@ -314,6 +321,7 @@ class ComposeInstance:
                     logger_func=self.logger.stage,
                     get_compose_state=self.compose_executor.dc_state,
                     service_filter=self._is_service_in_this_namespace,
+                    has_restart_policy=self._has_restart_policy,
                 )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()

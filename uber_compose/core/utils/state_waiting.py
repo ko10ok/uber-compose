@@ -23,16 +23,41 @@ def is_service_not_running_or_not_healthy(service_state: ServiceComposeState) ->
     return True
 
 
+def is_service_exited_unexpectedly(service_state: ServiceComposeState) -> bool:
+    return (
+        service_state.state == ComposeState.EXITED
+        and service_state.exit_code != 0
+    )
+
+
+def is_service_failed_without_restart_policy(
+    service_state: ServiceComposeState,
+    has_restart_policy: Callable[[ServiceComposeState], bool],
+) -> bool:
+    return (
+        is_service_exited_unexpectedly(service_state)
+        and not has_restart_policy(service_state)
+    )
+
+
 async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_compose_state,
                                is_service_in_bad_state=is_service_not_running_or_not_healthy,
-                               service_filter: Callable = None) -> JobResult:
+                               service_filter: Callable = None,
+                               has_restart_policy: Callable[[ServiceComposeState], bool] = None,
+                               ) -> JobResult:
     counter_keeper = CountdownCounterKeeper(attempts)
     state_keeper = StateKeeper()
 
     if service_filter is None:
         service_filter = lambda service_state: True
 
-    async def check_once() -> JobResult:
+    if has_restart_policy is None:
+        has_restart_policy = lambda service_state: False
+
+    def is_service_failed_without_restart(service_state: ServiceComposeState) -> bool:
+        return is_service_failed_without_restart_policy(service_state, has_restart_policy)
+
+    async def check_once() -> JobResult | None:
         output_style = Style()
 
         if state_keeper.in_state(ServicesState.FIRST_STATE):
@@ -49,6 +74,14 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
         if not non_ready_services:
             logger_func(Text(' ✔ All services up\n', style=output_style.mark_neutral))
             return JobResult.GOOD
+
+        if any(is_service_failed_without_restart(service) for service in services_state):
+            logger_func(Text(' ✗ Service exited unexpectedly. Stop waiting:', style=output_style.bad))
+            logger_func(services_state.as_rich_text(
+                filter=is_service_failed_without_restart,
+                style=output_style
+            ))
+            return None
 
         # some service not ready routine
         counter_keeper.tick()
@@ -68,8 +101,9 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
 
         return JobResult.BAD
 
-    return await retry(
+    result = await retry(
         attempts=attempts,
         delay=delay_s,
-        until=lambda x: x != JobResult.GOOD,
+        until=lambda x: x == JobResult.BAD,
     )(check_once)()
+    return result if result == JobResult.GOOD else JobResult.BAD

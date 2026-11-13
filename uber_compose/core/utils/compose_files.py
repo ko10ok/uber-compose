@@ -590,6 +590,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
         directory=dst,
         compose_files=new_compose_files_list,
         inline_migrations=inline_migrations,
+        compose_config=parse_compose_config(new_compose_files_list),
     )
 
 
@@ -670,6 +671,32 @@ def group_by_levels(topologically_sorted_services, services_dict):
         service_to_level[service] = current_level
 
     return service_levels
+
+
+def parse_compose_config(compose_files: str) -> dict:
+    compose_config = {}
+    for filename in compose_files.split(':'):
+        dc_cfg = read_dc_file(filename)
+        for key, value in dc_cfg.items():
+            if key == 'services':
+                services = compose_config.setdefault('services', {})
+                for service_name, service_cfg in value.items():
+                    services.setdefault(service_name, {}).update(deepcopy(service_cfg))
+            elif isinstance(value, dict):
+                compose_config.setdefault(key, {}).update(deepcopy(value))
+            else:
+                compose_config[key] = deepcopy(value)
+    return compose_config
+
+
+def is_restart_policy_enabled(restart_policy) -> bool:
+    if restart_policy is None:
+        return False
+    return str(restart_policy).strip().lower() not in (
+        'no',
+        'none',
+        'false',
+    )
 
 
 def get_compose_services_dependency_tree(compose_files: str):

@@ -30,3 +30,4 @@ class ComposeInstanceFiles(NamedTuple):
     directory: Path
     compose_files: str
     inline_migrations: dict = None
+    compose_config: dict = None
