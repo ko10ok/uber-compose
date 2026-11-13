@@ -1,9 +1,11 @@
 from enum import Enum
+from time import perf_counter
 
 from rich.console import Console
 from rich.text import Text
 
 from uber_compose.core.constants import Constants
+from uber_compose.output.styles import Style
 
 CONSOLE = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
 
@@ -52,6 +54,45 @@ class LogPolicy:
         }
 
 
+class StageTimer:
+    def __init__(self, logger: "Logger", text: str | Text, level: LogEvents):
+        self._logger = logger
+        self._text = text
+        self._level = level
+        self._started_at = perf_counter()
+        self._done = False
+
+    @property
+    def description(self) -> str:
+        return self._text.plain if isinstance(self._text, Text) else str(self._text)
+
+    def _complete(self, marker: str, style: str) -> None:
+        if self._done:
+            return
+        self._done = True
+        elapsed = perf_counter() - self._started_at
+        self._logger.log(
+            Text(f' {marker} {self.description} ({elapsed:.2f}s)', style=style),
+            self._level,
+        )
+
+    def done(self) -> None:
+        self._complete('✔', Style.good)
+
+    def failed(self) -> None:
+        self._complete('✖', Style.bad)
+
+    def __enter__(self) -> "StageTimer":
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> bool:
+        if exc_type is None:
+            self.done()
+        else:
+            self.failed()
+        return False
+
+
 # TODO collect all into file and on level in stdout
 class Logger:
     def __init__(self, log_policy: LogPolicySet = None, cfg_constants=None):
@@ -74,11 +115,15 @@ class Logger:
         elif level in self.log_policy:
             self.stream.print(text)
 
-    def stage(self, text: str | Text, **kwargs):
-        self.log(text, LogEvents.STAGE, **kwargs)
+    def _start_stage(self, text: str | Text, level: LogEvents, **kwargs) -> "StageTimer":
+        self.log(text, level, **kwargs)
+        return StageTimer(self, text, level)
 
-    def stage_info(self, text: str | Text, **kwargs):
-        self.log(text, LogEvents.STAGE_INFO, **kwargs)
+    def stage(self, text: str | Text, **kwargs) -> "StageTimer":
+        return self._start_stage(text, LogEvents.STAGE, **kwargs)
+
+    def stage_info(self, text: str | Text, **kwargs) -> "StageTimer":
+        return self._start_stage(text, LogEvents.STAGE_INFO, **kwargs)
 
     def error(self, text: str | Text, **kwargs):
         self.log(text, LogEvents.ERROR, **kwargs)
@@ -86,11 +131,11 @@ class Logger:
     def error_details(self, text: str | Text, **kwargs):
         self.log(text, LogEvents.ERROR_DETAILS, **kwargs)
 
-    def stage_details(self, text: str | Text, **kwargs):
-        self.log(text, LogEvents.STAGE_DETAILS, **kwargs)
+    def stage_details(self, text: str | Text, **kwargs) -> "StageTimer":
+        return self._start_stage(text, LogEvents.STAGE_DETAILS, **kwargs)
 
-    def stage_debug(self, text: str | Text, **kwargs):
-        self.log(text, LogEvents.STAGE_DEBUG, **kwargs)
+    def stage_debug(self, text: str | Text, **kwargs) -> "StageTimer":
+        return self._start_stage(text, LogEvents.STAGE_DEBUG, **kwargs)
 
     def commands(self, text: str | Text, **kwargs):
         self.log(text, LogEvents.COMMANDS, **kwargs)

@@ -237,11 +237,13 @@ class SystemUberCompose:
 
         self._log_inflight_and_restart_info(services_state, force_restart)
 
-        return await self._start_new_environment(
-            config_template, compose_files, release_id, parallelism_limit, force_restart,
-            requested_env_id=requested_env_id,
-            protected_singleton_services=protected_singleton_services,
-        )
+        _for = f' {config_template.description}' if config_template.description else ''
+        with self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info)):
+            return await self._start_new_environment(
+                config_template, compose_files, release_id, parallelism_limit, force_restart,
+                requested_env_id=requested_env_id,
+                protected_singleton_services=protected_singleton_services,
+            )
 
     async def prepare_parallel_environments(
         self,
@@ -510,11 +512,11 @@ class SystemUberCompose:
         if not services_to_down:
             return
 
-        self.logger.stage(
+        with self.logger.stage(
             Text('Downing existing env containers: ', style=Style.info)
             .append(Text(f'{services_to_down}', style=Style.regular))
-        )
-        await self.system_docker_compose.down_services(services_to_down)
+        ):
+            await self.system_docker_compose.down_services(services_to_down)
 
     async def _start_new_environment(
         self,
@@ -526,8 +528,6 @@ class SystemUberCompose:
         requested_env_id: str | None = None,
         protected_singleton_services: list[str] | None = None,
     ) -> ReadyEnv:
-        _for = f' {config_template.description}' if config_template.description else ''
-        self.logger.stage(Text(f'Starting new{_for} environment', style=Style.info))
         self.logger.stage_details(f'Use compose files: {compose_files}')
 
         new_env_id = requested_env_id or get_new_env_id()
@@ -561,7 +561,11 @@ class SystemUberCompose:
                 - set(protected_singleton_services)
             )
             if services_to_down:
-                await self.system_docker_compose.down_services(services_to_down)
+                with self.logger.stage(
+                    Text('Downing running services: ', style=Style.info)
+                    .append(Text(f'{services_to_down}', style=Style.regular))
+                ):
+                    await self.system_docker_compose.down_services(services_to_down)
         else:
             await self._down_existing_env_containers(
                 new_env_id,
@@ -589,7 +593,8 @@ class SystemUberCompose:
             mounted_files_host_path=self.cfg_constants.mounted_files_host_path,
         )
 
-        await compose_instance.run()
+        with self.logger.stage(Text(f'Starting services for env {new_env_id}', style=Style.info)):
+            await compose_instance.run()
 
         # TODO check if ready by state checking
 
