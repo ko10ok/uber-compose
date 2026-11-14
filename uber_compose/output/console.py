@@ -76,10 +76,9 @@ class StageTimer:
             return
         self._done = True
         elapsed = perf_counter() - self._started_at
-        self._logger.log(
-            Text(f' {marker} {self.description} ({elapsed:.2f}s)', style=style),
-            self._level,
-        )
+        text = Text(f' {marker} {self.description}', style=style)
+        text.append(f' ({elapsed:.2f}s)')
+        self._logger.log(text, self._level)
 
     def done(self) -> None:
         self._complete('✔', Style.good)
