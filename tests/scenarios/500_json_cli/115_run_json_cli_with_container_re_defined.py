@@ -22,7 +22,7 @@ class Scenario(vedro.Scenario):
 {"level": "info", "message": "Completed successfully"}'''
 
         # Use ExecResult instead of Mock
-        self.mock_exec_result = ExecResult(stdout=self.result_logs, cmd='test_command')
+        self.mock_exec_result = ExecResult(stdout=self.result_logs, cmd='test_command', exit_code=0)
         self.cli_client_mock.exec = AsyncMock(return_value=self.mock_exec_result)
 
     def given_container_predefined(self):

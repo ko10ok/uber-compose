@@ -16,7 +16,8 @@ class Scenario(vedro.Scenario):
             ],
             stderr=[],
             cmd='test-command',
-            env={'VAR': 'value'}
+            env={'VAR': 'value'},
+            exit_code=0
         )
 
     def when_user_converts_to_string(self):
@@ -43,6 +44,7 @@ class Scenario(vedro.Scenario):
     ],
     stderr = [],
     cmd = 'test-command',
-    env = {'VAR': 'value'}
+    env = {'VAR': 'value'},
+    exit_code = 0
 )"""
         assert self.result_str == schema.str % expected

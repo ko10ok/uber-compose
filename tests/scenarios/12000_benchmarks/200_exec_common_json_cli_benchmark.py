@@ -4,6 +4,7 @@ from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.services_started import services_started
 from helpers.benchmark import measure_async
+from helpers.benchmark import parallel_load_factor
 import vedro
 
 from uber_compose import CommonJsonCli
@@ -15,6 +16,7 @@ ITERATIONS = 10
 WARMUP_ITERATIONS = 1
 MEDIAN_THRESHOLD_S = 2.0
 P95_THRESHOLD_S = 4.0
+LOAD_FACTOR = parallel_load_factor()
 
 
 class Scenario(vedro.Scenario):
@@ -67,13 +69,13 @@ services:
         print(f'exec CommonJsonCli benchmark: {self.stats.describe()}')
 
     async def then_median_exec_time_should_fit_threshold(self):
-        assert self.stats.median_s <= MEDIAN_THRESHOLD_S, (
+        assert self.stats.median_s <= MEDIAN_THRESHOLD_S * LOAD_FACTOR, (
             f'Median exec time {self.stats.median_s:.3f}s exceeds '
-            f'{MEDIAN_THRESHOLD_S:.3f}s: {self.stats.describe()}'
+            f'{MEDIAN_THRESHOLD_S * LOAD_FACTOR:.3f}s: {self.stats.describe()}'
         )
 
     async def then_p95_exec_time_should_fit_threshold(self):
-        assert self.stats.p95_s <= P95_THRESHOLD_S, (
+        assert self.stats.p95_s <= P95_THRESHOLD_S * LOAD_FACTOR, (
             f'P95 exec time {self.stats.p95_s:.3f}s exceeds '
-            f'{P95_THRESHOLD_S:.3f}s: {self.stats.describe()}'
+            f'{P95_THRESHOLD_S * LOAD_FACTOR:.3f}s: {self.stats.describe()}'
         )

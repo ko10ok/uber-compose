@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.text import Text
 
 from uber_compose.core.constants import Constants
+from uber_compose.core.constants import cleanup_log_files
 from uber_compose.output.styles import Style
 
 CONSOLE = Console(highlight=False, force_terminal=True, markup=False, soft_wrap=True)
@@ -122,6 +123,11 @@ class Logger:
         self.file_stream = None
         if self.file_log_policy is not None:
             self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            cleanup_log_files(
+                self.log_file_path,
+                getattr(cfg_constants, 'log_files_limit', None),
+                keep=self.log_file_path,
+            )
             self.file_stream = open(self.log_file_path, 'w', encoding='utf-8')
 
     def _file_log_enabled(self, level: LogEvents) -> bool:

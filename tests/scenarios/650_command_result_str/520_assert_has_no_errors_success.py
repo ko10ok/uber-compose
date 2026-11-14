@@ -11,7 +11,8 @@ class Scenario(vedro.Scenario):
             stdout=['log line'],
             stderr=[],
             cmd='test-command',
-            env={'VAR': 'value'}
+            env={'VAR': 'value'},
+            exit_code=0,
         )
 
     def when_user_asserts_has_no_errors(self):

@@ -4,6 +4,7 @@ from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from d42 import schema
 from helpers.benchmark import measure_async
+from helpers.benchmark import parallel_load_factor
 import vedro
 
 from uber_compose.env_description.env_types import Environment
@@ -14,6 +15,7 @@ ITERATIONS = 5
 WARMUP_ITERATIONS = 1
 MEDIAN_THRESHOLD_S = 5.0
 P95_THRESHOLD_S = 8.0
+LOAD_FACTOR = parallel_load_factor()
 
 
 class Scenario(vedro.Scenario):
@@ -62,13 +64,13 @@ services:
         print(f'up services benchmark: {self.stats.describe()}')
 
     async def then_median_startup_time_should_fit_threshold(self):
-        assert self.stats.median_s <= MEDIAN_THRESHOLD_S, (
+        assert self.stats.median_s <= MEDIAN_THRESHOLD_S * LOAD_FACTOR, (
             f'Median startup time {self.stats.median_s:.3f}s exceeds '
-            f'{MEDIAN_THRESHOLD_S:.3f}s: {self.stats.describe()}'
+            f'{MEDIAN_THRESHOLD_S * LOAD_FACTOR:.3f}s: {self.stats.describe()}'
         )
 
     async def then_p95_startup_time_should_fit_threshold(self):
-        assert self.stats.p95_s <= P95_THRESHOLD_S, (
+        assert self.stats.p95_s <= P95_THRESHOLD_S * LOAD_FACTOR, (
             f'P95 startup time {self.stats.p95_s:.3f}s exceeds '
-            f'{P95_THRESHOLD_S:.3f}s: {self.stats.describe()}'
+            f'{P95_THRESHOLD_S * LOAD_FACTOR:.3f}s: {self.stats.describe()}'
         )

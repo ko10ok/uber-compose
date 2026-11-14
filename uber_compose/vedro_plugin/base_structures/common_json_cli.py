@@ -85,19 +85,20 @@ class CommandResult:
 
     def __str__(self):
         stderr_key = "stderr"
-        if not self._has_no_errors():
+        if self.stderr != []:
             stderr_key = "❌ stderr"
         fields = [
             self._format_value("stdout", self.stdout),
             self._format_value(stderr_key, self.stderr),
             self._format_value("cmd", self.cmd, print_new_line=True),
             self._format_value("env", self.env),
+            self._format_value("exit_code", self.exit_code),
         ]
 
         return f"{self.__class__.__name__}(\n" + ",\n".join(fields) + "\n)"
 
     def _has_no_errors(self) -> bool:
-        return self.stderr == []
+        return self.stderr == [] and self.exit_code == 0
 
     def __bool__(self):
         has_no_errors = self._has_no_errors()

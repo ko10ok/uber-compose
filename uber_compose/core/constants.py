@@ -8,6 +8,28 @@ def default_log_file_path() -> Path:
     return Path.cwd() / 'logs' / 'startup' / f'uber-compose-{timestamp}-{os.getpid()}.log'
 
 
+def cleanup_log_files(log_file_path: str | Path, limit: int,
+                      keep: str | Path | None = None) -> None:
+    """Remove log files from the log directory when their count exceeds the limit."""
+    if limit is None or limit < 0:
+        return
+
+    directory = Path(log_file_path).parent
+    if not directory.is_dir():
+        return
+
+    keep_path = Path(keep) if keep is not None else None
+    files = [
+        file for file in directory.iterdir()
+        if file.is_file() and (keep_path is None or file != keep_path)
+    ]
+    if len(files) <= limit:
+        return
+
+    for file in files:
+        file.unlink(missing_ok=True)
+
+
 class Constants:
     def __init__(self,
                  docker_compose_files_scan_depth: int = 2,
@@ -18,6 +40,7 @@ class Constants:
                  mounted_files_path: str | Path = None,
                  mounted_files_host_path: str | Path = None,
                  log_file_path: str | Path = None,
+                 log_files_limit: int = 10,
                  ):
         self.default_log_policy = os.environ.get('LOG_POLICY', 'DEFAULT')
 
@@ -35,6 +58,12 @@ class Constants:
             tmp_envs_path or os.environ.get('TMP_ENVS_DIRECTORY', '/tmp/uc-envs')
         )
         self.log_file_path: Path = Path(log_file_path or default_log_file_path())
+        log_files_limit_env = os.environ.get('LOG_FILES_LIMIT')
+        self.log_files_limit: int | None = (
+            int(log_files_limit_env)
+            if log_files_limit_env is not None
+            else log_files_limit
+        )
 
         self.in_docker_project_root_path: Path = Path(
             in_docker_project_root_path or os.environ.get('PROJECT_ROOT_DIRECTORY', '/project')

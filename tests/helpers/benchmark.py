@@ -2,8 +2,22 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from dataclasses import dataclass
 from math import ceil
+import os
 from statistics import mean
 from time import perf_counter
+
+
+def parallel_load_factor() -> float:
+    """Scale benchmark thresholds when scenarios share the host with parallel workers.
+
+    Must be called at import time: scenario execution clears UC_* environment variables,
+    so the worker count is only visible while the scenario module is being discovered.
+    """
+    try:
+        workers = int(os.environ.get('UC_WORKERS_TOTAL', '1'))
+    except (TypeError, ValueError):
+        workers = 1
+    return max(1, workers) ** 0.5
 
 
 @dataclass(frozen=True)

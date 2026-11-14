@@ -217,10 +217,11 @@ cli = CommonJsonCli(parse_json_logs=parser.parse_output_to_json)
 - **`stderr`**: `list[str | dict]` - Error logs (based on log level)
 - **`cmd`**: `str` - Executed command
 - **`env`**: `dict[str, str]` - Environment variables used
+- **`exit_code`**: `int | None` - Application exit code; `None` means the process did not finish
 
 ### Methods
 
-- **`has_no_errors()`**: Returns `True` if `stderr` is empty
+- **`has_no_errors()`**: Returns `True` only if `stderr` is empty and `exit_code` is `0`
 
 ### Example
 
