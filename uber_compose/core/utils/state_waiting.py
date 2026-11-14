@@ -8,6 +8,7 @@ from uber_compose.core.docker_compose_shell.types import ComposeState
 from uber_compose.core.docker_compose_shell.types import ServiceComposeState
 from uber_compose.helpers.countdown_counter import CountdownCounterKeeper
 from uber_compose.helpers.jobs_result import JobResult
+from uber_compose.helpers.jobs_result import OperationError
 from uber_compose.helpers.state_keeper import ServicesState
 from uber_compose.helpers.state_keeper import StateKeeper
 from uber_compose.output.styles import Style
@@ -74,7 +75,14 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
             logger_func(Text('Starting services check up', style=output_style.info))
             state_keeper.update_state(ServicesState.DEFAULT_STATE)
 
-        services_state = (await get_compose_state()).get_all_for(service_filter)
+        services_state = await get_compose_state()
+        if isinstance(services_state, OperationError):
+            logger_func(Text(
+                f' ✗ Can not get services state:\n{services_state.log}',
+                style=output_style.bad,
+            ))
+            return None
+        services_state = services_state.get_all_for(service_filter)
         non_ready_services = [
             service
             for service in services_state
