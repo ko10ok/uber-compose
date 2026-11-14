@@ -59,3 +59,4 @@ services:
     async def then_it_should_exec_command_with_output(self):
         assert isinstance(self.response, ExecTimeout)
         assert self.response.stdout == schema.bytes(b'')
+        assert self.response.exit_code is None

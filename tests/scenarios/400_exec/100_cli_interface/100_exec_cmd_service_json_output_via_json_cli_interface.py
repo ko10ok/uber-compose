@@ -62,3 +62,4 @@ services:
         assert isinstance(self.response, CommandResult)
         assert self.response.stdout == schema.list % [self.expected_log_line]
         assert self.response.stderr == schema.list.len(0)
+        assert self.response.exit_code == 0
