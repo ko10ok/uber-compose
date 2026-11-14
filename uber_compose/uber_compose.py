@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-import shlex
 from typing import Any
 from typing import Callable
 from uuid import uuid4
@@ -10,6 +9,9 @@ from rich.text import Text
 
 from uber_compose.core.constants import Constants
 from uber_compose.core.docker_compose import ComposeInstance
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecContext
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecStrategyType
+from uber_compose.core.docker_compose_shell.exec_strategies import StatusFileExecStrategy
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
@@ -38,7 +40,6 @@ from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import HooksRegistry
 from uber_compose.helpers.hooks import UberComposeEvent
-from uber_compose.helpers.jobs_result import JobResult
 from uber_compose.helpers.labels import Label
 from uber_compose.helpers.singleton import SingletonMeta
 from uber_compose.helpers.workers_per_env import normalize_workers_per_env
@@ -676,13 +677,11 @@ class SystemUberCompose:
                    wait: Callable[..., bool] | ProcessExit | None = ProcessExit(),
                    env_id: str | None = None,
                    timeout: TimeOutCheck = None,
-                   life_cycle_policy: ExecLifeCyclePolicy = ExecLifeCyclePolicy()
+                   life_cycle_policy: ExecLifeCyclePolicy = ExecLifeCyclePolicy(),
+                   exec: ExecStrategyType = StatusFileExecStrategy,
                    ) -> ExecResult | ExecTimeout:
         if env_id is None:
             env_id = get_current_env_id()
-
-        uid = str(uuid4())
-        log_file = f'{uid}.log'
 
         dc_shell = self.system_docker_compose.get_dc_shell()
 
@@ -692,26 +691,19 @@ class SystemUberCompose:
         service_state = self._resolve_exec_service_state(dc_state, container, env_id)
         container = service_state.labels[Label.SERVICE_NAME]
 
-        cmd = f'sh -c \'{shlex.quote(command)[1:-1]} > /tmp/{log_file} 2>&1\''
-        res = await dc_shell.dc_exec_until_state(
+        strategy = exec()
+        context = ExecContext(
+            shell=dc_shell,
             container=container,
-            cmd=cmd,
+            command=command,
             extra_env=extra_env,
             wait=wait,
             timeout=timeout,
-            kill_before=life_cycle_policy.kill_before_same_old_command_running,
-            kill_after=life_cycle_policy.kill_after_command_still_running,
-            break_on_timeout=life_cycle_policy.break_on_timeout,
+            life_cycle_policy=life_cycle_policy,
         )
+        result = await strategy.execute(context)
 
-        job_result, stdout, stderr = await dc_shell.dc_exec(container, f'cat /tmp/{log_file}')
-        if job_result != JobResult.GOOD:
-            self.logger.error(Text(f'Error executing command in container {container}: {stderr}'))
-
-        if not res.finished:
-            return ExecTimeout(stdout=stdout, cmd=command)
-
-        return ExecResult(stdout=stdout, cmd=command)
+        return result
 
 
 class UberCompose(SystemUberCompose):

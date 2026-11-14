@@ -1,3 +1,7 @@
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecContext
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecStrategy
+from uber_compose.core.docker_compose_shell.exec_strategies import PidofExecStrategy
+from uber_compose.core.docker_compose_shell.exec_strategies import StatusFileExecStrategy
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
@@ -11,6 +15,7 @@ from uber_compose.env_description.env_types import Service
 from uber_compose.errors.mounted_files import MountedFileNotFoundError
 from uber_compose.helpers.current_env import get_run_depth
 from uber_compose.helpers.current_env import is_child_project
+from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import UberComposeEvent
@@ -48,7 +53,8 @@ __all__ = (
     'TheUberCompose', 'SystemUberCompose',
     'Environment', 'Service', 'Env', 'OverridenService',
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
-    'ExecLifeCyclePolicy',
+    'ExecLifeCyclePolicy', 'ExecResult',
+    'ExecStrategy', 'ExecContext', 'PidofExecStrategy', 'StatusFileExecStrategy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
     'LogEvents', 'LogPolicy', 'LogPolicySet',
     'DEFAULT_ENV_ID', 'UberComposeEvent', 'MountedFileNotFoundError',

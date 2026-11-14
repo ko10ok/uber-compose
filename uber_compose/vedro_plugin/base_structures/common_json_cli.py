@@ -9,6 +9,7 @@ from typing import Type
 from typing import TypeVar
 from warnings import warn
 
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecStrategyType
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
@@ -24,6 +25,7 @@ class CommandResult:
     stderr: list
     cmd: str
     env: dict[str, str]
+    exit_code: int | None = None
 
     def _format_value(self, key, value, indent_level=1, print_new_line=True):
         """Formats value considering its type and nesting level."""
@@ -217,6 +219,7 @@ class CommonJsonCli(Generic[TCommandResult]):
         cli_client: SystemUberCompose = None,
         timeout: TimeOutCheck = TimeOutCheck(attempts=10, delay_s=1),
         life_cycle_policy: ExecLifeCyclePolicy = ExecLifeCyclePolicy(),
+        exec: ExecStrategyType = None,
     ):
         self._container = container
         self._cli_client: SystemUberCompose = cli_client or TheUberCompose()
@@ -224,6 +227,7 @@ class CommonJsonCli(Generic[TCommandResult]):
         self._result_factory = result_factory
         self._timeout = timeout
         self._life_cycle_policy = life_cycle_policy
+        self._exec = exec
 
     def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> TCommandResult:
         stdout, stderr = self._parse_json_logs(logs)
@@ -238,6 +242,7 @@ class CommonJsonCli(Generic[TCommandResult]):
                    timeout: TimeOutCheck = None,
                    life_cycle_policy: ExecLifeCyclePolicy = None,
                    env_id: str = None,
+                   exec: ExecStrategyType = None,
                    ) -> TCommandResult:
         if command_result_extra is None:
             command_result_extra = {}
@@ -258,6 +263,9 @@ class CommonJsonCli(Generic[TCommandResult]):
         if env_id is None:
             env_id = get_current_env_id()
 
+        if exec is None:
+            exec = self._exec
+
         exec_kwargs = {
             'container': container,
             'command': command,
@@ -268,6 +276,8 @@ class CommonJsonCli(Generic[TCommandResult]):
         }
         if env_id != DEFAULT_ENV_ID:
             exec_kwargs['env_id'] = env_id
+        if exec is not None:
+            exec_kwargs['exec'] = exec
 
         result = await self._cli_client.exec(**exec_kwargs)
 
@@ -275,5 +285,6 @@ class CommonJsonCli(Generic[TCommandResult]):
             cmd=command,
             env=extra_env or {},
             logs=result.stdout,
+            exit_code=result.exit_code,
             **command_result_extra,
         )

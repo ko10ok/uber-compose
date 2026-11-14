@@ -9,6 +9,7 @@
 - [CommandResult](#commandresult)
 - [JsonParser Configuration](#jsonparser-configuration)
 - [ExecLifeCyclePolicy](#execlifecyclepolicy)
+- [Exec Strategies](#exec-strategies)
 - [Timeouts Redefinition](#timeouts-redefinition)
 
 ---
@@ -372,6 +373,10 @@ policy = ExecLifeCyclePolicy(
     break_on_timeout=False
 )
 ```
+
+## Exec Strategies
+
+See [Alternative Exec Strategies](EXEC_STRATEGIES.md).
 
 ## Timeouts Redefinition
 

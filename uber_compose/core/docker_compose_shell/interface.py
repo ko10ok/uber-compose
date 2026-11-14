@@ -41,6 +41,12 @@ class TimeOutCheck:
     delay_s: float
 
 
+class ExecRawResult(NamedTuple):
+    returncode: int
+    stdout: bytes
+    stderr: bytes
+
+
 class ComposeShellInterface:
     def __init__(self,
                  compose_files: str,
@@ -237,6 +243,48 @@ class ComposeShellInterface:
 
         return JobResult.GOOD, stdout, stderr
 
+    async def dc_exec_raw(self, container: str, cmd: str, extra_env: dict = None, env: dict = None,
+                          root: Path | str = None,
+                          detached: bool = False,
+                          ) -> ExecRawResult:
+        self.logger.stage_details(f'Executing "{cmd}" in "{container}" container')
+        sys.stdout.flush()
+
+        if extra_env is None:
+            extra_env = {}
+        extra_env_str = ' '.join(
+            f'-e {key}={shlex.quote(str(value))}' for key, value in extra_env.items()
+        )
+
+        env, root = self._prepare_env_root(env, root)
+
+        detached_param_str = '-d' if detached else ''
+        process = await asyncio.create_subprocess_shell(
+            cmd := (
+                f'{self.compose_cmd} --project-directory {root} exec {extra_env_str} '
+                f'{detached_param_str} {self.extra_exec_params} {container} {cmd}'
+            ),
+            env=env,
+            cwd=root,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        self.logger.commands(Text(
+            f'{cmd}' + (f'\n  with params: {extra_env_str}' if extra_env else ''),
+            style=Style.context
+        ))
+        self.logger.system_commands_environment_debug(Text(
+            f'running in {root}; with {pprint.pformat(env)}',
+            style=Style.regular
+        ))
+        stdout, stderr = await process_output_till_done(process, self.logger.command_output)
+
+        return ExecRawResult(
+            returncode=process.returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
     async def _dc_exec_process_pids(self, container: str,
                                     cmd: str,
                                     env: dict = None,
@@ -309,6 +357,7 @@ class ComposeShellInterface:
         stdout: str = ''
         stderr: str = ''
         finished: bool = False
+        exit_code: int | None = None
 
     async def dc_exec_until_state(self, container: str,
                                   cmd: str,
