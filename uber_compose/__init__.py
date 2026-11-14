@@ -1,3 +1,7 @@
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecContext
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecStrategy
+from uber_compose.core.docker_compose_shell.exec_strategies import PidofExecStrategy
+from uber_compose.core.docker_compose_shell.exec_strategies import StatusFileExecStrategy
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
@@ -8,9 +12,32 @@ from uber_compose.env_description.env_types import Env
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import Service
+from uber_compose.errors.mounted_files import MountedFileNotFoundError
+from uber_compose.helpers.current_env import get_run_depth
+from uber_compose.helpers.current_env import is_child_project
+from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import UberComposeEvent
+from uber_compose.output.console import LogEvents
+from uber_compose.output.console import LogPolicy
+from uber_compose.output.console import LogPolicySet
+from uber_compose.parallel_plugin import ExecutionPlan
+from uber_compose.parallel_plugin import VedroUberComposeParallel
+from uber_compose.parallel_plugin import WorkerAssignment
+from uber_compose.parallel_plugin import build_execution_plan
+from uber_compose.parallel_plugin import build_execution_plan_from_scheduler
+from uber_compose.parallel_plugin import env_group_key
+from uber_compose.parallel_plugin import env_group_key_for
+from uber_compose.parallel_plugin import get_execution_plan
+from uber_compose.parallel_plugin import get_namespace_map
+from uber_compose.parallel_plugin import get_worker_groups
+from uber_compose.parallel_plugin import get_worker_id
+from uber_compose.parallel_plugin import get_workers_total
+from uber_compose.parallel_plugin import is_parallel_worker
+from uber_compose.parallel_plugin import is_parallel_worker_process
+from uber_compose.parallel_plugin import reset_execution_plan
+from uber_compose.parallel_plugin import set_execution_plan
 from uber_compose.uber_compose import SystemUberCompose
 from uber_compose.uber_compose import TheUberCompose
 from uber_compose.vedro_plugin.base_structures.common_json_cli import CommandResult
@@ -26,7 +53,14 @@ __all__ = (
     'TheUberCompose', 'SystemUberCompose',
     'Environment', 'Service', 'Env', 'OverridenService',
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
-    'ExecLifeCyclePolicy',
+    'ExecLifeCyclePolicy', 'ExecResult',
+    'ExecStrategy', 'ExecContext', 'PidofExecStrategy', 'StatusFileExecStrategy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
-    'DEFAULT_ENV_ID', 'UberComposeEvent',
+    'LogEvents', 'LogPolicy', 'LogPolicySet',
+    'DEFAULT_ENV_ID', 'UberComposeEvent', 'MountedFileNotFoundError',
+    'ExecutionPlan', 'WorkerAssignment', 'env_group_key', 'env_group_key_for',
+    'get_execution_plan', 'get_namespace_map', 'get_worker_groups', 'get_worker_id', 'get_workers_total',
+    'get_run_depth', 'is_child_project',
+    'is_parallel_worker', 'is_parallel_worker_process', 'reset_execution_plan', 'set_execution_plan',
+    'VedroUberComposeParallel', 'build_execution_plan', 'build_execution_plan_from_scheduler',
 )

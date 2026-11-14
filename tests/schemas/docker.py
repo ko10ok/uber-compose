@@ -11,6 +11,7 @@ MountsSchema = schema.dict({
 })
 
 ContainerSchema = schema.dict({
+    'Id': schema.str,
     'Labels': LabelsSchema,
     'State': schema.str('running') | schema.str,
     'Mounts': schema.list(MountsSchema),

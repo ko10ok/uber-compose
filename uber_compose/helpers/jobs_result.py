@@ -7,8 +7,9 @@ class JobResult(Enum):
     BAD = auto()
 
 
-class OperationError:
+class OperationError(Exception):
     def __init__(self, log: str):
+        super().__init__(log)
         self.log = log
 
     def __eq__(self, other):

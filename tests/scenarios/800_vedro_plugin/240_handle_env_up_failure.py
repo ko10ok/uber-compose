@@ -2,7 +2,8 @@ from argparse import Namespace
 from unittest.mock import Mock
 
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from helpers.vedro.scenario import make_scenario
 import vedro
@@ -29,8 +30,10 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+        self.constants = isolated_constants(self.project)
 
     async def given_broken_compose_file(self):
         # image that cannot be pulled -> docker compose up will fail
@@ -60,6 +63,7 @@ services:
         self.plugin = VedroUberComposePlugin(
             config=_VedroUberCompose,
             client=UberCompose(
+                cfg_constants=self.constants,
                 log_policy=LogPolicy.VERBOSE,
                 health_policy=UpHealthPolicy(
                     service_up_check_attempts=3,

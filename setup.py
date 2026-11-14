@@ -1,8 +1,21 @@
 import os
 import pathlib
+import shutil
 
 from setuptools import find_packages
 from setuptools import setup
+from setuptools.command.build_py import build_py as _build_py
+
+HERE = pathlib.Path(__file__).parent
+
+
+class BuildPy(_build_py):
+    def run(self):
+        super().run()
+        docs_source = HERE / 'docs'
+        docs_target = pathlib.Path(self.build_lib) / 'uber_compose' / 'docs'
+        if docs_source.is_dir():
+            shutil.copytree(docs_source, docs_target, dirs_exist_ok=True)
 
 
 def find_required():
@@ -15,7 +28,6 @@ def get_version(filename='uber_compose/version'):
     return open(filename, "r").read().strip() + ext_version
 
 
-HERE = pathlib.Path(__file__).parent
 README = open("README.md").read()
 setup(
     name="uber-compose",
@@ -31,6 +43,7 @@ setup(
     packages=find_packages(exclude=("tests",)),
     install_requires=find_required(),
     entry_points={},
+    cmdclass={'build_py': BuildPy},
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.10",

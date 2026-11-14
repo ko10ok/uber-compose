@@ -9,6 +9,7 @@ from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.env_description.env_types import Environment
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.bytes_pickle import debase64_pickled
+from uber_compose.helpers.jobs_result import OperationError
 from uber_compose.helpers.labels import Label
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
@@ -52,6 +53,8 @@ class SystemDockerCompose:
 
     async def get_state_for(self, config_template: Environment, compose_files: str) -> ServicesComposeState:
         services_state = await self.dc_shell.dc_state()
+        if isinstance(services_state, OperationError):
+            raise services_state
         services_states = services_state.get_all_for(
             lambda service_state: (
                 service_state.check(
@@ -105,7 +108,15 @@ class SystemDockerCompose:
 
     async def get_running_services(self) -> list[str]:
         services_state = await self.dc_shell.dc_state()
+        if isinstance(services_state, OperationError):
+            raise services_state
         return [service.name for service in services_state.get_all_for()]
+
+    async def get_all_services_state(self) -> ServicesComposeState:
+        services_state = await self.dc_shell.dc_state()
+        if isinstance(services_state, OperationError):
+            raise services_state
+        return services_state
 
     async def down_services(self, services: list[str] | None = None) -> None:
         await self.dc_shell.dc_down(services=services)

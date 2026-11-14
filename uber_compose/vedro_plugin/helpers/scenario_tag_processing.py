@@ -17,23 +17,23 @@ async def extract_scenario_config(scenario: VirtualScenario) -> Environment | No
     return scenario_env
 
 
-async def extract_scenarios_configs_set(scenarios: ScenarioScheduler) -> set[Environment]:
-    needed_configs = set()
+async def extract_scenarios_configs_set(scenarios: ScenarioScheduler) -> list[Environment | None]:
+    needed_configs = {}
     async for scenario in scenarios:
         if scenario.is_skipped():
             continue
         env_config = await extract_scenario_config(scenario)
 
         if env_config is None:
-            needed_configs.add(None)
+            needed_configs[base64_pickled(None)] = None
             continue
 
         if env_config.description == DEFAULT_ENV_DESCRIPTION:
-            needed_configs.add(None)
+            needed_configs[base64_pickled(None)] = None
         else:
-            needed_configs.add(env_config)
+            needed_configs[base64_pickled(env_config)] = env_config
 
-    return sorted(needed_configs, key=lambda x: base64_pickled(x))
+    return [needed_configs[key] for key in sorted(needed_configs)]
 
 
 async def ignore_unsuitable(scenarios: ScenarioScheduler, env_desc) -> None:

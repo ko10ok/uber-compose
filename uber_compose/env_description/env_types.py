@@ -82,6 +82,7 @@ class Service(NamedTuple):
     env: Env = Env()
     events_handlers: List[Handler] = []
     mode: ServiceMode = ServiceMode.ON
+    mounted_files: tuple[str, ...] = ()
 
     def __eq__(self, other):
         if not isinstance(other, Service):
@@ -96,13 +97,15 @@ class Service(NamedTuple):
             name=self.name,
             env=Env(self.env | env),
             events_handlers=self.events_handlers,
-            mode=self.mode
+            mode=self.mode,
+            mounted_files=self.mounted_files,
         )
 
     def as_dict(self):
         return {
             'name': self.name,
             'env': dict(self.env),
+            'mounted_files': list(self.mounted_files),
         }
 
 

@@ -4,7 +4,16 @@ services:
     privileged: true
     environment:
       - DOCKER_TLS_CERTDIR=
-    command: ["--registry-mirror", "http://docker-registry-proxy.2gis.io", "--tls=false"]
+    command:
+      - "--registry-mirror"
+      - "http://docker-registry-proxy.2gis.io"
+      - "--tls=false"
+      - "--default-address-pool"
+      - "base=10.100.0.0/16,size=24"
+      - "--default-address-pool"
+      - "base=10.101.0.0/16,size=24"
+      - "--default-address-pool"
+      - "base=10.102.0.0/16,size=24"
     ports:
       - 2375
     healthcheck:

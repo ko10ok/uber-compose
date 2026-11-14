@@ -16,6 +16,7 @@ from uber_compose.env_description.env_types import OverridenService
 from uber_compose.errors.migrations import ServicesMigrationsError
 from uber_compose.helpers.bytes_pickle import base64_pickled
 from uber_compose.helpers.labels import Label
+from uber_compose.helpers.parameterization import substitute_parameterization_placeholders
 
 
 class QuotedString(str):
@@ -59,7 +60,7 @@ def patch_network(dc_cfg: dict, network_name) -> dict:
     # }
 
     for service in new_dc_cfg['services']:
-        if 'network' not in new_dc_cfg['services'][service]:
+        if 'networks' not in new_dc_cfg['services'][service]:
             new_dc_cfg['services'][service]['networks'] = []
         # new_dc_cfg['services'][service]['networks'] += ['e2e_back_network']
     return new_dc_cfg
@@ -68,6 +69,10 @@ def patch_network(dc_cfg: dict, network_name) -> dict:
 def patch_service_volumes(volumes: list, root_path: str | Path) -> list:
     updated_volumes = []
     for volume in volumes:
+        if not isinstance(volume, str):
+            updated_volumes += [volume]
+            continue
+
         new_volume = volume
         if volume.startswith('..'):
             new_volume = root_path + '/' + volume
@@ -89,12 +94,147 @@ def patch_services_volumes(dc_cfg: dict, root_path: str | Path, relative_path: s
     return new_dc_cfg
 
 
-def list_key_exist(key, env: list[str]) -> None | str:
-    for item in env:
-        if key in item:
-            return item
-    else:
-        return None
+DEFAULT_MOUNTED_FILES_CONTAINER_ROOT = '/e2e_mounted_files'
+
+
+def _parse_mounted_file_spec(spec: str) -> tuple[str, str]:
+    template_path, separator, target_path = str(spec).partition(':')
+    if not template_path:
+        raise ValueError(f'Mounted file template path is empty: {spec!r}')
+
+    if not separator:
+        relative_path = Path(template_path)
+        if relative_path.is_absolute():
+            relative_path = Path(relative_path.name)
+        target_path = f'{DEFAULT_MOUNTED_FILES_CONTAINER_ROOT}/{relative_path.as_posix()}'
+
+    if not target_path.startswith('/'):
+        raise ValueError(f'Mounted file target path must be absolute: {spec!r}')
+
+    return template_path, target_path
+
+
+def _relative_mounted_template_path(template_path: str) -> Path:
+    path = Path(template_path)
+    if path.is_absolute():
+        return Path(path.name)
+    return path
+
+
+def render_mounted_files(
+    env_config_instance: EnvInstanceConfig,
+    mounted_files_path: str | Path,
+    mounted_files_host_path: str | Path | None = None,
+) -> dict[str, list[tuple[Path, str, bool]]]:
+    rendered_by_template: dict[str, tuple[Path, Path]] = {}
+    mounts_by_service: dict[str, list[tuple[Path, str, bool]]] = {}
+    placeholders = env_config_instance.placeholders or {}
+    mounted_files_host_path = mounted_files_host_path or mounted_files_path
+
+    for service_name, service in env_config_instance.env_source.get_services().items():
+        for spec in service.mounted_files:
+            template_path, target_path = _parse_mounted_file_spec(spec)
+            if template_path not in rendered_by_template:
+                source_path = Path(template_path)
+                if not source_path.is_absolute():
+                    source_path = Path.cwd() / source_path
+                if not source_path.exists():
+                    raise FileNotFoundError(
+                        f'Mounted file template not found: {template_path!r} ({source_path})'
+                    )
+
+                content = source_path.read_text()
+                content = substitute_parameterization_placeholders(content, placeholders)
+
+                relative_template_path = _relative_mounted_template_path(template_path)
+                rendered_path = (
+                    Path(mounted_files_path)
+                    / env_config_instance.env_id
+                    / relative_template_path
+                )
+                host_path = (
+                    Path(mounted_files_host_path)
+                    / env_config_instance.env_id
+                    / relative_template_path
+                )
+                rendered_path.parent.mkdir(parents=True, exist_ok=True)
+                rendered_path.write_text(content)
+                rendered_by_template[template_path] = (rendered_path, host_path)
+
+            _, host_path = rendered_by_template[template_path]
+            mounts_by_service.setdefault(service_name, []).append((
+                host_path,
+                target_path,
+                True,
+            ))
+
+    return mounts_by_service
+
+
+def _volume_target(volume) -> str | None:
+    if isinstance(volume, dict):
+        return volume.get('target')
+    parts = str(volume).split(':')
+    return parts[1] if len(parts) >= 2 else None
+
+
+def _volume_mode(volume) -> str:
+    if isinstance(volume, dict):
+        return 'ro' if volume.get('read_only') else 'rw'
+    parts = str(volume).split(':')
+    return parts[2] if len(parts) >= 3 else 'ro'
+
+
+def _make_mounted_volume(source: Path, target: str, read_only: bool, existing=None) -> str:
+    mode = _volume_mode(existing) if existing is not None else ('ro' if read_only else 'rw')
+    return f'{source}:{target}:{mode}'
+
+
+def patch_service_mounted_files(
+    dc_cfg: dict,
+    mounts_by_service: dict[str, list[tuple[Path, str, bool]]] | None,
+) -> dict:
+    new_dc_cfg = deepcopy(dc_cfg)
+    if not mounts_by_service:
+        return new_dc_cfg
+
+    for service_name, mounts in mounts_by_service.items():
+        if service_name not in new_dc_cfg['services']:
+            continue
+
+        service_cfg = new_dc_cfg['services'][service_name]
+        volumes = list(service_cfg.get('volumes') or [])
+
+        for source, target, read_only in mounts:
+            replaced = False
+            for index, volume in enumerate(volumes):
+                if _volume_target(volume) == target:
+                    volumes[index] = _make_mounted_volume(source, target, read_only, volume)
+                    replaced = True
+                    break
+
+            if not replaced:
+                volumes.append(_make_mounted_volume(source, target, read_only))
+
+        service_cfg['volumes'] = volumes
+
+    return new_dc_cfg
+
+
+def _env_list_key(item) -> str:
+    return str(item).split('=', 1)[0]
+
+
+def _set_env_list(env: list, key: str, value) -> list:
+    updated = [item for item in env if _env_list_key(item) != key]
+    updated.append(f'{key}={value}')
+    return updated
+
+
+def _resolve_env_value(value, run_id):
+    if isinstance(value, str):
+        return value.replace('[[test_run_id]]', run_id)
+    return value
 
 
 def patch_service_set(dc_cfg: dict, services_map: dict[str, str] | None):
@@ -129,39 +269,60 @@ def patch_envs(
         if service not in services_environment_vars:
             continue
 
-        run_id_param = ('[[test_run_id]]', run_id)
-
         if isinstance(new_dc_cfg['services'][service]['environment'], list) and service in services_environment_vars:
             for k, v in services_environment_vars[service].env.items():
-                if list_key_exist(f'{k}={v.replace(*run_id_param)}', new_dc_cfg['services'][service]['environment']):
-                    ...
-                else:
-                    new_dc_cfg['services'][service]['environment'] += [f'{k}={v.replace(*run_id_param)}']
+                new_dc_cfg['services'][service]['environment'] = _set_env_list(
+                    new_dc_cfg['services'][service]['environment'],
+                    k,
+                    _resolve_env_value(v, run_id),
+                )
 
             for ovr_service in overridden_services:
                 if ovr_service.services_envs_fix:
                     for ovr_env in ovr_service.services_envs_fix:
                         if ovr_env.name == service or ovr_env.name == '*':
                             for k, v in ovr_env.env.items():
-                                if isinstance(v, str):
-                                    v = v.replace(*run_id_param)
-                                new_dc_cfg['services'][service]['environment'] += [f'{k}={v}']
+                                new_dc_cfg['services'][service]['environment'] = _set_env_list(
+                                    new_dc_cfg['services'][service]['environment'],
+                                    k,
+                                    _resolve_env_value(v, run_id),
+                                )
 
         elif isinstance(new_dc_cfg['services'][service]['environment'], dict) and service in services_environment_vars:
             for k, v in services_environment_vars[service].env.items():
-                if k in new_dc_cfg['services'][service]['environment']:
-                    ...
-                else:
-                    new_dc_cfg['services'][service]['environment'].update({k: v.replace(*run_id_param)})
+                new_dc_cfg['services'][service]['environment'][k] = _resolve_env_value(v, run_id)
 
             for ovr_service in overridden_services:
                 if ovr_service.services_envs_fix:
                     for ovr_env in ovr_service.services_envs_fix:
                         if ovr_env.name == service or ovr_env.name == '*':
-                            new_dc_cfg['services'][service]['environment'].update(
-                                {k: v.replace(*run_id_param) for k, v in ovr_env.env.items()}
-                            )
+                            for k, v in ovr_env.env.items():
+                                new_dc_cfg['services'][service]['environment'][k] = _resolve_env_value(v, run_id)
     return new_dc_cfg
+
+
+def _rename_link(link: str, services_map: dict[str, str]) -> str:
+    service_name, separator, alias = str(link).partition(':')
+    renamed = services_map.get(service_name, service_name)
+    if separator:
+        return f'{renamed}{separator}{alias}'
+    return renamed
+
+
+def _rename_links(links, services_map: dict[str, str], overridden_services: list):
+    if isinstance(links, list):
+        return [
+            _rename_link(link, services_map)
+            for link in links
+            if str(link).split(':', 1)[0] not in overridden_services
+        ]
+    if isinstance(links, dict):
+        return {
+            services_map.get(service_name, service_name): alias
+            for service_name, alias in links.items()
+            if service_name not in overridden_services
+        }
+    return links
 
 
 def patch_services_names(
@@ -184,7 +345,6 @@ def patch_services_names(
         result_service_name = services_map[service]
 
         srv_cfg['labels'][Label.SERVICE_NAME] = result_service_name
-        new_service_dc_cfg['services'][result_service_name] = srv_cfg
 
         if 'depends_on' in srv_cfg:
             if isinstance(srv_cfg['depends_on'], list):
@@ -192,18 +352,21 @@ def patch_services_names(
                     services_map[item] for item in srv_cfg['depends_on']
                     if item not in overridden_services
                 ]
-                new_service_dc_cfg['services'][result_service_name] = srv_cfg | {
-                    'depends_on': new_deps
-                }
+                srv_cfg = srv_cfg | {'depends_on': new_deps}
             if isinstance(srv_cfg['depends_on'], dict):
                 new_deps = {
                     services_map[service_name]: condition
                     for service_name, condition in srv_cfg['depends_on'].items()
                     if service_name not in overridden_services
                 }
-                new_service_dc_cfg['services'][result_service_name] = srv_cfg | {
-                    'depends_on': new_deps
-                }
+                srv_cfg = srv_cfg | {'depends_on': new_deps}
+
+        if 'links' in srv_cfg:
+            srv_cfg = srv_cfg | {
+                'links': _rename_links(srv_cfg['links'], services_map, overridden_services)
+            }
+
+        new_service_dc_cfg['services'][result_service_name] = srv_cfg
     return new_service_dc_cfg
 
 
@@ -237,7 +400,8 @@ def patch_docker_compose_file_services(filename: Path,
                                        services_map: dict[str, str] | None,
                                        overridden_services: list[OverridenService] | None = None,
                                        labels: dict[str, str] = None,
-                                       relative_path: Path = None
+                                       relative_path: Path = None,
+                                       mounted_files: dict[str, list[tuple[Path, str, bool]]] | None = None,
                                        ) -> None:
     dc_cfg = read_dc_file(filename)
 
@@ -251,6 +415,8 @@ def patch_docker_compose_file_services(filename: Path,
 
     if services_environment_vars:
         dc_cfg = patch_envs(dc_cfg, services_environment_vars, run_id, overridden_services)  # todo use servcie_map
+
+    dc_cfg = patch_service_mounted_files(dc_cfg, mounted_files)
 
     if services_map:
         dc_cfg = patch_services_names(dc_cfg, services_map, overridden_services)  # todo use servcie_map istead postfix
@@ -366,8 +532,10 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
                                     host_project_root_directory,
                                     compose_files_path: Path,
                                     tmp_env_path: Path,
+                                    mounted_files_path: Path,
                                     run_id: str,
                                     release_id: str = None,
+                                    mounted_files_host_path: Path | None = None,
                                     ) -> ComposeInstanceFiles:
     dst = tmp_env_path / env_config_instance.env_id
 
@@ -376,6 +544,11 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
         if file.is_file():
             file.unlink()
 
+    mounted_files = render_mounted_files(
+        env_config_instance,
+        mounted_files_path,
+        mounted_files_host_path,
+    )
     new_compose_files_list = made_up_instance_compose_files(compose_files, dst)
 
     labels = {
@@ -407,6 +580,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
             labels=labels,
             relative_path=relative_path,
             run_id=run_id,
+            mounted_files=mounted_files,
         )
     inline_migrations = extract_services_inline_migration(new_compose_files_list.split(':'))
 
@@ -416,6 +590,7 @@ def make_env_compose_instance_files(env_config_instance: EnvInstanceConfig,
         directory=dst,
         compose_files=new_compose_files_list,
         inline_migrations=inline_migrations,
+        compose_config=parse_compose_config(new_compose_files_list),
     )
 
 
@@ -496,6 +671,32 @@ def group_by_levels(topologically_sorted_services, services_dict):
         service_to_level[service] = current_level
 
     return service_levels
+
+
+def parse_compose_config(compose_files: str) -> dict:
+    compose_config = {}
+    for filename in compose_files.split(':'):
+        dc_cfg = read_dc_file(filename)
+        for key, value in dc_cfg.items():
+            if key == 'services':
+                services = compose_config.setdefault('services', {})
+                for service_name, service_cfg in value.items():
+                    services.setdefault(service_name, {}).update(deepcopy(service_cfg))
+            elif isinstance(value, dict):
+                compose_config.setdefault(key, {}).update(deepcopy(value))
+            else:
+                compose_config[key] = deepcopy(value)
+    return compose_config
+
+
+def is_restart_policy_enabled(restart_policy) -> bool:
+    if restart_policy is None:
+        return False
+    return str(restart_policy).strip().lower() not in (
+        'no',
+        'none',
+        'false',
+    )
 
 
 def get_compose_services_dependency_tree(compose_files: str):

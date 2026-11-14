@@ -5,3 +5,7 @@ class ServicesUpError(Exception):
 
     def __str__(self):
         return self.message
+
+
+class SingletonConfigChangedError(ServicesUpError):
+    ...

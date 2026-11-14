@@ -1,4 +1,4 @@
-vedro
+vedro>=1.15,<2.0
 PyYAML
 rtry
 rich

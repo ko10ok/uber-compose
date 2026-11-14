@@ -56,7 +56,7 @@ services:
       
       # Project root directory on host machine
       - HOST_PROJECT_ROOT_DIRECTORY=${PWD}             # For project root or test directory
-      
+
       # Unique project name for CI isolation
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}   # Setup unique name for CI runs
 ```
@@ -68,6 +68,7 @@ services:
 | `DOCKER_HOST` | `tcp://dockersock:2375` | Docker daemon connection URL |
 | `NON_STOP_CONTAINERS` | `e2e,dockersock` | Containers excluded from management |
 | `HOST_PROJECT_ROOT_DIRECTORY` | - | Path to docker-compose files on host |
+| `MOUNTED_FILES_DIRECTORY` | - | Used for `mounted_files` in parallel runs; see [Parallel Runs](PARALLELISM.md#mounted-config-templates) |
 | `COMPOSE_PROJECT_NAME` | - | Unique project identifier for CI |
 
 

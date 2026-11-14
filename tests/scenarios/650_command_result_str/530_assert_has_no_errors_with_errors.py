@@ -12,7 +12,8 @@ class Scenario(vedro.Scenario):
             stdout=['log line'],
             stderr=['error log'],
             cmd='test-command',
-            env={'VAR': 'value'}
+            env={'VAR': 'value'},
+            exit_code=0
         )
 
     def when_user_asserts_has_no_errors(self):
@@ -32,6 +33,7 @@ class Scenario(vedro.Scenario):
     stdout = ['log line'],
     ❌ stderr = ['error log'],
     cmd = 'test-command',
-    env = {'VAR': 'value'}
+    env = {'VAR': 'value'},
+    exit_code = 0
 )"""
         assert str(self.exception) == schema.str % expected_error

@@ -6,9 +6,13 @@ import sys
 from rich.text import Text
 
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
+from uber_compose.core.docker_compose_shell.types import ComposeHealth
+from uber_compose.core.docker_compose_shell.types import ComposeState
+from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
 from uber_compose.core.sequence_run_types import EnvInstanceConfig
 from uber_compose.core.utils.compose_files import get_compose_services_dependency_tree
+from uber_compose.core.utils.compose_files import is_restart_policy_enabled
 from uber_compose.core.utils.compose_files import make_env_compose_instance_files
 from uber_compose.core.utils.compose_instance_cfg import make_env_instance_config
 from uber_compose.core.utils.state_waiting import wait_all_services_up
@@ -17,6 +21,9 @@ from uber_compose.env_description.env_types import EventStage
 from uber_compose.errors.up import ServicesUpError
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.jobs_result import JobResult
+from uber_compose.helpers.labels import Label
+from uber_compose.helpers.parameterization import build_parameterization_placeholders
+from uber_compose.helpers.parameterization import substitute_parameterization_placeholders
 from uber_compose.output.console import Logger
 from uber_compose.output.styles import Style
 
@@ -40,8 +47,12 @@ class ComposeInstance:
                  release_id: str = None,
                  logger: Logger = None,
                  health_policy: UpHealthPolicy = UpHealthPolicy(),
+                 worker_id: int | None = None,
+                 mounted_files_path: Path | None = None,
+                 mounted_files_host_path: Path | None = None,
                  ):
         self.run_id = run_id
+        self.worker_id = worker_id
         self.logger = logger
         self.health_policy = health_policy
         self.compose_files = compose_files
@@ -49,6 +60,8 @@ class ComposeInstance:
         self.host_project_root_directory = host_project_root_directory
         self.except_containers = except_containers
         self.tmp_envs_path = tmp_envs_path
+        self.mounted_files_path = mounted_files_path or (Path.cwd() / 'e2e_mounted_files')
+        self.mounted_files_host_path = mounted_files_host_path or self.mounted_files_path
 
         self.project = project
         if execution_envs is None:
@@ -72,6 +85,8 @@ class ComposeInstance:
                 env_template=self.config_template,
                 env_id=self.new_env_id,
                 name=self.name,
+                run_id=self.run_id,
+                worker_id=self.worker_id,
             )
         return self._env_instance_config
 
@@ -84,6 +99,8 @@ class ComposeInstance:
             host_project_root_directory=self.host_project_root_directory,
             compose_files_path=self.in_docker_project_root,
             tmp_env_path=self.tmp_envs_path,
+            mounted_files_path=self.mounted_files_path,
+            mounted_files_host_path=self.mounted_files_host_path,
             release_id=self.release_id,
             run_id=self.run_id,
         )
@@ -96,26 +113,36 @@ class ComposeInstance:
         return compose_instance_files
 
     async def run_migration(self, stages, services, env_config_instance, migrations):
+        placeholders = build_parameterization_placeholders(
+            env_config_instance.env_id,
+            services_map=env_config_instance.env_services_map,
+            run_id=self.run_id,
+            worker_id=self.worker_id,
+        )
         for service in env_config_instance.env:
             sys.stdout.flush()
-            if service not in services:
+            actual_service = env_config_instance.env_services_map.get(service, service)
+            if actual_service not in services:
                 continue
 
             for handler in migrations[service]:
                 if handler.stage not in stages:
                     continue
 
-                # TODO fix service map if default env
-                target_service = env_config_instance.env_services_map[handler.executor or service]
+                executor = handler.executor or service
+                target_service = env_config_instance.env_services_map.get(executor, executor)
 
-                # TODO check if need to template migrations
-                #   substituted_cmd = handler.cmd.format(**env_config_instance.env_services_map)
-                substituted_cmd = handler.cmd
-                migration_result = await self.compose_executor.dc_exec_until_state(
-                    target_service, substituted_cmd,
-                    kill_before=False,
-                    kill_after=False,
-                )
+                substituted_cmd = substitute_parameterization_placeholders(handler.cmd, placeholders)
+                with self.logger.stage_details(
+                    Text('Running migration: ', style=Style.info)
+                    .append(Text(substituted_cmd, style=Style.regular))
+                    .append(Text(f' ({target_service})', style=Style.info))
+                ):
+                    migration_result = await self.compose_executor.dc_exec_until_state(
+                        target_service, substituted_cmd,
+                        kill_before=False,
+                        kill_after=False,
+                    )
 
                 # empty or none skips
                 migration_errors = [error for error in migration_result.stderr.split(b'\n') if error]
@@ -167,21 +194,22 @@ class ComposeInstance:
         for container in self.except_containers:
             if container in services:
                 services.remove(container)
-        self.logger.stage_details(f'Starting services pack: {services}; except: {self.except_containers}')
-
         status_result = await self.compose_executor.dc_state()
         assert status_result != JobResult.BAD, f"Can't get first status for services {services}"
 
-        await self.run_migration(
-            [EventStage.BEFORE_SERVICE_START],
-            services,
-            self.compose_instance_files.env_config_instance,
-            migrations
-        )
+        with self.logger.stage_details(Text(f'Running before-start migrations for {services}', style=Style.info)):
+            await self.run_migration(
+                [EventStage.BEFORE_SERVICE_START],
+                services,
+                self.compose_instance_files.env_config_instance,
+                migrations
+            )
 
-        up_result = await self.compose_executor.dc_up(services)
+        with self.logger.stage_details(Text(f'Starting compose services {services}', style=Style.info)):
+            up_result = await self.compose_executor.dc_up(services)
         if up_result != JobResult.GOOD:
             services_status = await self.compose_executor.dc_state()
+            await self._write_failed_services_logs(services_status)
             raise ServicesUpError(
                 f"Can't up services {services} for "
                 f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
@@ -189,41 +217,88 @@ class ComposeInstance:
                 f"\nServices status:\n {services_status.as_rich_text()}"
             ) from None
 
-        await self.run_migration(
-            [EventStage.AFTER_SERVICE_START],
-            services,
-            self.compose_instance_files.env_config_instance,
-            migrations
-        )
+        with self.logger.stage_details(Text(f'Running after-start migrations for {services}', style=Style.info)):
+            await self.run_migration(
+                [EventStage.AFTER_SERVICE_START],
+                services,
+                self.compose_instance_files.env_config_instance,
+                migrations
+            )
 
         # up process asynchronous
         # check services started before migrations if health policy told to do that:
 
         await sleep(self.health_policy.pre_check_delay_s)
         if self.health_policy.wait_for_healthy_in_between:
-            check_up_result = await wait_all_services_up(
-                attempts=self.health_policy.service_up_check_attempts,
-                delay_s=self.health_policy.service_up_check_delay_s,
-                logger_func=self.logger.stage_details,
-                get_compose_state=self.compose_executor.dc_state,
-            )
+            with self.logger.stage_details(
+                Text(f'Waiting for services to become healthy {services}', style=Style.info)
+            ):
+                check_up_result = await wait_all_services_up(
+                    attempts=self.health_policy.service_up_check_attempts,
+                    delay_s=self.health_policy.service_up_check_delay_s,
+                    logger_func=self.logger.stage_details,
+                    get_compose_state=self.compose_executor.dc_state,
+                    service_filter=self._is_service_in_this_namespace,
+                    has_restart_policy=self._has_restart_policy,
+                )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
+                await self._write_failed_services_logs(services_status)
                 raise ServicesUpError(
                     f"Can't check up services {services} for "
                     f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"
                     f"\nServices status:\n {services_status.as_rich_text()}"
                 ) from None
 
-        await self.run_migration(
-            [EventStage.AFTER_SERVICE_HEALTHY],
-            services,
-            self.compose_instance_files.env_config_instance,
-            migrations
+        with self.logger.stage_details(Text(f'Running after-healthy migrations for {services}', style=Style.info)):
+            await self.run_migration(
+                [EventStage.AFTER_SERVICE_HEALTHY],
+                services,
+                self.compose_instance_files.env_config_instance,
+                migrations
+            )
+
+    def _is_service_in_this_namespace(self, service_state) -> bool:
+        return (
+            service_state.labels.get(Label.ENV_ID)
+            == self.compose_instance_files.env_config_instance.env_id
         )
 
+    def _has_restart_policy(self, service_state) -> bool:
+        compose_config = self.compose_instance_files.compose_config or {}
+        service_config = compose_config.get('services', {}).get(service_state.name, {})
+        return is_restart_policy_enabled(service_config.get('restart'))
+
+    async def _write_failed_services_logs(self, services_status: ServicesComposeState) -> None:
+        failed_services = [
+            service_state
+            for service_state in services_status
+            if self._is_failed_service(service_state)
+        ]
+        for service_state in failed_services:
+            service_logs = await self.logs([service_state.name])
+            if service_state.state == ComposeState.EXITED:
+                failure_reason = f'exit code {service_state.exit_code}'
+            else:
+                failure_reason = 'unhealthy'
+            self.logger.write_file_log(
+                f'\n===== Logs for failed service {service_state.name} '
+                f'({failure_reason}) ====='
+            )
+            self.logger.write_file_log(service_logs.rstrip() or '<no service logs>')
+            self.logger.write_file_log(f'===== End of logs for failed service {service_state.name} =====\n')
+
+    @staticmethod
+    def _is_failed_service(service_state) -> bool:
+        if service_state.state == ComposeState.EXITED:
+            return service_state.exit_code != 0
+        if service_state.state == ComposeState.RUNNING:
+            return service_state.health == ComposeHealth.UNHEALTHY
+        return False
+
     async def run(self):
-        self.compose_instance_files = await self.generate_config_files()
+        with self.logger.stage_details(Text('Generating compose environment files', style=Style.info)):
+            self.compose_instance_files = await self.generate_config_files()
 
         services_tiers = get_compose_services_dependency_tree(self.compose_instance_files.compose_files)
         self.logger.stage_info(
@@ -232,44 +307,57 @@ class ComposeInstance:
         )
 
         migrations = {}
-        for service in self.compose_instance_files.env_config_instance.env:
+        env_instance = self.compose_instance_files.env_config_instance
+        for service in env_instance.env:
             if service not in migrations:
                 migrations[service] = []
-            migrations[service] += self.compose_instance_files.env_config_instance.env[service].events_handlers
-            migrations[service] += self.compose_instance_files.inline_migrations[service]
+            migrations[service] += env_instance.env[service].events_handlers
+            inline_service_name = env_instance.env_services_map.get(service, service)
+            migrations[service] += self.compose_instance_files.inline_migrations[inline_service_name]
 
         all_services = [
             service
             for service_tier_pack in services_tiers
             for service in service_tier_pack
+            if service not in self.except_containers
         ]
 
-        await self.run_migration(
-            [EventStage.BEFORE_ALL],
-            all_services,
-            self.compose_instance_files.env_config_instance,
-            migrations
-        )
+        with self.logger.stage_details(Text('Running before-all migrations', style=Style.info)):
+            await self.run_migration(
+                [EventStage.BEFORE_ALL],
+                all_services,
+                self.compose_instance_files.env_config_instance,
+                migrations
+            )
 
         for service_tier_pack in services_tiers:
-            await self.run_services_pack(service_tier_pack, migrations)
+            with self.logger.stage_details(
+                Text('Starting services pack: ', style=Style.info)
+                .append(Text(str(service_tier_pack), style=Style.regular))
+            ):
+                await self.run_services_pack(service_tier_pack, migrations)
 
-        await self.run_migration(
-            [EventStage.AFTER_ALL],
-            all_services,
-            self.compose_instance_files.env_config_instance,
-            migrations
-        )
+        with self.logger.stage_details(Text('Running after-all migrations', style=Style.info)):
+            await self.run_migration(
+                [EventStage.AFTER_ALL],
+                all_services,
+                self.compose_instance_files.env_config_instance,
+                migrations
+            )
 
         if self.health_policy.wait_for_healthy_after_all:
-            check_up_result = await wait_all_services_up(
-                attempts=self.health_policy.service_up_check_attempts,
-                delay_s=self.health_policy.service_up_check_delay_s,
-                logger_func=self.logger.stage,
-                get_compose_state=self.compose_executor.dc_state,
-            )
+            with self.logger.stage_details(Text('Waiting for all services to become healthy', style=Style.info)):
+                check_up_result = await wait_all_services_up(
+                    attempts=self.health_policy.service_up_check_attempts,
+                    delay_s=self.health_policy.service_up_check_delay_s,
+                    logger_func=self.logger.stage,
+                    get_compose_state=self.compose_executor.dc_state,
+                    service_filter=self._is_service_in_this_namespace,
+                    has_restart_policy=self._has_restart_policy,
+                )
             if check_up_result != JobResult.GOOD:
                 services_status = await self.compose_executor.dc_state()
+                await self._write_failed_services_logs(services_status)
                 raise ServicesUpError(
                     f"Can't up services {all_services} all together for "
                     f"{self.health_policy.service_up_check_attempts * self.health_policy.service_up_check_delay_s}s"

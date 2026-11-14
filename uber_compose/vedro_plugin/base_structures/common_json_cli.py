@@ -9,9 +9,12 @@ from typing import Type
 from typing import TypeVar
 from warnings import warn
 
+from uber_compose.core.docker_compose_shell.exec_strategies import ExecStrategyType
 from uber_compose.core.docker_compose_shell.interface import ProcessExit
 from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
+from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
+from uber_compose.helpers.current_env import get_current_env_id
 from uber_compose.uber_compose import SystemUberCompose
 from uber_compose.uber_compose import TheUberCompose
 
@@ -22,6 +25,7 @@ class CommandResult:
     stderr: list
     cmd: str
     env: dict[str, str]
+    exit_code: int | None = None
 
     def _format_value(self, key, value, indent_level=1, print_new_line=True):
         """Formats value considering its type and nesting level."""
@@ -81,19 +85,20 @@ class CommandResult:
 
     def __str__(self):
         stderr_key = "stderr"
-        if not self._has_no_errors():
+        if self.stderr != []:
             stderr_key = "❌ stderr"
         fields = [
             self._format_value("stdout", self.stdout),
             self._format_value(stderr_key, self.stderr),
             self._format_value("cmd", self.cmd, print_new_line=True),
             self._format_value("env", self.env),
+            self._format_value("exit_code", self.exit_code),
         ]
 
         return f"{self.__class__.__name__}(\n" + ",\n".join(fields) + "\n)"
 
     def _has_no_errors(self) -> bool:
-        return self.stderr == []
+        return self.stderr == [] and self.exit_code == 0
 
     def __bool__(self):
         has_no_errors = self._has_no_errors()
@@ -215,6 +220,7 @@ class CommonJsonCli(Generic[TCommandResult]):
         cli_client: SystemUberCompose = None,
         timeout: TimeOutCheck = TimeOutCheck(attempts=10, delay_s=1),
         life_cycle_policy: ExecLifeCyclePolicy = ExecLifeCyclePolicy(),
+        exec: ExecStrategyType = None,
     ):
         self._container = container
         self._cli_client: SystemUberCompose = cli_client or TheUberCompose()
@@ -222,6 +228,7 @@ class CommonJsonCli(Generic[TCommandResult]):
         self._result_factory = result_factory
         self._timeout = timeout
         self._life_cycle_policy = life_cycle_policy
+        self._exec = exec
 
     def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> TCommandResult:
         stdout, stderr = self._parse_json_logs(logs)
@@ -235,6 +242,8 @@ class CommonJsonCli(Generic[TCommandResult]):
                    command_result_extra: dict = None,
                    timeout: TimeOutCheck = None,
                    life_cycle_policy: ExecLifeCyclePolicy = None,
+                   env_id: str = None,
+                   exec: ExecStrategyType = None,
                    ) -> TCommandResult:
         if command_result_extra is None:
             command_result_extra = {}
@@ -252,18 +261,31 @@ class CommonJsonCli(Generic[TCommandResult]):
         if life_cycle_policy is None:
             life_cycle_policy = self._life_cycle_policy
 
-        result = await self._cli_client.exec(
-            container=container,
-            command=command,
-            extra_env=extra_env,
-            wait=wait,
-            timeout=timeout,
-            life_cycle_policy=life_cycle_policy,
-        )
+        if env_id is None:
+            env_id = get_current_env_id()
+
+        if exec is None:
+            exec = self._exec
+
+        exec_kwargs = {
+            'container': container,
+            'command': command,
+            'extra_env': extra_env,
+            'wait': wait,
+            'timeout': timeout,
+            'life_cycle_policy': life_cycle_policy,
+        }
+        if env_id != DEFAULT_ENV_ID:
+            exec_kwargs['env_id'] = env_id
+        if exec is not None:
+            exec_kwargs['exec'] = exec
+
+        result = await self._cli_client.exec(**exec_kwargs)
 
         return self._make_result(
             cmd=command,
             env=extra_env or {},
             logs=result.stdout,
+            exit_code=result.exit_code,
             **command_result_extra,
         )

@@ -1,5 +1,6 @@
 from contexts.compose_file import compose_file
-from contexts.no_docker_compose_files import no_docker_compose_files
+from contexts.isolated_project import isolated_constants
+from contexts.isolated_project import isolated_project
 from contexts.no_docker_containers import no_docker_containers
 from contexts.no_docker_containers import retrieve_all_docker_containers
 from d42 import fake
@@ -7,7 +8,6 @@ from d42 import schema
 from schemas.docker import ContainerSchema
 import vedro
 
-from uber_compose.core.constants import Constants
 from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import Service
 from uber_compose.helpers.labels import Label
@@ -19,8 +19,15 @@ class Scenario(vedro.Scenario):
     async def given_no_docker_containers(self):
         no_docker_containers()
 
-    async def given_no_docker_compose_files(self):
-        no_docker_compose_files()
+    async def given_isolated_project(self):
+        self.project = isolated_project()
+        self.instance_files_root = self.project.tmp_envs_path
+
+    async def given_uber_compose_constants(self):
+        self.constants = isolated_constants(
+            self.project,
+            cli_compose_util_override='/usr/local/bin/docker-compose',
+        )
 
     async def given_compose_files(self):
         self.compose_filename_1 = 'docker-compose.yaml'
@@ -52,9 +59,7 @@ services:
     async def given_client(self):
         self.uber_compose_client = UberCompose(
             log_policy=LogPolicy.VERBOSE,
-            cfg_constants=Constants(
-                cli_compose_util_override='/usr/local/bin/docker-compose'
-            ),
+            cfg_constants=self.constants,
         )
 
     async def given_env_description(self):
@@ -76,8 +81,8 @@ services:
                 'Labels': {
                     'com.docker.compose.service': 's2',
                     'com.docker.compose.project.config_files':
-                        '/tmp/uc-envs/default_env_id/docker-compose.yaml,'
-                        '/tmp/uc-envs/default_env_id/docker-compose.dev.yaml',
+                        f'{self.instance_files_root}/default_env_id/docker-compose.yaml,'
+                        f'{self.instance_files_root}/default_env_id/docker-compose.dev.yaml',
 
                     Label.ENV_ID: 'default_env_id',
                     Label.ENV_DESCRIPTION: str(Environment(Service('s2'), description=self.desc)),
@@ -86,8 +91,8 @@ services:
                         f'{self.compose_filename_2}',
                     ]),
                     Label.COMPOSE_FILES_INSTANCE: ':'.join([
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_1}',
-                        f'/tmp/uc-envs/default_env_id/{self.compose_filename_2}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_1}',
+                        f'{self.instance_files_root}/default_env_id/{self.compose_filename_2}',
                     ]),
                 },
             },
