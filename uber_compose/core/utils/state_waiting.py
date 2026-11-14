@@ -30,13 +30,23 @@ def is_service_exited_unexpectedly(service_state: ServiceComposeState) -> bool:
     )
 
 
+def is_service_unhealthy(service_state: ServiceComposeState) -> bool:
+    return (
+        service_state.state == ComposeState.RUNNING
+        and service_state.health == ComposeHealth.UNHEALTHY
+    )
+
+
 def is_service_failed_without_restart_policy(
     service_state: ServiceComposeState,
     has_restart_policy: Callable[[ServiceComposeState], bool],
 ) -> bool:
+    if has_restart_policy(service_state):
+        return False
+
     return (
         is_service_exited_unexpectedly(service_state)
-        and not has_restart_policy(service_state)
+        or is_service_unhealthy(service_state)
     )
 
 
@@ -76,7 +86,7 @@ async def wait_all_services_up(attempts, delay_s, logger_func: Callable, get_com
             return JobResult.GOOD
 
         if any(is_service_failed_without_restart(service) for service in services_state):
-            logger_func(Text(' ✗ Service exited unexpectedly. Stop waiting:', style=output_style.bad))
+            logger_func(Text(' ✗ Service failed without restart policy. Stop waiting:', style=output_style.bad))
             logger_func(services_state.as_rich_text(
                 filter=is_service_failed_without_restart,
                 style=output_style

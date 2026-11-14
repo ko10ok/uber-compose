@@ -6,6 +6,7 @@ import sys
 from rich.text import Text
 
 from uber_compose.core.docker_compose_shell.interface import ComposeShellInterface
+from uber_compose.core.docker_compose_shell.types import ComposeHealth
 from uber_compose.core.docker_compose_shell.types import ComposeState
 from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import ComposeInstanceFiles
@@ -272,16 +273,28 @@ class ComposeInstance:
         failed_services = [
             service_state
             for service_state in services_status
-            if service_state.state == ComposeState.EXITED and service_state.exit_code != 0
+            if self._is_failed_service(service_state)
         ]
         for service_state in failed_services:
             service_logs = await self.logs([service_state.name])
+            if service_state.state == ComposeState.EXITED:
+                failure_reason = f'exit code {service_state.exit_code}'
+            else:
+                failure_reason = 'unhealthy'
             self.logger.write_file_log(
                 f'\n===== Logs for failed service {service_state.name} '
-                f'(exit code {service_state.exit_code}) ====='
+                f'({failure_reason}) ====='
             )
             self.logger.write_file_log(service_logs.rstrip() or '<no service logs>')
             self.logger.write_file_log(f'===== End of logs for failed service {service_state.name} =====\n')
+
+    @staticmethod
+    def _is_failed_service(service_state) -> bool:
+        if service_state.state == ComposeState.EXITED:
+            return service_state.exit_code != 0
+        if service_state.state == ComposeState.RUNNING:
+            return service_state.health == ComposeHealth.UNHEALTHY
+        return False
 
     async def run(self):
         with self.logger.stage_details(Text('Generating compose environment files', style=Style.info)):

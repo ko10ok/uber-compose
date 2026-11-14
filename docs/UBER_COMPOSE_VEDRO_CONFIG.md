@@ -44,6 +44,9 @@ class UberCompose(VedroUberCompose):
 
 Fine-tune health check parameters to ensure that your services are up and running before tests start executing. This can help avoid flaky tests due to services not being ready yet.
 
+Waiting stops early when a service is `unhealthy` or exits non-zero without a
+`restart` policy. With a restart policy, Uber-Compose keeps waiting for recovery.
+
 ## HealthCheck interval and attempts
 ```python
 from uber_compose import VedroUberCompose, ComposeConfig, Environment, Service, UpHealthPolicy

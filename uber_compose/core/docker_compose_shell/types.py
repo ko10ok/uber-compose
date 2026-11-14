@@ -24,7 +24,9 @@ class ComposeState:
 
 class ComposeHealth:
     EMPTY = ''
+    STARTING = 'starting'
     HEALTHY = 'healthy'
+    UNHEALTHY = 'unhealthy'
 
 
 @dataclass
