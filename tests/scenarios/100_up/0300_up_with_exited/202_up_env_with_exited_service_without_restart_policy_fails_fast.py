@@ -82,5 +82,10 @@ services:
 
     async def then_it_should_report_unexpected_exit(self):
         exception_str = str(self.exc_info.value)
-        assert "Can't check up services" in exception_str
+        # The exit can be detected either while waiting for the services pack
+        # or by the final health check after migrations.
+        assert (
+            "Can't check up services" in exception_str
+            or "Can't up services" in exception_str
+        )
         assert 'Exited (10)' in exception_str
