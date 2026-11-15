@@ -30,9 +30,13 @@ def cleanup_log_files(log_file_path: str | Path, limit: int,
         file.unlink(missing_ok=True)
 
 
+DEFAULT_DOCKER_COMPOSE_FILES_AUTO_SCAN_PATTERN = r'(?:.*/)?docker-compose[^/]*\.(yaml|yml)$'
+
+
 class Constants:
     def __init__(self,
                  docker_compose_files_scan_depth: int = 2,
+                 docker_compose_files_auto_scan_pattern: str = DEFAULT_DOCKER_COMPOSE_FILES_AUTO_SCAN_PATTERN,
                  cli_compose_util_override: str = None,
                  compose_project_name: str = None,
                  tmp_envs_path: str | Path = None,
@@ -102,6 +106,10 @@ class Constants:
 
         self.docker_compose_files_scan_depth: int = int(
             os.environ.get('DOCKER_COMPOSE_FILES_SCAN_DEPTH', docker_compose_files_scan_depth)
+        )
+        self.docker_compose_files_auto_scan_pattern: str = os.environ.get(
+            'DOCKER_COMPOSE_FILES_AUTO_SCAN_PATTERN',
+            docker_compose_files_auto_scan_pattern,
         )
 
         self.ignore_pidof_unexistance: bool = bool(os.environ.get('IGNORE_PIDOF_UNEXISTANCE', 'True') == 'True')
