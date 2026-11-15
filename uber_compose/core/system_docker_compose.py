@@ -25,7 +25,11 @@ class SystemDockerCompose:
 
         # TODO get path from Constants. Could be used in cases dc yaml not in root directory
         self.default_compose_files = ':'.join(
-            scan_for_compose_files(inner_project_root, self.cfg_constants.docker_compose_files_scan_depth)
+            scan_for_compose_files(
+                inner_project_root,
+                self.cfg_constants.docker_compose_files_scan_depth,
+                self.cfg_constants.docker_compose_files_auto_scan_pattern,
+            )
         )
         self.logger.commands(f'All found compose files: {self.default_compose_files}')
         assert self.default_compose_files, (
