@@ -223,6 +223,17 @@ class SystemUberCompose:
         config_template = self._resolve_config_template(config_template, compose_files, services_override)
 
         requested_env_id = env_id if parallelism_limit > 1 else None
+
+        if not config_template.get_services():
+            self.logger.stage(Text(
+                'Environment has no services. Nothing to start.', style=Style.suspicious
+            ))
+            return ReadyEnv(
+                requested_env_id or DEFAULT_ENV_ID,
+                config_template,
+                release_id or self.last_release_id or str(uuid4()),
+            )
+
         services_state = await self._get_current_state(config_template, compose_files)
         if requested_env_id is not None:
             services_state = services_state.get_all_for(
