@@ -19,6 +19,7 @@ from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.core.docker_compose_shell.types import ServicesComposeState
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.core.system_docker_compose import SystemDockerCompose
+from uber_compose.core.utils.compose_files import get_compose_services
 from uber_compose.core.utils.compose_instance_cfg import get_new_env_id
 from uber_compose.core.utils.compose_instance_cfg import get_stable_env_id
 from uber_compose.core.utils.state_waiting import is_service_not_running_or_not_healthy
@@ -27,6 +28,7 @@ from uber_compose.env_description.env_types import Environment
 from uber_compose.env_description.env_types import OverridenService
 from uber_compose.env_description.env_types import ServiceMode
 from uber_compose.errors.mounted_files import MountedFileNotFoundError
+from uber_compose.errors.up import ServicesUpError
 from uber_compose.errors.up import SingletonConfigChangedError
 from uber_compose.helpers.broken_services import calc_broken_services
 from uber_compose.helpers.bytes_pickle import base64_pickled
@@ -253,6 +255,8 @@ class SystemUberCompose:
             await self._hooks.run(UberComposeEvent.AFTER_UP)
             return reusable_env
 
+        self._validate_env_services_against_compose_files(config_template, compose_files)
+
         self._log_inflight_and_restart_info(services_state, force_restart)
 
         _for = f' {config_template.description}' if config_template.description else ''
@@ -390,6 +394,34 @@ class SystemUberCompose:
             config_template = config_template.from_environment(config_template, services_override=services_override)
 
         return config_template
+
+    def _validate_env_services_against_compose_files(
+        self,
+        config_template: Environment,
+        compose_files: str,
+    ) -> None:
+        compose_services = set(get_compose_services(
+            get_absolute_compose_files(
+                compose_files,
+                self.cfg_constants.in_docker_project_root_path,
+            )
+        ))
+        ignored_services = set(config_template.get_overridden_services_names())
+        ignored_services |= {
+            service_name
+            for service_name, service in config_template.get_services().items()
+            if service.mode == ServiceMode.OFF
+        }
+
+        missing_services = sorted(
+            set(config_template.get_services_names()) - compose_services - ignored_services
+        )
+        if missing_services:
+            raise ServicesUpError(
+                f'Environment declares services missing in docker-compose files {compose_files!r}: '
+                f'{missing_services}. '
+                f'Define them in compose files, override them, or remove them from the environment.'
+            )
 
     async def _get_current_state(self, config_template: Environment, compose_files: str) -> ServicesComposeState:
         self.logger.stage_debug(

@@ -63,8 +63,6 @@ services:
             config_template=Environment(
                 Service('s1'),
                 Service('s2'),
-                Service('s3'),
-                Service('s4'),
             ),
         )
 
