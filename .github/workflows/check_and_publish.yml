@@ -21,13 +21,13 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Check out the repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.12'
 
@@ -39,7 +39,7 @@ jobs:
 
   tests:
     name: "tests ${{ matrix.python-version }}: ${{ matrix.node-index }}/${{ matrix.node-total }}"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -48,7 +48,7 @@ jobs:
         node-index: [1, 2, 3]
     steps:
     - name: Check out the repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install DC
       uses: KengoTODA/actions-setup-docker-compose@v1
@@ -67,16 +67,16 @@ jobs:
         make e2e-run args="-vvv --slicer-total=${NODE_TOTAL} --slicer-index=$((NODE_INDEX - 1))" -B
 
   publish_pypi:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [tests, lint]
     if: github.ref_type == 'tag'
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v7
       with:
         python-version: '3.10'
 
@@ -113,17 +113,17 @@ jobs:
       run: make publish
 
   publish_alpha_pypi:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: tests
     if: github.event_name == 'workflow_dispatch' && inputs.publish_alpha == true
     environment: manual-gate
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v7
       with:
         python-version: '3.10'
 
