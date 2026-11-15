@@ -48,7 +48,6 @@ services:
                 ),
             ).up(
                 config_template=Environment(
-                    'DEFAULT',
                     Service('s2')
                 ),
                 compose_files='docker-compose.dev.yaml',

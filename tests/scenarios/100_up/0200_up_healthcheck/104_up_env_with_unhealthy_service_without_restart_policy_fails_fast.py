@@ -58,7 +58,6 @@ services:
                 ),
             ).up(
                 config_template=Environment(
-                    'DEFAULT',
                     Service('s1')
                 ),
                 compose_files=self.compose_filename,

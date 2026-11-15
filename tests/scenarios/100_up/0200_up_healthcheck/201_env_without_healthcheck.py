@@ -40,7 +40,6 @@ services:
     async def when_user_up_env_with_expected_to_exit_service(self):
         self.response = await UberCompose(cfg_constants=self.constants, ).up(
             config_template=Environment(
-                'DEFAULT',
                 Service('s1')
             ),
             compose_files='docker-compose.basic.yaml'

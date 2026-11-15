@@ -51,7 +51,6 @@ services:
                 health_policy=UpHealthPolicy(service_up_check_attempts=3, service_up_check_delay_s=1)
             ).up(
                 config_template=Environment(
-                    'DEFAULT',
                     Service('s1')
                 ),
                 compose_files='docker-compose.basic.yaml'
