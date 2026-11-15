@@ -8,6 +8,7 @@ import vedro
 
 from uber_compose import Environment
 from uber_compose import Service
+from uber_compose.helpers.labels import Label
 
 
 class Scenario(vedro.Scenario):
@@ -68,12 +69,12 @@ services:
         env_a_ids_before = {
             container['Id']
             for container in self.containers_a_before
-            if container['Labels'].get('com.maxwelld.env_id') == self.response_a.env_id
+            if container['Labels'].get(Label.ENV_ID) == self.response_a.env_id
         }
         env_a_ids_after = {
             container['Id']
             for container in self.containers
-            if container['Labels'].get('com.maxwelld.env_id') == self.response_a.env_id
+            if container['Labels'].get(Label.ENV_ID) == self.response_a.env_id
         }
         assert env_a_ids_after == env_a_ids_before
         assert len(env_a_ids_after) != 0
