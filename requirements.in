@@ -1,4 +1,6 @@
 vedro>=1.15,<2.0
+cabina>=1.1.2,<2.0
+niltype>=1.0.2,<2.0
 PyYAML
 rtry
 rich

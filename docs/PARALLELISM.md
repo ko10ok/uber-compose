@@ -511,6 +511,39 @@ cassandra:
   host: "[[cassandra]]"
 ```
 
+## Live config values
+
+Config values are resolved once, at import time — before the current env is
+known. `live_env` (based on Cabina's `LazyEnvironment` / `FutureValue`) resolves
+them on every access instead:
+
+```python
+import cabina
+
+from uber_compose import live_env
+
+
+class Config(cabina.Config, cabina.Section):
+    class Database(cabina.Section):
+        dsn: str = live_env.literal("postgres://db-[[namespace]]:5432/app")
+
+    class Api(cabina.Section):
+        url: str = live_env.raw("API_URL")
+        port: int = live_env.int("API_PORT")
+```
+
+Values are read through the sections, e.g. `Config.Api.port`.
+
+- `raw` / `str` / `int` and other Cabina accessors read an env var;
+- `literal` substitutes placeholders in an explicit value;
+- placeholders are taken from the current env context (env id, namespace, worker
+  id, run id, service names) on every read, without caching.
+
+Supported placeholders are the same as for `Service.env`: `[[env_id]]`,
+`[[namespace]]`, `[[worker_id]]`, `[[worker_id_alpha_numeric]]`,
+`[[namespace_alpha_numeric]]`, `[[worker_id_alpha_numeric_6]]`,
+`[[namespace_alpha_numeric_6]]`, `[[test_run_id]]`, and `[[<service>]]`.
+
 ## Reporting details
 
 Workers emit JSON events that the parent turns back into regular vedro events,
