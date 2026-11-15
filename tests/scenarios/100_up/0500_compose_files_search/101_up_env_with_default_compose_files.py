@@ -60,6 +60,18 @@ services:
     command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
 """
         )
+        self.foreign_compose_filename = 'compose.yaml'
+        compose_file(
+            self.foreign_compose_filename,
+            content="""
+version: "3"
+
+services:
+  foreign-service:
+    image: busybox:stable
+    command: 'sh -c "trap : TERM INT; sleep 604800; wait"'
+"""
+        )
 
     async def when_user_up_env_without_params(self):
         self.response = await UberCompose(
@@ -115,3 +127,7 @@ services:
             },
             ...,
         ])
+
+    async def and_foreign_compose_file_should_not_be_auto_scanned(self):
+        self.containers = retrieve_all_docker_containers()
+        assert self.containers == schema.list.len(2)
