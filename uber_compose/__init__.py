@@ -19,6 +19,9 @@ from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import UberComposeEvent
+from uber_compose.helpers.live_env import LiveEnvironment
+from uber_compose.helpers.live_env import LiveValue
+from uber_compose.helpers.live_env import live_env
 from uber_compose.output.console import LogEvents
 from uber_compose.output.console import LogPolicy
 from uber_compose.output.console import LogPolicySet
@@ -63,4 +66,5 @@ __all__ = (
     'get_run_depth', 'is_child_project',
     'is_parallel_worker', 'is_parallel_worker_process', 'reset_execution_plan', 'set_execution_plan',
     'VedroUberComposeParallel', 'build_execution_plan', 'build_execution_plan_from_scheduler',
+    'LiveEnvironment', 'LiveValue', 'live_env',
 )
