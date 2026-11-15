@@ -53,17 +53,18 @@ services:
 
     async def given_vedro_project(self):
         live_config = """
-import vedro
+import cabina
 
 from uber_compose import live_env
 
 
-class LiveValues(vedro.Config):
-    LITERAL = live_env.literal('literal-[[namespace]]-w[[worker_id]]')
-    RAW = live_env.raw('UC_LIVE_RAW')
-    STR = live_env.str('UC_LIVE_STR')
-    INT = live_env.int('UC_LIVE_INT')
-    DEFAULT = live_env.raw('UC_LIVE_MISSING', default='default-[[namespace]]')
+class Config(cabina.Config, cabina.Section):
+    class Backend(cabina.Section):
+        literal: str = live_env.literal('literal-[[namespace]]-w[[worker_id]]')
+        raw: str = live_env.raw('UC_LIVE_RAW')
+        prefixed: str = live_env.str('UC_LIVE_STR')
+        port: int = live_env.int('UC_LIVE_INT')
+        default: str = live_env.raw('UC_LIVE_MISSING', default='default-[[namespace]]')
 """
         scenario_template = """
 import json
@@ -71,7 +72,7 @@ import os
 
 import vedro
 
-from live_config import LiveValues
+from live_config import Config
 
 from uber_compose import Environment
 from uber_compose import Service
@@ -91,11 +92,11 @@ class Scenario(vedro.Scenario):
                 'workers_total': os.environ.get('UC_WORKERS_TOTAL'),
                 'env_id': TheUberCompose.current_env_id(),
                 'namespace': TheUberCompose.current_namespace(),
-                'literal': LiveValues.LITERAL,
-                'raw': LiveValues.RAW,
-                'str': LiveValues.STR,
-                'int': LiveValues.INT,
-                'default': LiveValues.DEFAULT,
+                'literal': Config.Backend.literal,
+                'raw': Config.Backend.raw,
+                'prefixed': Config.Backend.prefixed,
+                'port': Config.Backend.port,
+                'default': Config.Backend.default,
             }, file)
 """
         vedro_cfg = """
@@ -152,8 +153,8 @@ class Config(vedro.Config):
                 'namespace': schema.str('default_env_id'),
                 'literal': schema.str('literal-default_env_id-w0'),
                 'raw': schema.str('raw-default_env_id-0'),
-                'str': schema.str('str-default_env_id'),
-                'int': schema.int(42),
+                'prefixed': schema.str('str-default_env_id'),
+                'port': schema.int(42),
                 'default': schema.str('default-default_env_id'),
             }),
             'env_a_1': schema.dict({
@@ -164,8 +165,8 @@ class Config(vedro.Config):
                 'namespace': schema.str('default_env_id'),
                 'literal': schema.str('literal-default_env_id-w0'),
                 'raw': schema.str('raw-default_env_id-0'),
-                'str': schema.str('str-default_env_id'),
-                'int': schema.int(42),
+                'prefixed': schema.str('str-default_env_id'),
+                'port': schema.int(42),
                 'default': schema.str('default-default_env_id'),
             }),
         })
