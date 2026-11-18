@@ -4,6 +4,7 @@
 
 ## Table of Contents
 - [Basic Usage](#basic-usage)
+- [Execution Modes](#execution-modes)
 - [Extended Command Result](#extended-command-result)
 - [Custom JSON Parser](#custom-json-parser)
 - [CommandResult](#commandresult)
@@ -74,6 +75,53 @@ class MyCli(CommonJsonCli):
         return await self.exec(command='my-app-another-part --any-option value2')
 
 ```
+
+## Execution Modes
+
+By default, `exec()` waits until the process exits.
+`wait` controls when `exec()` returns; `life_cycle_policy` controls whether a still-running command is stopped.
+
+| Mode | Call | `exit_code` | `waiting_done_successfully` | `has_no_errors()` |
+|---|---|---|---|---|
+| Wait until exit (default) | `wait` omitted (`wait=ProcessExit()` by default) | actual `int` | `True` | `exit_code == 0` and `stderr == []` |
+| Wait until exit, timeout | `wait` omitted, `timeout=...` | `None` | `False` | `False` |
+| Detached, don't wait | `wait=None`, `kill_after_command_still_running=False` | `None` | `True` | `False` — exit code is unknown |
+| Wait condition met, process stopped | callable returns `True` while process runs | `TerminatedByCondition(143/137/0)` | `True` | `True` if `stderr == []` |
+| Wait condition met, process exited by itself | callable returns `True` after exit | actual `int` | `True` | `exit_code == 0` and `stderr == []` |
+| Wait condition not met | callable returns `False` | `None` | `False` | `False` |
+
+`stderr != []` makes `has_no_errors()` fail in every mode.
+
+```python
+from time import sleep
+from uber_compose import ExecLifeCyclePolicy
+
+# Default: wait until the command exits
+result = await cli.exec(command='my-app')
+# exit_code=0 | waiting_done_successfully=True | stderr=[]
+assert result.has_no_errors()
+
+# Detached: return immediately, keep the process running
+result = await cli.exec(
+    command='my-worker',
+    wait=None,
+    life_cycle_policy=ExecLifeCyclePolicy(
+        kill_after_command_still_running=False,
+    ),
+)
+# exit_code=None | waiting_done_successfully=True | stderr=[]
+assert not result.has_no_errors()  # no exit code to verify
+
+# Wait for a condition; stop the process when it is met
+result = await cli.exec(
+    command='tail -f /dev/null',
+    wait=lambda *_: sleep(1) or True,
+)
+# exit_code=TerminatedByCondition(143) | waiting_done_successfully=True | stderr=[]
+assert result.has_no_errors()
+```
+
+`TerminatedByCondition` is an `int` subclass used when the process was stopped because the `wait` condition returned `True`. It is truthy even for `TerminatedByCondition(0)`.
 
 ## Extended Command Result
 
@@ -217,11 +265,16 @@ cli = CommonJsonCli(parse_json_logs=parser.parse_output_to_json)
 - **`stderr`**: `list[str | dict]` - Error logs (based on log level)
 - **`cmd`**: `str` - Executed command
 - **`env`**: `dict[str, str]` - Environment variables used
-- **`exit_code`**: `int | None` - Application exit code; `None` means the process did not finish
+- **`exit_code`**: `int | None` - Application exit code; `None` if the process did not finish
+- **`waiting_done_successfully`**: `bool` - `False` when a timeout or unmet wait condition interrupted waiting
 
-### Methods
+### `has_no_errors()`
 
-- **`has_no_errors()`**: Returns `True` only if `stderr` is empty and `exit_code` is `0`
+Returns `self`; the check itself happens through `__bool__`. It passes only when:
+
+1. `stderr == []`;
+2. `waiting_done_successfully is True`;
+3. `exit_code` is `TerminatedByCondition`, or `exit_code == 0`.
 
 ### Example
 
@@ -322,7 +375,7 @@ assert result.has_no_errors()
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `kill_before_same_old_command_running` | `bool` | `True` | Kill the previous instance of the same command if it is still running before executing a new one |
-| `kill_after_command_still_running` | `bool` | `True` | Kill the command if it is still running after the timeout has elapsed |
+| `kill_after_command_still_running` | `bool` | `True` | Kill the command if it is still running after a timeout or after a wait condition is met |
 | `break_on_timeout` | `bool` | `True` | Stop waiting and return early if the timeout is reached |
 
 ### Basic Usage
