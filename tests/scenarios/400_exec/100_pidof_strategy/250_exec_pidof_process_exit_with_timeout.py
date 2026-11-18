@@ -9,12 +9,13 @@ import vedro
 from uber_compose import Environment
 from uber_compose import PidofExecStrategy
 from uber_compose import Service
-from uber_compose.helpers.exec_result import ExecTimeout
+from uber_compose import TimeOutCheck
+from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
-    subject = 'pidof strategy returns timeout when wait condition is not met'
+    subject = 'exec with pidof strategy and process exit timeout'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -45,16 +46,16 @@ services:
             )
         )
 
-    async def when_user_exec_cmd_with_unmet_wait_condition(self):
+    async def when_user_exec_cmd_with_timeout(self):
         self.response = await UberCompose(cfg_constants=self.constants, ).exec(
             container='s1',
-            command='tail -f /dev/null',
+            command='sh -c "sleep 2; echo done"',
             env_id=self.started_services.env_id,
-            wait=lambda *_: False,
+            timeout=TimeOutCheck(attempts=1, delay_s=1),
             exec=PidofExecStrategy,
         )
 
-    async def then_it_should_return_timeout_without_exit_code(self):
-        assert isinstance(self.response, ExecTimeout)
-        assert self.response.stdout == schema.bytes(b'')
+    async def then_result_should_be_checked(self):
+        assert isinstance(self.response, ExecResult)
+        assert self.response.stdout == schema.bytes(b'done\n')
         assert self.response.exit_code is None

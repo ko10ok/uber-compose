@@ -1,3 +1,5 @@
+from time import sleep
+
 from contexts.compose_file import compose_file
 from contexts.isolated_project import isolated_constants
 from contexts.isolated_project import isolated_project
@@ -14,7 +16,7 @@ from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
-    subject = 'exec with legacy pidof strategy returns output without exit code'
+    subject = 'exec with pidof strategy and wait condition met after natural exit'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -45,15 +47,16 @@ services:
             )
         )
 
-    async def when_user_exec_with_pidof_strategy(self):
+    async def when_user_exec_cmd_with_wait_condition(self):
         self.response = await UberCompose(cfg_constants=self.constants, ).exec(
             container='s1',
-            command='echo "Hello, World!"',
+            command='sh -c "sleep 1; exit 7"',
             env_id=self.started_services.env_id,
+            wait=lambda *_: sleep(2) or True,
             exec=PidofExecStrategy,
         )
 
-    async def then_it_should_return_output_without_exit_code(self):
+    async def then_result_should_be_checked(self):
         assert isinstance(self.response, ExecResult)
-        assert self.response.stdout == schema.bytes(b'Hello, World!\n')
+        assert self.response.stdout == schema.bytes(b'')
         assert self.response.exit_code is None

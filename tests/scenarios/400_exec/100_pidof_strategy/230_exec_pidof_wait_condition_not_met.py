@@ -1,5 +1,3 @@
-from time import sleep
-
 from contexts.compose_file import compose_file
 from contexts.isolated_project import isolated_constants
 from contexts.isolated_project import isolated_project
@@ -11,12 +9,12 @@ import vedro
 from uber_compose import Environment
 from uber_compose import PidofExecStrategy
 from uber_compose import Service
-from uber_compose.helpers.exec_result import ExecResult
+from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
-    subject = 'pidof strategy returns no exit code when wait condition met after natural exit'
+    subject = 'exec with pidof strategy and unmet wait condition'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -47,16 +45,16 @@ services:
             )
         )
 
-    async def when_user_exec_cmd_that_finishes_before_wait_condition(self):
+    async def when_user_exec_cmd_with_unmet_wait_condition(self):
         self.response = await UberCompose(cfg_constants=self.constants, ).exec(
             container='s1',
-            command='sh -c "sleep 1; exit 7"',
+            command='tail -f /dev/null',
             env_id=self.started_services.env_id,
-            wait=lambda *_: sleep(2) or True,
+            wait=lambda *_: False,
             exec=PidofExecStrategy,
         )
 
-    async def then_it_should_return_result_without_exit_code(self):
-        assert isinstance(self.response, ExecResult)
+    async def then_result_should_be_checked(self):
+        assert isinstance(self.response, ExecTimeout)
         assert self.response.stdout == schema.bytes(b'')
         assert self.response.exit_code is None

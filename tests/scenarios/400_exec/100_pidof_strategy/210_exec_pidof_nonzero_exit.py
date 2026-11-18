@@ -14,7 +14,7 @@ from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
-    subject = 'pidof strategy without waiting returns result without exit code'
+    subject = 'exec with pidof strategy and nonzero exit'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -45,16 +45,15 @@ services:
             )
         )
 
-    async def when_user_exec_without_waiting(self):
+    async def when_user_exec_cmd_with_nonzero_exit(self):
         self.response = await UberCompose(cfg_constants=self.constants, ).exec(
             container='s1',
-            command='tail -f /dev/null',
+            command='sh -c "echo out; exit 7"',
             env_id=self.started_services.env_id,
-            wait=None,
             exec=PidofExecStrategy,
         )
 
-    async def then_it_should_return_result_without_exit_code(self):
+    async def then_result_should_be_checked(self):
         assert isinstance(self.response, ExecResult)
-        assert self.response.stdout == schema.bytes(b'')
+        assert self.response.stdout == schema.bytes(b'out\n')
         assert self.response.exit_code is None

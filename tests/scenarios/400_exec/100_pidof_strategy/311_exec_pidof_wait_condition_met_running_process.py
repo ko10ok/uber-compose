@@ -16,7 +16,7 @@ from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
-    subject = 'pidof strategy stops process by wait condition without termination marker'
+    subject = 'exec with pidof strategy and wait condition met for running process'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -56,12 +56,12 @@ services:
             exec=PidofExecStrategy,
         )
 
-    async def then_it_should_return_result_without_termination_marker(self):
+    async def then_result_should_be_checked(self):
         assert isinstance(self.response, ExecResult)
         assert self.response.stdout == schema.bytes(b'')
         assert self.response.exit_code is None
 
-    async def then_process_should_be_stopped(self):
+    async def then_process_should_be_checked(self):
         self.process_check = await UberCompose(cfg_constants=self.constants, ).exec(
             container='s1',
             command='pidof tail',
