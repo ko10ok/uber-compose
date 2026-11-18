@@ -96,6 +96,7 @@ class CommandResult:
             self._format_value("cmd", self.cmd, print_new_line=True),
             self._format_value("env", self.env),
             self._format_value("exit_code", self.exit_code),
+            self._format_value("waiting_done_successfully", self.waiting_done_successfully),
         ]
 
         return f"{self.__class__.__name__}(\n" + ",\n".join(fields) + "\n)"
@@ -239,9 +240,20 @@ class CommonJsonCli(Generic[TCommandResult]):
         self._life_cycle_policy = life_cycle_policy
         self._exec = exec
 
-    def _make_result(self, cmd: str, env: dict[str, str], logs: bytes, **kwargs) -> TCommandResult:
+    def _make_result(self, cmd: str, env: dict[str, str], logs: bytes,
+                     exit_code: int | None = None,
+                     waiting_done_successfully: bool = True,
+                     **kwargs) -> TCommandResult:
         stdout, stderr = self._parse_json_logs(logs)
-        return self._result_factory(stdout=stdout, stderr=stderr, cmd=cmd, env=env, **kwargs)
+        return self._result_factory(
+            stdout=stdout,
+            stderr=stderr,
+            cmd=cmd,
+            env=env,
+            exit_code=exit_code,
+            waiting_done_successfully=waiting_done_successfully,
+            **kwargs,
+        )
 
     async def exec(self,
                    command: str,
@@ -292,7 +304,7 @@ class CommonJsonCli(Generic[TCommandResult]):
         result = await self._cli_client.exec(**exec_kwargs)
 
         result_extra = dict(command_result_extra)
-        result_extra.setdefault(
+        waiting_done_successfully = result_extra.pop(
             'waiting_done_successfully',
             not isinstance(result, ExecTimeout),
         )
@@ -302,5 +314,6 @@ class CommonJsonCli(Generic[TCommandResult]):
             env=extra_env or {},
             logs=result.stdout,
             exit_code=result.exit_code,
+            waiting_done_successfully=waiting_done_successfully,
             **result_extra,
         )

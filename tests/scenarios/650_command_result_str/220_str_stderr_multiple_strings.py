@@ -29,6 +29,7 @@ class Scenario(vedro.Scenario):
     ],
     cmd = 'test-command',
     env = {'VAR': 'value'},
-    exit_code = 0
+    exit_code = 0,
+    waiting_done_successfully = True
 )"""
         assert self.result_str == schema.str % expected
