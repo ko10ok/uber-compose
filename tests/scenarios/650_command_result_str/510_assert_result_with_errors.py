@@ -34,6 +34,7 @@ class Scenario(vedro.Scenario):
     ❌ stderr = ['error log'],
     cmd = 'test-command',
     env = {'VAR': 'value'},
-    exit_code = 0
+    exit_code = 0,
+    waiting_done_successfully = True
 )"""
         assert str(self.exception) == schema.str % expected_error

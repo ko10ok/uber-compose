@@ -59,3 +59,13 @@ services:
         assert isinstance(self.response, CommandResult)
         assert self.response.stdout == schema.list.len(0)
         assert self.response.exit_code is None
+        assert self.response.waiting_done_successfully is False
+
+    async def then_has_no_errors_should_raise(self):
+        self.exception = None
+        try:
+            assert self.response.has_no_errors()
+        except AssertionError as e:
+            self.exception = e
+
+        assert isinstance(self.exception, AssertionError)

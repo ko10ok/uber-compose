@@ -17,6 +17,7 @@ from uber_compose.helpers.current_env import get_run_depth
 from uber_compose.helpers.current_env import is_child_project
 from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
+from uber_compose.helpers.exec_result import TerminatedByCondition
 from uber_compose.helpers.health_policy import UpHealthPolicy
 from uber_compose.helpers.hooks import UberComposeEvent
 from uber_compose.helpers.live_env import LiveEnvironment
@@ -56,7 +57,7 @@ __all__ = (
     'TheUberCompose', 'SystemUberCompose',
     'Environment', 'Service', 'Env', 'OverridenService',
     'CommonJsonCli', 'CommandResult', 'ProcessExit', 'JsonParser', 'json_parser', 'ExecTimeout', 'TimeOutCheck',
-    'ExecLifeCyclePolicy', 'ExecResult',
+    'ExecLifeCyclePolicy', 'ExecResult', 'TerminatedByCondition',
     'ExecStrategy', 'ExecContext', 'PidofExecStrategy', 'StatusFileExecStrategy',
     'VedroUberCompose', 'UpHealthPolicy', 'DEFAULT_COMPOSE', 'ComposeConfig', 'DEFAULT_ENV_DESCRIPTION',
     'LogEvents', 'LogPolicy', 'LogPolicySet',

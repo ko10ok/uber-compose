@@ -9,12 +9,12 @@ import vedro
 from uber_compose import Environment
 from uber_compose import PidofExecStrategy
 from uber_compose import Service
-from uber_compose.helpers.exec_result import ExecResult
+from uber_compose.helpers.exec_result import ExecTimeout
 from uber_compose.uber_compose import UberCompose
 
 
 class Scenario(vedro.Scenario):
-    subject = 'exec with legacy pidof strategy returns output without exit code'
+    subject = 'exec with pidof strategy and unmet wait condition'
 
     async def given_no_docker_containers(self):
         no_docker_containers()
@@ -45,15 +45,16 @@ services:
             )
         )
 
-    async def when_user_exec_with_pidof_strategy(self):
+    async def when_user_exec_cmd_with_unmet_wait_condition(self):
         self.response = await UberCompose(cfg_constants=self.constants, ).exec(
             container='s1',
-            command='echo "Hello, World!"',
+            command='tail -f /dev/null',
             env_id=self.started_services.env_id,
+            wait=lambda *_: False,
             exec=PidofExecStrategy,
         )
 
-    async def then_it_should_return_output_without_exit_code(self):
-        assert isinstance(self.response, ExecResult)
-        assert self.response.stdout == schema.bytes(b'Hello, World!\n')
+    async def then_result_should_be_checked(self):
+        assert isinstance(self.response, ExecTimeout)
+        assert self.response.stdout == schema.bytes(b'')
         assert self.response.exit_code is None

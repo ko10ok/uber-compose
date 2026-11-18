@@ -29,6 +29,7 @@ class Scenario(vedro.Scenario):
         'VAR2': 'value2',
         'VAR3': 'value3'
     },
-    exit_code = 0
+    exit_code = 0,
+    waiting_done_successfully = True
 )"""
         assert self.result_str == schema.str % expected
