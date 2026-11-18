@@ -62,3 +62,13 @@ services:
         assert self.response.stdout == schema.list % [self.expected_log_line]
         assert self.response.stderr == schema.list.len(0)
         assert self.response.exit_code == 7
+        assert self.response.waiting_done_successfully is True
+
+    async def then_has_no_errors_should_raise(self):
+        self.exception = None
+        try:
+            assert self.response.has_no_errors()
+        except AssertionError as e:
+            self.exception = e
+
+        assert isinstance(self.exception, AssertionError)
