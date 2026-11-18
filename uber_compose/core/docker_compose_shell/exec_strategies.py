@@ -16,6 +16,7 @@ from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.core.utils.shell_process import parse_process_command_name
 from uber_compose.helpers.exec_result import ExecResult
 from uber_compose.helpers.exec_result import ExecTimeout
+from uber_compose.helpers.exec_result import TerminatedByCondition
 from uber_compose.helpers.jobs_result import JobResult
 
 if TYPE_CHECKING:
@@ -24,6 +25,9 @@ if TYPE_CHECKING:
 
 INITIAL_POLL_DELAY_S = 0.05
 MAX_POLL_DELAY_S = 1.0
+EXIT_FILE_RACE_DELAY_S = 0.1
+TERMINATION_TIMEOUT = TimeOutCheck(attempts=3, delay_s=1)
+KILL_TIMEOUT = TimeOutCheck(attempts=1, delay_s=1)
 
 
 @dataclass(frozen=True)
@@ -149,7 +153,35 @@ class StatusFileExecStrategy(ExecStrategy):
             if context.life_cycle_policy.kill_after_command_still_running:
                 await self._kill(shell, context, cmd_name)
             return ExecTimeout(stdout=stdout, cmd=command)
-        return ExecResult(stdout=stdout, cmd=command, exit_code=exit_code)
+
+        if exit_code is not None:
+            return ExecResult(stdout=stdout, cmd=command, exit_code=exit_code)
+
+        # The condition is met, but the command has not published its exit code yet:
+        # it is either just finishing or still running. Give it a short chance to
+        # exit naturally, then stop it if requested.
+        exited = await self._wait_for_exit_file(
+            shell, context, exit_file,
+            TimeOutCheck(attempts=1, delay_s=EXIT_FILE_RACE_DELAY_S),
+        )
+        if exited:
+            stdout, exit_code = await self._read_result(
+                shell, context, log_file, exit_file, marker,
+            )
+            if exit_code is not None:
+                return ExecResult(stdout=stdout, cmd=command, exit_code=exit_code)
+
+        if not context.life_cycle_policy.kill_after_command_still_running:
+            return ExecResult(
+                stdout=stdout, cmd=command, exit_code=TerminatedByCondition(0),
+            )
+
+        stdout, exit_code = await self._terminate_and_read(
+            shell, context, cmd_name, log_file, exit_file, marker, stdout,
+        )
+        return ExecResult(
+            stdout=stdout, cmd=command, exit_code=TerminatedByCondition(exit_code),
+        )
 
     @staticmethod
     def _resolve_timeout(timeout: TimeOutCheck | None) -> TimeOutCheck:
@@ -212,6 +244,30 @@ class StatusFileExecStrategy(ExecStrategy):
             exit_code = None
         return stdout, exit_code
 
+    async def _terminate_and_read(self, shell: "ComposeShellInterface", context: ExecContext,
+                                  cmd_name: str, log_file: str, exit_file: str, marker: str,
+                                  stdout: bytes) -> tuple[bytes, int]:
+        if not cmd_name:
+            return stdout, 0
+
+        await self._kill(shell, context, cmd_name)
+        if await self._wait_for_exit_file(shell, context, exit_file, TERMINATION_TIMEOUT):
+            stdout, exit_code = await self._read_result(
+                shell, context, log_file, exit_file, marker,
+            )
+            if exit_code is not None:
+                return stdout, exit_code
+
+        await self._kill(shell, context, cmd_name, force=True)
+        if await self._wait_for_exit_file(shell, context, exit_file, KILL_TIMEOUT):
+            stdout, exit_code = await self._read_result(
+                shell, context, log_file, exit_file, marker,
+            )
+            if exit_code is not None:
+                return stdout, exit_code
+
+        return stdout, 137
+
     @staticmethod
     async def _run_wait_callable(context: ExecContext, command: str, wait: Callable) -> bool:
         if asyncio.iscoroutinefunction(wait):
@@ -231,12 +287,14 @@ class StatusFileExecStrategy(ExecStrategy):
         )
 
     @staticmethod
-    async def _kill(shell: "ComposeShellInterface", context: ExecContext, cmd_name: str) -> None:
+    async def _kill(shell: "ComposeShellInterface", context: ExecContext, cmd_name: str,
+                    force: bool = False) -> None:
         if not cmd_name:
             return
+        args = f'-9 {shlex.quote(cmd_name)}' if force else shlex.quote(cmd_name)
         await shell.dc_exec_raw(
             context.container,
-            f'killall {shlex.quote(cmd_name)}',
+            f'killall {args}',
             env=context.env,
             root=context.root,
         )

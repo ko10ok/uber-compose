@@ -15,6 +15,8 @@ from uber_compose.core.docker_compose_shell.interface import TimeOutCheck
 from uber_compose.core.docker_compose_shell.types import ExecLifeCyclePolicy
 from uber_compose.core.sequence_run_types import DEFAULT_ENV_ID
 from uber_compose.helpers.current_env import get_current_env_id
+from uber_compose.helpers.exec_result import ExecTimeout
+from uber_compose.helpers.exec_result import TerminatedByCondition
 from uber_compose.uber_compose import SystemUberCompose
 from uber_compose.uber_compose import TheUberCompose
 
@@ -26,6 +28,7 @@ class CommandResult:
     cmd: str
     env: dict[str, str]
     exit_code: int | None = None
+    waiting_done_successfully: bool = True
 
     def _format_value(self, key, value, indent_level=1, print_new_line=True):
         """Formats value considering its type and nesting level."""
@@ -98,7 +101,13 @@ class CommandResult:
         return f"{self.__class__.__name__}(\n" + ",\n".join(fields) + "\n)"
 
     def _has_no_errors(self) -> bool:
-        return self.stderr == [] and self.exit_code == 0
+        if self.stderr != []:
+            return False
+        if not self.waiting_done_successfully:
+            return False
+        if isinstance(self.exit_code, TerminatedByCondition):
+            return True
+        return self.exit_code == 0
 
     def __bool__(self):
         has_no_errors = self._has_no_errors()
@@ -282,10 +291,16 @@ class CommonJsonCli(Generic[TCommandResult]):
 
         result = await self._cli_client.exec(**exec_kwargs)
 
+        result_extra = dict(command_result_extra)
+        result_extra.setdefault(
+            'waiting_done_successfully',
+            not isinstance(result, ExecTimeout),
+        )
+
         return self._make_result(
             cmd=command,
             env=extra_env or {},
             logs=result.stdout,
             exit_code=result.exit_code,
-            **command_result_extra,
+            **result_extra,
         )
