@@ -85,12 +85,15 @@ By default, `exec()` waits until the process exits.
 |---|---|---|---|---|
 | Wait until exit (default) | `wait` omitted (`wait=ProcessExit()` by default) | actual `int` | `True` | `exit_code == 0` and `stderr == []` |
 | Wait until exit, timeout | `wait` omitted, `timeout=...` | `None` | `False` | `False` |
-| Detached, don't wait | `wait=None`, `kill_after_command_still_running=False` | `None` | `True` | `False` — exit code is unknown |
+| Detached, don't wait | `wait=None`, `kill_after_command_still_running=False` | `None` | `True` — wait was skipped on purpose, not failed | `False` — exit code is unknown;<br>check log errors explicitly: `result.stderr == []` |
+| Detached with `&` | command ends with `&` (same as `wait=None`) | `None` | `True` — wait was skipped on purpose, not failed | `False` — exit code is unknown;<br>check log errors explicitly: `result.stderr == []` |
 | Wait condition met, process stopped | callable returns `True` while process runs | `TerminatedByCondition(143/137/0)` | `True` | `True` if `stderr == []` |
 | Wait condition met, process exited by itself | callable returns `True` after exit | actual `int` | `True` | `exit_code == 0` and `stderr == []` |
 | Wait condition not met | callable returns `False` | `None` | `False` | `False` |
 
 `stderr != []` makes `has_no_errors()` fail in every mode.
+
+A trailing `&` also switches to detached mode, including inside `sh -c`:
 
 ```python
 from time import sleep

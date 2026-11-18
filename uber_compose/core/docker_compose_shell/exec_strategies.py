@@ -91,8 +91,9 @@ class StatusFileExecStrategy(ExecStrategy):
         wait = context.wait
         timeout = self._resolve_timeout(context.timeout)
 
-        if command.endswith('&'):
-            command = command[:-1].strip()
+        if self._is_background_command(command):
+            if command.endswith('&'):
+                command = command[:-1].strip()
             wait = None
 
         cmd_name = parse_process_command_name(command) if command else ''
@@ -182,6 +183,21 @@ class StatusFileExecStrategy(ExecStrategy):
         return ExecResult(
             stdout=stdout, cmd=command, exit_code=TerminatedByCondition(exit_code),
         )
+
+    @staticmethod
+    def _is_background_command(command: str) -> bool:
+        stripped = command.strip()
+        if stripped.endswith('&'):
+            return True
+
+        try:
+            parts = shlex.split(stripped)
+        except ValueError:
+            return False
+
+        if len(parts) >= 3 and parts[0] == 'sh' and parts[1] == '-c':
+            return StatusFileExecStrategy._is_background_command(parts[2])
+        return False
 
     @staticmethod
     def _resolve_timeout(timeout: TimeOutCheck | None) -> TimeOutCheck:
